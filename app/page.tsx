@@ -1,101 +1,253 @@
-import Image from "next/image";
+import { Header } from "@/components/layout/header";
+import { Footer } from "@/components/layout/footer";
+import { UrlInput } from "@/components/ui/url-input";
+import { LogoIcon } from "@/components/ui/logo";
 
 export default function Home() {
   return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-8 row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="https://nextjs.org/icons/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-semibold">
-              app/page.tsx
-            </code>
-            .
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
+    <div className="min-h-screen flex flex-col">
+      <Header />
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="https://nextjs.org/icons/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:min-w-44"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+      {/* Hero */}
+      <section className="relative hero-pattern noise flex-1 flex items-center">
+        <div className="mx-auto max-w-5xl px-4 sm:px-6 py-20 sm:py-32 text-center">
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-adashi-blue/5 text-adashi-blue text-sm font-medium mb-8">
+            <LogoIcon className="w-4 h-4" />
+            100% free &mdash; no signup required
+          </div>
+
+          <h1 className="font-display text-4xl sm:text-5xl lg:text-6xl text-adashi-gulf leading-tight mb-6">
+            How does your website{" "}
+            <span className="gradient-text">really</span> perform?
+          </h1>
+
+          <p className="text-lg sm:text-xl text-gray-600 max-w-2xl mx-auto mb-10">
+            Get an instant scan of your website&apos;s accessibility, SEO,
+            content quality, and performance. See what&apos;s holding you back
+            &mdash; in plain language, not developer jargon.
+          </p>
+
+          <div className="flex justify-center">
+            <UrlInput />
+          </div>
+
+          <p className="mt-4 text-sm text-gray-400">
+            Takes about 15 seconds. We scan your homepage and show you the
+            results instantly.
+          </p>
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-6 flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+      </section>
+
+      {/* What you get */}
+      <section className="py-20 sm:py-28 bg-gray-50/50">
+        <div className="mx-auto max-w-5xl px-4 sm:px-6">
+          <h2 className="font-display text-3xl sm:text-4xl text-adashi-gulf text-center mb-4">
+            What you&apos;ll discover
+          </h2>
+          <p className="text-center text-gray-500 max-w-xl mx-auto mb-14">
+            Our scanner checks the things that matter most for your
+            business&apos;s online presence.
+          </p>
+
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            <FeatureCard
+              icon={
+                <AccessibilityIcon className="w-6 h-6 text-adashi-blue" />
+              }
+              title="Accessibility"
+              description="Can all visitors use your site? We check for screen reader support, color contrast, keyboard navigation, and more."
+              weight="40%"
+            />
+            <FeatureCard
+              icon={<ContentIcon className="w-6 h-6 text-adashi-blue" />}
+              title="Content Quality"
+              description="Is your message clear? We analyze readability, heading structure, and whether your calls-to-action actually work."
+              weight="25%"
+            />
+            <FeatureCard
+              icon={<SeoIcon className="w-6 h-6 text-adashi-blue" />}
+              title="SEO Basics"
+              description="Can Google find you? We check meta tags, heading hierarchy, image descriptions, and other ranking factors."
+              weight="20%"
+            />
+            <FeatureCard
+              icon={<SpeedIcon className="w-6 h-6 text-adashi-blue" />}
+              title="Performance"
+              description="Is your site fast enough? Slow pages lose visitors. We measure load time and flag optimization opportunities."
+              weight="15%"
+            />
+          </div>
+        </div>
+      </section>
+
+      {/* How it works */}
+      <section className="py-20 sm:py-28">
+        <div className="mx-auto max-w-5xl px-4 sm:px-6">
+          <h2 className="font-display text-3xl sm:text-4xl text-adashi-gulf text-center mb-14">
+            How it works
+          </h2>
+
+          <div className="grid sm:grid-cols-3 gap-8 sm:gap-12">
+            <Step
+              number="1"
+              title="Enter your URL"
+              description="Just paste your website address. No account needed, no strings attached."
+            />
+            <Step
+              number="2"
+              title="Get your score"
+              description="In about 15 seconds, see your overall score and top issues — explained in plain language."
+            />
+            <Step
+              number="3"
+              title="Get the full report"
+              description="Enter your email to receive a detailed report with page-by-page analysis and fix recommendations."
+            />
+          </div>
+        </div>
+      </section>
+
+      {/* Bottom CTA */}
+      <section className="py-16 bg-adashi-gulf text-white text-center noise relative">
+        <div className="mx-auto max-w-3xl px-4 sm:px-6">
+          <h2 className="font-display text-3xl sm:text-4xl mb-4">
+            Ready to see how your site stacks up?
+          </h2>
+          <p className="text-adashi-pastel text-lg mb-8">
+            It&apos;s free, takes 15 seconds, and could reveal issues
+            you&apos;ve never noticed.
+          </p>
+          <div className="flex justify-center">
+            <UrlInput />
+          </div>
+        </div>
+      </section>
+
+      <Footer />
     </div>
+  );
+}
+
+function FeatureCard({
+  icon,
+  title,
+  description,
+  weight,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  description: string;
+  weight: string;
+}) {
+  return (
+    <div className="bg-white rounded-2xl p-6 shadow-card spring-hover">
+      <div className="flex items-center justify-between mb-4">
+        <div className="w-12 h-12 rounded-xl bg-adashi-blue/5 flex items-center justify-center">
+          {icon}
+        </div>
+        <span className="text-xs font-medium text-gray-400 bg-gray-100 px-2 py-1 rounded-full">
+          {weight} of score
+        </span>
+      </div>
+      <h3 className="font-semibold text-adashi-gulf mb-2">{title}</h3>
+      <p className="text-sm text-gray-500 leading-relaxed">{description}</p>
+    </div>
+  );
+}
+
+function Step({
+  number,
+  title,
+  description,
+}: {
+  number: string;
+  title: string;
+  description: string;
+}) {
+  return (
+    <div className="text-center">
+      <div className="w-12 h-12 rounded-full bg-adashi-blue text-white font-bold text-lg flex items-center justify-center mx-auto mb-4">
+        {number}
+      </div>
+      <h3 className="font-semibold text-adashi-gulf text-lg mb-2">{title}</h3>
+      <p className="text-gray-500">{description}</p>
+    </div>
+  );
+}
+
+function AccessibilityIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      fill="none"
+      viewBox="0 0 24 24"
+      stroke="currentColor"
+      strokeWidth={2}
+      aria-hidden="true"
+    >
+      <circle cx="12" cy="4.5" r="2" />
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M7 8.5h10M12 8.5v4m-3 5.5l3-3.5 3 3.5"
+      />
+    </svg>
+  );
+}
+
+function ContentIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      fill="none"
+      viewBox="0 0 24 24"
+      stroke="currentColor"
+      strokeWidth={2}
+      aria-hidden="true"
+    >
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"
+      />
+    </svg>
+  );
+}
+
+function SeoIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      fill="none"
+      viewBox="0 0 24 24"
+      stroke="currentColor"
+      strokeWidth={2}
+      aria-hidden="true"
+    >
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"
+      />
+    </svg>
+  );
+}
+
+function SpeedIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      fill="none"
+      viewBox="0 0 24 24"
+      stroke="currentColor"
+      strokeWidth={2}
+      aria-hidden="true"
+    >
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z"
+      />
+    </svg>
   );
 }
