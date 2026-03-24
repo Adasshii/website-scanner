@@ -40,7 +40,8 @@ export function UrlInput() {
         return;
       }
 
-      router.push(`/scan/${data.scanId}`);
+      // Redirect to the scan results page
+      router.push(`/scan/${data.id}`);
     } catch {
       setError("Could not connect to the server. Please try again.");
       setLoading(false);

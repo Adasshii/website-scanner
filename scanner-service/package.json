@@ -1,0 +1,29 @@
+{
+  "name": "adashi-scanner-service",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "postinstall": "npx playwright install chromium"
+  },
+  "dependencies": {
+    "@axe-core/playwright": "^4.10.0",
+    "@google/generative-ai": "^0.24.1",
+    "@supabase/supabase-js": "^2.99.3",
+    "axe-core": "^4.10.0",
+    "cors": "^2.8.5",
+    "dotenv": "^17.3.1",
+    "express": "^4.21.0",
+    "helmet": "^8.0.0",
+    "playwright": "^1.49.0"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.17",
+    "@types/express": "^5.0.0",
+    "@types/node": "^20.0.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0"
+  }
+}
