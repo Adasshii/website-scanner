@@ -8,7 +8,7 @@ export function Header() {
         <Link href="/" className="text-adashi-blue">
           <LogoFull className="h-7" />
         </Link>
-        <span className="text-sm text-gray-400">Free Website Scanner</span>
+        <span className="text-sm text-gray-400">Free Website Scanner staging</span>
       </div>
     </header>
   );
