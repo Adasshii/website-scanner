@@ -34,7 +34,7 @@ export function ScanResults({ scanId, domain, scores, summary, issues, scannedAt
           Scan Results
         </h1>
         <p className="text-gray-500">
-          {domain} &middot; Scanned {new Date(scannedAt).toLocaleDateString("en-US", {
+          <a href={`https://${domain}`} target="_blank" rel="noopener noreferrer" className="hover:underline">{domain}</a> &middot; Scanned {new Date(scannedAt).toLocaleDateString("en-US", {
             month: "short",
             day: "numeric",
             year: "numeric",

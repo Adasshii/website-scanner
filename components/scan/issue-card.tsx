@@ -14,6 +14,10 @@ const categoryLabels: Record<string, string> = {
   performance: "Performance",
 };
 
+function stripUrls(text: string): string {
+  return text.replace(/Learn more:\s*https?:\/\/\S+/gi, "").replace(/https?:\/\/\S+/g, "").trim();
+}
+
 export function IssueCard({ issue }: { issue: Issue }) {
   return (
     <div className="bg-white rounded-xl border border-gray-200 p-4 sm:p-5">
@@ -34,11 +38,21 @@ export function IssueCard({ issue }: { issue: Issue }) {
           <h3 className="font-semibold text-adashi-gulf text-sm sm:text-base mb-1">
             {issue.title}
           </h3>
-          <p className="text-sm text-gray-600 leading-relaxed">{issue.description}</p>
+          <p className="text-sm text-gray-600 leading-relaxed">{stripUrls(issue.description)}</p>
           {issue.recommendation && (
             <p className="mt-2 text-sm text-adashi-blue/80 leading-relaxed">
-              {issue.recommendation}
+              {stripUrls(issue.recommendation)}
             </p>
+          )}
+          {issue.axeRuleId && (
+            <a
+              href={`https://dequeuniversity.com/rules/axe/4.9/${issue.axeRuleId}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-block mt-3 text-xs font-medium px-3 py-1 rounded-full border border-adashi-blue text-adashi-blue hover:bg-adashi-blue hover:text-white transition-colors"
+            >
+              Learn more
+            </a>
           )}
         </div>
       </div>
