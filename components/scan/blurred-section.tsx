@@ -1,45 +1,38 @@
 "use client";
 
-export function BlurredSection() {
+import type { Issue } from "@/types/scanner";
+
+const severityBadge: Record<string, string> = {
+  critical: "bg-red-100 text-red-700",
+  major: "bg-orange-100 text-orange-700",
+  minor: "bg-yellow-100 text-yellow-700",
+  info: "bg-blue-100 text-blue-700",
+};
+
+interface BlurredSectionProps {
+  issues: Issue[];
+}
+
+export function BlurredSection({ issues }: BlurredSectionProps) {
   return (
     <div className="relative rounded-2xl overflow-hidden">
       {/* Blurred teaser content */}
-      <div className="blur-sm pointer-events-none select-none" aria-hidden="true">
-        <div className="bg-white rounded-2xl p-6 sm:p-8 space-y-6">
-          {/* Fake category section */}
-          <div>
-            <h3 className="font-semibold text-adashi-gulf text-lg mb-3">
-              Page-by-Page Analysis
-            </h3>
-            <div className="space-y-2">
-              {[1, 2, 3].map((i) => (
-                <div key={i} className="flex items-center gap-3 py-2">
-                  <div className="w-8 h-8 rounded-full bg-gray-200" />
-                  <div className="flex-1">
-                    <div className="h-4 bg-gray-200 rounded w-3/4 mb-1" />
-                    <div className="h-3 bg-gray-100 rounded w-1/2" />
-                  </div>
-                  <div className="text-2xl font-bold text-gray-300">85</div>
-                </div>
-              ))}
+      <div className="blur-[4px] pointer-events-none select-none" aria-hidden="true">
+        <div className="bg-white rounded-2xl p-6 sm:p-8 space-y-3">
+          {issues.map((issue, i) => (
+            <div key={`${issue.id}-${i}`} className="border border-gray-200 rounded-xl p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <span
+                  className={`inline-block text-xs font-semibold px-2 py-0.5 rounded-full ${
+                    severityBadge[issue.severity] || severityBadge.info
+                  }`}
+                >
+                  {issue.severity}
+                </span>
+              </div>
+              <p className="font-medium text-adashi-gulf text-sm">{issue.title}</p>
             </div>
-          </div>
-
-          {/* Fake detailed recommendations */}
-          <div>
-            <h3 className="font-semibold text-adashi-gulf text-lg mb-3">
-              Detailed Recommendations
-            </h3>
-            <div className="space-y-3">
-              {[1, 2, 3, 4].map((i) => (
-                <div key={i} className="border border-gray-200 rounded-xl p-4">
-                  <div className="h-4 bg-gray-200 rounded w-2/3 mb-2" />
-                  <div className="h-3 bg-gray-100 rounded w-full mb-1" />
-                  <div className="h-3 bg-gray-100 rounded w-5/6" />
-                </div>
-              ))}
-            </div>
-          </div>
+          ))}
         </div>
       </div>
 

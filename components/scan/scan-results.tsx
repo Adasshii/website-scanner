@@ -25,6 +25,7 @@ export function ScanResults({ scanId, domain, scores, summary, issues, scannedAt
   const isQuickDone = status === "quick_done" || status === "processing";
   const maxIssues = isQuickDone ? 5 : 10;
   const topIssues = sortedIssues.slice(0, maxIssues);
+  const teaserIssues = sortedIssues.slice(maxIssues, maxIssues + 3);
 
   return (
     <div className="mx-auto max-w-4xl px-4 sm:px-6 py-10 sm:py-16">
@@ -34,7 +35,7 @@ export function ScanResults({ scanId, domain, scores, summary, issues, scannedAt
           Scan Results
         </h1>
         <p className="text-gray-500">
-          {domain} &middot; Scanned {new Date(scannedAt).toLocaleDateString("en-US", {
+          <a href={`https://${domain}`} target="_blank" rel="noopener noreferrer" className="hover:underline">{domain}</a> &middot; Scanned {new Date(scannedAt).toLocaleDateString("en-US", {
             month: "short",
             day: "numeric",
             year: "numeric",
@@ -50,6 +51,21 @@ export function ScanResults({ scanId, domain, scores, summary, issues, scannedAt
             <h2 className="font-display text-xl sm:text-2xl text-adashi-gulf mb-2">
               Overall Score
             </h2>
+            <span
+              className={`inline-block text-xs font-semibold px-2 py-0.5 rounded-full mb-2 ${
+                scores.overall >= 80
+                  ? "bg-green-100 text-green-700"
+                  : scores.overall >= 60
+                    ? "bg-orange-100 text-orange-700"
+                    : "bg-red-100 text-red-700"
+              }`}
+            >
+              {scores.overall >= 80
+                ? "Good"
+                : scores.overall >= 60
+                  ? "Needs improvement"
+                  : "Poor"}
+            </span>
             <p className="text-gray-600 leading-relaxed">{summary.verdict}</p>
             <div className="mt-3 flex flex-wrap gap-3 justify-center sm:justify-start text-sm text-gray-500">
               <span>{summary.totalIssues} issues found</span>
@@ -81,6 +97,36 @@ export function ScanResults({ scanId, domain, scores, summary, issues, scannedAt
         </div>
       </div>
 
+      {/* Top 3 Issues Highlight */}
+      {isQuickDone && sortedIssues.length > 0 && (
+        <div className="bg-white rounded-2xl shadow-card p-6 sm:p-8 mb-8">
+          <h2 className="font-semibold text-adashi-gulf text-lg mb-4 text-center">
+            Your 3 biggest issues
+          </h2>
+          <div className="space-y-3">
+            {sortedIssues.slice(0, 3).map((issue, i) => (
+              <div key={`${issue.id}-${i}`} className="flex items-center gap-3">
+                <span
+                  className={`inline-block text-xs font-semibold px-2 py-0.5 rounded-full border ${
+                    issue.severity === "critical"
+                      ? "bg-red-100 text-red-700 border-red-200"
+                      : issue.severity === "major"
+                        ? "bg-orange-100 text-orange-700 border-orange-200"
+                        : issue.severity === "minor"
+                          ? "bg-yellow-100 text-yellow-700 border-yellow-200"
+                          : "bg-blue-100 text-blue-700 border-blue-200"
+                  }`}
+                >
+                  {issue.severity}
+                </span>
+                <span className="flex-1 text-sm text-adashi-gulf font-medium truncate">{issue.title}</span>
+                <span className="text-sm text-red-500 font-medium whitespace-nowrap">-{issue.impact} pts</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Top Issues */}
       {topIssues.length > 0 && (
         <div className="mb-8">
@@ -107,7 +153,7 @@ export function ScanResults({ scanId, domain, scores, summary, issues, scannedAt
             scanId={scanId}
             onFullScanComplete={() => router.refresh()}
           />
-          <BlurredSection />
+          <BlurredSection issues={teaserIssues} />
         </div>
       )}
 
