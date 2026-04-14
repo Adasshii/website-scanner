@@ -25,6 +25,7 @@ export function ScanResults({ scanId, domain, scores, summary, issues, scannedAt
   const isQuickDone = status === "quick_done" || status === "processing";
   const maxIssues = isQuickDone ? 5 : 10;
   const topIssues = sortedIssues.slice(0, maxIssues);
+  const teaserIssues = sortedIssues.slice(maxIssues, maxIssues + 3);
 
   return (
     <div className="mx-auto max-w-4xl px-4 sm:px-6 py-10 sm:py-16">
@@ -107,7 +108,7 @@ export function ScanResults({ scanId, domain, scores, summary, issues, scannedAt
             scanId={scanId}
             onFullScanComplete={() => router.refresh()}
           />
-          <BlurredSection />
+          <BlurredSection issues={teaserIssues} />
         </div>
       )}
 
