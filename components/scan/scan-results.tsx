@@ -51,6 +51,21 @@ export function ScanResults({ scanId, domain, scores, summary, issues, scannedAt
             <h2 className="font-display text-xl sm:text-2xl text-adashi-gulf mb-2">
               Overall Score
             </h2>
+            <span
+              className={`inline-block text-xs font-semibold px-2 py-0.5 rounded-full mb-2 ${
+                scores.overall >= 80
+                  ? "bg-green-100 text-green-700"
+                  : scores.overall >= 60
+                    ? "bg-orange-100 text-orange-700"
+                    : "bg-red-100 text-red-700"
+              }`}
+            >
+              {scores.overall >= 80
+                ? "Good"
+                : scores.overall >= 60
+                  ? "Needs improvement"
+                  : "Poor"}
+            </span>
             <p className="text-gray-600 leading-relaxed">{summary.verdict}</p>
             <div className="mt-3 flex flex-wrap gap-3 justify-center sm:justify-start text-sm text-gray-500">
               <span>{summary.totalIssues} issues found</span>
