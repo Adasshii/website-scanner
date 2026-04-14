@@ -63,8 +63,8 @@ export function UrlInput() {
               setUrl(e.target.value);
               if (error) setError("");
             }}
-            placeholder="Enter your website URL"
-            className={`w-full px-5 py-4 rounded-xl border-2 text-base bg-white transition-colors outline-none ${
+            placeholder="https://example.com"
+            className={`w-full px-5 py-4 rounded-xl border-2 text-base bg-white text-gray-900 placeholder-gray-400 transition-colors outline-none ${
               error
                 ? "border-red-400 focus:border-red-500"
                 : "border-gray-200 focus:border-adashi-blue"
