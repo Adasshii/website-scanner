@@ -105,7 +105,15 @@ function StartScanner() {
       <Header />
       <main className="flex-1 flex items-center justify-center">
         <div className="text-center max-w-md mx-auto px-4">
-          <LogoIcon className="w-12 h-12 mx-auto mb-6 text-adashi-blue animate-pulse" />
+          <div className="relative w-12 h-12 mx-auto mb-6">
+            <LogoIcon className="w-12 h-12 text-gray-200" />
+            <div
+              className="absolute inset-0"
+              style={{ clipPath: `inset(0 0 ${100 - progress}% 0)` }}
+            >
+              <LogoIcon className="w-12 h-12 text-adashi-blue" />
+            </div>
+          </div>
           <h1 className="font-display text-2xl sm:text-3xl text-adashi-gulf mb-2">
             Scanning your website
           </h1>
