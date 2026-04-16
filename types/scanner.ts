@@ -158,6 +158,10 @@ export interface Issue {
   axeRuleId?: string;
   /** Impact score deduction for this issue */
   impact: number;
+  /** AI-generated one-sentence business impact explanation */
+  whyItMatters?: string;
+  /** Estimated fix difficulty */
+  difficulty?: "easy" | "medium" | "hard";
 }
 
 // ── Summary (aggregated across all pages) ──────────────────────────

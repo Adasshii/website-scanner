@@ -323,18 +323,50 @@ export function FullReport({
                   </div>
                 }
               >
-                <div className="space-y-3">
-                  {items.map((g, i) => (
-                    <div key={`${g.issue.id}-${i}`} className="relative">
-                      <IssueCard issue={g.issue} />
-                      {isMultiPage && g.pageCount > 1 && (
-                        <span className="absolute top-3 right-3 text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">
-                          found on {g.pageCount} pages
-                        </span>
+                {(() => {
+                  const priority = items.filter((g) => g.issue.severity === "critical" || g.issue.severity === "major");
+                  const secondary = items.filter((g) => g.issue.severity === "minor" || g.issue.severity === "info");
+                  const showAll = priority.length === 0;
+                  const visibleItems = showAll ? items : priority;
+
+                  return (
+                    <div className="space-y-3">
+                      {visibleItems.map((g, i) => (
+                        <div key={`${g.issue.id}-${i}`} className="relative">
+                          <IssueCard issue={g.issue} />
+                          {isMultiPage && g.pageCount > 1 && (
+                            <span className="absolute top-3 right-3 text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">
+                              found on {g.pageCount} pages
+                            </span>
+                          )}
+                        </div>
+                      ))}
+                      {!showAll && secondary.length > 0 && (
+                        <CollapsibleSection
+                          defaultOpen={false}
+                          title={
+                            <span className="text-sm text-gray-500">
+                              {secondary.length} lower-priority issue{secondary.length !== 1 ? "s" : ""}
+                            </span>
+                          }
+                        >
+                          <div className="space-y-3 mt-2">
+                            {secondary.map((g, i) => (
+                              <div key={`sec-${g.issue.id}-${i}`} className="relative">
+                                <IssueCard issue={g.issue} />
+                                {isMultiPage && g.pageCount > 1 && (
+                                  <span className="absolute top-3 right-3 text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">
+                                    found on {g.pageCount} pages
+                                  </span>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        </CollapsibleSection>
                       )}
                     </div>
-                  ))}
-                </div>
+                  );
+                })()}
               </CollapsibleSection>
             );
           })}

@@ -13,6 +13,7 @@ import {
   calculateCostEstimateFallback,
   enhanceIssueDescriptions,
   generateSalesBrief,
+  generateWhyItMatters,
 } from "./ai";
 import { uploadScreenshot } from "./screenshots";
 import type { ScanRequest, PageResult, ScanScores, ScanSummary, Issue, ScreenshotInfo } from "../../types/scanner";
@@ -79,13 +80,18 @@ app.post("/api/scan/quick", async (req, res) => {
 
     // Enhance with AI (non-blocking — falls back to originals on failure)
     const domain = new URL(url).hostname;
-    const [analysis, enhancedIssues] = await Promise.all([
+    const [analysis, enhancedIssues, whyItMattersMap] = await Promise.all([
       generateComprehensiveAnalysis(domain, result.scores, summary, [result]),
       enhanceIssueDescriptions(result.issues),
+      generateWhyItMatters(domain, result.issues),
     ]);
 
     summary.verdict = analysis?.executiveSummary ?? generateFallbackVerdict(result.scores, summary.criticalIssues);
-    const enhancedResult = { ...result, issues: enhancedIssues };
+    const issuesWithContext = enhancedIssues.map((i) => ({
+      ...i,
+      whyItMatters: whyItMattersMap[i.id] ?? i.whyItMatters,
+    }));
+    const enhancedResult = { ...result, issues: issuesWithContext };
     summary.topIssues = enhancedIssues.slice(0, 10);
 
     const costEstimate = analysis?.costEstimate ?? calculateCostEstimateFallback(result.scores, summary, result.loadTimeMs);
@@ -223,10 +229,11 @@ app.post("/api/scan/full-async", async (req, res) => {
       ? results.reduce((sum, r) => sum + r.loadTimeMs, 0) / results.length
       : 0;
 
-    const [analysis, enhancedIssues, salesBrief] = await Promise.all([
+    const [analysis, enhancedIssues, salesBrief, whyItMattersMap] = await Promise.all([
       generateComprehensiveAnalysis(domain, scores, summary, results),
       enhanceIssueDescriptions(allIssues),
       generateSalesBrief(domain, scores, summary, results),
+      generateWhyItMatters(domain, allIssues),
     ]);
 
     summary.verdict = analysis?.executiveSummary ?? generateFallbackVerdict(scores, summary.criticalIssues);
@@ -236,10 +243,10 @@ app.post("/api/scan/full-async", async (req, res) => {
     const quickWins = analysis?.quickWins ?? null;
     const websitePersonality = analysis?.websitePersonality ?? null;
 
-    // Map enhanced issues back to their pages
+    // Map enhanced issues (with whyItMatters) back to their pages
     const issueMap = new Map<string, Issue>();
     for (const issue of enhancedIssues) {
-      issueMap.set(issue.id, issue);
+      issueMap.set(issue.id, { ...issue, whyItMatters: whyItMattersMap[issue.id] ?? issue.whyItMatters });
     }
     const enhancedResults = results.map((page) => ({
       ...page,

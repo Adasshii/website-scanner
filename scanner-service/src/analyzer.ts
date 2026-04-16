@@ -1,5 +1,6 @@
 import type { AxeResults } from "axe-core";
 import type { Issue, IssueSeverity, PageData } from "../../types/scanner";
+import { getIssueDifficulty } from "./issue-difficulty";
 
 /** Map axe-core impact levels to our severity scale */
 function mapAxeSeverity(impact: string | null | undefined): IssueSeverity {
@@ -54,6 +55,7 @@ export function analyzeIssues(
       selector: firstSelector,
       axeRuleId: violation.id,
       impact: SEVERITY_IMPACT[severity] * Math.min(nodeCount, 5),
+      difficulty: "medium",
     });
   }
 
@@ -718,6 +720,13 @@ export function analyzeIssues(
         recommendation: "Preload key fonts, reduce render-blocking resources, and ensure fast server response times.",
         impact: 6,
       });
+    }
+  }
+
+  // Backfill difficulty for all non-axe issues
+  for (const issue of issues) {
+    if (!issue.difficulty) {
+      issue.difficulty = getIssueDifficulty(issue.id);
     }
   }
 

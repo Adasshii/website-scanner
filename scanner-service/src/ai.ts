@@ -385,3 +385,54 @@ Keep it under 300 words. Write it as bullet points, not paragraphs. Be direct an
     return null;
   }
 }
+
+// ── Why It Matters ────────────────────────────────────────────────────
+
+/**
+ * Generate a one-sentence plain-English business impact for each issue.
+ * Returns a map of { issueId: sentence }. Silently returns {} on failure.
+ */
+export async function generateWhyItMatters(
+  domain: string,
+  issues: Issue[]
+): Promise<Record<string, string>> {
+  const ai = getClient();
+  if (!ai) return {};
+
+  // Deduplicate by id
+  const unique = Array.from(new Map(issues.map((i) => [i.id, i])).values());
+  if (unique.length === 0) return {};
+
+  try {
+    const issueList = unique
+      .map((i, idx) => `${idx + 1}. id="${i.id}" title="${i.title}"`)
+      .join("\n");
+
+    const model = ai.getGenerativeModel({ model: "gemini-2.0-flash" });
+
+    const result = await model.generateContent(
+      `You are writing plain-English business impact summaries for a website audit report shown to non-technical business owners.
+
+For each issue below, write exactly one sentence explaining WHY it matters to the business — focus on real consequences: lost visitors, lower Google rankings, accessibility barriers, lost revenue, security risk, etc. Reference the domain "${domain}" where it makes the summary more specific and credible. Be direct and concrete. No jargon.
+
+Issues:
+${issueList}
+
+Respond with valid JSON only — an object mapping each issue id to its one-sentence impact. Example format:
+{
+  "seo-no-title": "Without a page title, Google has nothing to display in search results, making ${domain} invisible to people searching for your services.",
+  "perf-lcp-poor": "Slow load times cause more than half of mobile visitors to leave before your page finishes loading."
+}
+
+Return only the JSON object, no other text.`
+    );
+
+    const text = result.response.text().trim();
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) return {};
+    return JSON.parse(jsonMatch[0]) as Record<string, string>;
+  } catch (error) {
+    console.error("[ai] Why it matters generation failed:", error);
+    return {};
+  }
+}
