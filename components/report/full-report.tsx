@@ -57,6 +57,7 @@ const categoryMeta: Record<IssueCategory, { label: string; scoreKey: keyof ScanS
   content: { label: "Content", scoreKey: "content" },
   seo: { label: "SEO", scoreKey: "seo" },
   performance: { label: "Performance", scoreKey: "performance" },
+  security: { label: "Security", scoreKey: "security" },
 };
 
 function groupIssuesByCategory(pages: PageResult[]) {
@@ -65,6 +66,7 @@ function groupIssuesByCategory(pages: PageResult[]) {
     content: [],
     seo: [],
     performance: [],
+    security: [],
   };
 
   // Track issue occurrences across pages
@@ -267,9 +269,9 @@ export function FullReport({
           Category Breakdown
         </h2>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-6">
-          {(Object.keys(categoryMeta) as IssueCategory[]).map((cat) => (
+          {(Object.keys(categoryMeta) as IssueCategory[]).filter((cat) => scores[categoryMeta[cat].scoreKey] !== undefined).map((cat) => (
             <div key={cat} className="text-center">
-              <ScoreRingSmall score={scores[categoryMeta[cat].scoreKey]} label={categoryMeta[cat].label} />
+              <ScoreRingSmall score={scores[categoryMeta[cat].scoreKey] ?? 100} label={categoryMeta[cat].label} />
               <p className="text-xs text-gray-400 mt-1">
                 {grouped[cat].length} issue{grouped[cat].length !== 1 ? "s" : ""}
               </p>
@@ -285,7 +287,7 @@ export function FullReport({
           {(Object.keys(categoryMeta) as IssueCategory[]).map((cat) => {
             const items = grouped[cat];
             if (items.length === 0) return null;
-            const catScore = scores[categoryMeta[cat].scoreKey];
+            const catScore = scores[categoryMeta[cat].scoreKey] ?? 100;
 
             return (
               <CollapsibleSection
@@ -367,14 +369,15 @@ export function FullReport({
 
                     {/* Mini scores */}
                     <div className="flex flex-wrap gap-4 text-sm">
-                      {(Object.keys(categoryMeta) as IssueCategory[]).map((cat) => (
-                        <span key={cat} className="text-gray-500">
-                          {categoryMeta[cat].label}:{" "}
-                          <span className={`font-semibold ${scoreColor(page.scores[categoryMeta[cat].scoreKey])}`}>
-                            {page.scores[categoryMeta[cat].scoreKey]}
+                      {(Object.keys(categoryMeta) as IssueCategory[]).filter((cat) => page.scores[categoryMeta[cat].scoreKey] !== undefined).map((cat) => {
+                        const s = page.scores[categoryMeta[cat].scoreKey] ?? 100;
+                        return (
+                          <span key={cat} className="text-gray-500">
+                            {categoryMeta[cat].label}:{" "}
+                            <span className={`font-semibold ${scoreColor(s)}`}>{s}</span>
                           </span>
-                        </span>
-                      ))}
+                        );
+                      })}
                     </div>
 
                     {/* Page issues */}

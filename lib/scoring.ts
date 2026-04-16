@@ -8,25 +8,27 @@ import { SCORE_WEIGHTS } from "@/types/scanner";
  */
 export function aggregateScores(pages: PageResult[]): ScanScores {
   if (pages.length === 0) {
-    return { overall: 0, accessibility: 0, content: 0, seo: 0, performance: 0 };
+    return { overall: 0, accessibility: 0, content: 0, seo: 0, performance: 0, security: 0 };
   }
 
   const avg = (key: keyof ScanScores) =>
-    Math.round(pages.reduce((sum, p) => sum + p.scores[key], 0) / pages.length);
+    Math.round(pages.reduce((sum, p) => sum + (p.scores[key] ?? 0), 0) / pages.length);
 
   const accessibility = avg("accessibility");
   const content = avg("content");
   const seo = avg("seo");
   const performance = avg("performance");
+  const security = avg("security");
 
   const overall = Math.round(
     accessibility * SCORE_WEIGHTS.accessibility +
     content * SCORE_WEIGHTS.content +
     seo * SCORE_WEIGHTS.seo +
-    performance * SCORE_WEIGHTS.performance
+    performance * SCORE_WEIGHTS.performance +
+    security * SCORE_WEIGHTS.security
   );
 
-  return { overall, accessibility, content, seo, performance };
+  return { overall, accessibility, content, seo, performance, security };
 }
 
 /**
