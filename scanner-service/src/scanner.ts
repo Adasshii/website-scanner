@@ -70,6 +70,7 @@ export async function scanPage(
       timeout: timeoutMs,
     });
     statusCode = response?.status() ?? 0;
+    const responseHeaders = response?.headers() ?? {};
     console.log(`  [scanner] Loaded (status ${statusCode}) in ${Date.now() - startTime}ms`);
 
     // Wait briefly for JS to settle, but don't wait for all network requests
@@ -87,6 +88,7 @@ export async function scanPage(
     // Step 3: Extract page data
     console.log(`  [scanner] Extracting page data...`);
     const data = await extractPageData(page, url);
+    data.responseHeaders = responseHeaders;
     console.log(`  [scanner] Extracted: ${data.wordCount} words, ${data.images.length} images, ${data.links.length} links`);
 
     // Step 4: Analyze issues
@@ -146,8 +148,20 @@ export async function scanPage(
           language: "",
           canonical: "",
           ogTags: {},
+          twitterTags: {},
           hasViewport: false,
           hasFavicon: false,
+          hasStructuredData: false,
+          hasSkipLink: false,
+          vagueLinkCount: 0,
+          videosWithoutCaptions: 0,
+          audioElements: 0,
+          inputsMissingAutocomplete: 0,
+          iframesWithoutTitle: 0,
+          tablesWithoutHeaders: 0,
+          emptyButtons: 0,
+          renderBlockingScripts: 0,
+          responseHeaders: {},
           pageSize: 0,
         },
         issues: [
@@ -162,7 +176,7 @@ export async function scanPage(
             impact: 100,
           },
         ],
-        scores: { overall: 0, accessibility: 0, content: 0, seo: 0, performance: 0 },
+        scores: { overall: 0, accessibility: 0, content: 0, seo: 0, performance: 0, security: 0 },
       },
       screenshotBuffer: null,
       overlays: [],

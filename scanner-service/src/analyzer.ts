@@ -470,5 +470,110 @@ export function analyzeIssues(
     });
   }
 
+  // ── Security checks ──────────────────────────────────────────────
+
+  const h = data.responseHeaders;
+  const pageUrl = axeResults.url || "";
+  const isHttps = pageUrl.startsWith("https://");
+
+  if (!isHttps) {
+    issues.push({
+      id: "sec-no-https",
+      category: "security",
+      severity: "critical",
+      title: "Site not served over HTTPS",
+      description: "The page is served over HTTP, not HTTPS. All data between the browser and server is unencrypted.",
+      recommendation: "Install an SSL certificate and redirect all HTTP traffic to HTTPS. Most hosts (Vercel, Netlify, Railway) provide free SSL.",
+      impact: 30,
+    });
+  }
+
+  if (isHttps && !h["strict-transport-security"]) {
+    issues.push({
+      id: "sec-no-hsts",
+      category: "security",
+      severity: "minor",
+      title: "Missing HSTS header",
+      description: "No Strict-Transport-Security header found. Without it, browsers may allow downgrade attacks to HTTP.",
+      recommendation: 'Add the header: Strict-Transport-Security: max-age=31536000; includeSubDomains',
+      impact: 8,
+    });
+  }
+
+  if (!h["x-frame-options"] && !h["content-security-policy"]?.includes("frame-ancestors")) {
+    issues.push({
+      id: "sec-no-xframe",
+      category: "security",
+      severity: "minor",
+      title: "Missing X-Frame-Options header",
+      description: "No X-Frame-Options or CSP frame-ancestors directive found. The page could be embedded in an iframe by a malicious site (clickjacking).",
+      recommendation: "Add X-Frame-Options: DENY or SAMEORIGIN to your server response headers.",
+      impact: 8,
+    });
+  }
+
+  if (!h["x-content-type-options"]) {
+    issues.push({
+      id: "sec-no-xcto",
+      category: "security",
+      severity: "minor",
+      title: "Missing X-Content-Type-Options header",
+      description: "No X-Content-Type-Options header found. Browsers may try to sniff MIME types, which can enable certain attacks.",
+      recommendation: "Add X-Content-Type-Options: nosniff to your server response headers.",
+      impact: 5,
+    });
+  }
+
+  if (!h["content-security-policy"]) {
+    issues.push({
+      id: "sec-no-csp",
+      category: "security",
+      severity: "minor",
+      title: "Missing Content Security Policy",
+      description: "No Content-Security-Policy header found. A CSP restricts which resources the browser can load, reducing XSS attack risk.",
+      recommendation: "Add a Content-Security-Policy header. Start with a basic policy and tighten it over time.",
+      impact: 10,
+    });
+  }
+
+  if (!h["content-encoding"]) {
+    issues.push({
+      id: "perf-no-compression",
+      category: "performance",
+      severity: "minor",
+      title: "Page not compressed",
+      description: "The server is not using Gzip or Brotli compression. Compressed responses are typically 60-80% smaller, loading faster especially on mobile.",
+      recommendation: "Enable Gzip or Brotli compression on your server or CDN. Most modern hosts enable this by default.",
+      impact: 8,
+    });
+  }
+
+  if (!h["cache-control"]) {
+    issues.push({
+      id: "perf-no-cache",
+      category: "performance",
+      severity: "minor",
+      title: "No cache headers on HTML response",
+      description: "The HTML response has no Cache-Control header. Browsers can't cache the page, causing a full round-trip on every visit.",
+      recommendation: "Add Cache-Control headers. For HTML use short TTLs (e.g. max-age=300). For static assets use longer TTLs with content hashing.",
+      impact: 5,
+    });
+  }
+
+  if (isHttps) {
+    const mixedImages = data.images.filter((img) => img.src.startsWith("http://")).length;
+    if (mixedImages > 0) {
+      issues.push({
+        id: "sec-mixed-content",
+        category: "security",
+        severity: "major",
+        title: "Mixed content — HTTP resources on HTTPS page",
+        description: `${mixedImages} image(s) are loaded over HTTP on this HTTPS page. Browsers may block these and they expose users to data interception.`,
+        recommendation: "Update all resource URLs to use HTTPS, or use protocol-relative URLs (//example.com/image.jpg).",
+        impact: 15,
+      });
+    }
+  }
+
   return issues;
 }

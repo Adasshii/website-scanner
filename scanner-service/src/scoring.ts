@@ -14,6 +14,7 @@ export function scorePage(
     content: 0,
     seo: 0,
     performance: 0,
+    security: 0,
   };
 
   // Sum up impact deductions per category
@@ -39,16 +40,17 @@ export function scorePage(
   const content = clamp(100 - deductions.content);
   const seo = clamp(100 - deductions.seo);
   const performance = clamp(100 - deductions.performance);
+  const security = clamp(100 - deductions.security);
 
-  // Weighted overall score (matching the weights on the landing page)
   const overall = Math.round(
-    accessibility * 0.4 +
-      content * 0.25 +
-      seo * 0.2 +
-      performance * 0.15
+    accessibility * 0.35 +
+    content * 0.20 +
+    seo * 0.20 +
+    performance * 0.15 +
+    security * 0.10
   );
 
-  return { overall, accessibility, content, seo, performance };
+  return { overall, accessibility, content, seo, performance, security };
 }
 
 function clamp(value: number): number {

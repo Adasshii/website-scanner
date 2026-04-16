@@ -89,11 +89,14 @@ export function ScanResults({ scanId, domain, scores, summary, issues, scannedAt
         <h2 className="font-semibold text-adashi-gulf text-lg mb-6 text-center">
           Category Breakdown
         </h2>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-6">
+        <div className={`grid gap-6 ${scores.security !== undefined ? "grid-cols-2 sm:grid-cols-5" : "grid-cols-2 sm:grid-cols-4"}`}>
           <ScoreRingSmall score={scores.accessibility} label="Accessibility" />
           <ScoreRingSmall score={scores.content} label="Content" />
           <ScoreRingSmall score={scores.seo} label="SEO" />
           <ScoreRingSmall score={scores.performance} label="Performance" />
+          {scores.security !== undefined && (
+            <ScoreRingSmall score={scores.security} label="Security" />
+          )}
         </div>
       </div>
 

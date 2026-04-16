@@ -34,14 +34,16 @@ export interface ScanScores {
   content: number;
   seo: number;
   performance: number;
+  security?: number; // optional — absent on scans before Phase 2
 }
 
 /** Weights must add up to 1.0 */
 export const SCORE_WEIGHTS = {
-  accessibility: 0.4,
-  content: 0.25,
-  seo: 0.2,
+  accessibility: 0.35,
+  content: 0.20,
+  seo: 0.20,
   performance: 0.15,
+  security: 0.10,
 } as const;
 
 // ── Per-page results ───────────────────────────────────────────────
@@ -82,6 +84,8 @@ export interface PageData {
   tablesWithoutHeaders: number;
   emptyButtons: number;
   renderBlockingScripts: number;
+  /** HTTP response headers from the main document request */
+  responseHeaders: Record<string, string>;
   /** Page size in bytes */
   pageSize: number;
 }
@@ -113,7 +117,7 @@ export interface ImageInfo {
 // ── Issues ─────────────────────────────────────────────────────────
 
 export type IssueSeverity = "critical" | "major" | "minor" | "info";
-export type IssueCategory = "accessibility" | "content" | "seo" | "performance";
+export type IssueCategory = "accessibility" | "content" | "seo" | "performance" | "security";
 
 export interface Issue {
   id: string;
