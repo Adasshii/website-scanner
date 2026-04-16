@@ -304,7 +304,7 @@ function aggregateScores(pages: PageResult[]): ScanScores {
   }
 
   const avg = (key: keyof ScanScores) =>
-    Math.round(pages.reduce((sum, p) => sum + p.scores[key], 0) / pages.length);
+    Math.round(pages.reduce((sum, p) => sum + (p.scores[key] ?? 0), 0) / pages.length);
 
   const accessibility = avg("accessibility");
   const content = avg("content");
