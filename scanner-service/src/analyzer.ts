@@ -628,5 +628,98 @@ export function analyzeIssues(
     });
   }
 
+  // ── Core Web Vitals checks (Phase 4) ────────────────────────────────
+
+  const cwv = data.coreWebVitals;
+  if (cwv) {
+    if (cwv.lcp > 4000) {
+      issues.push({
+        id: "perf-lcp-poor",
+        category: "performance",
+        severity: "critical",
+        title: "Poor Largest Contentful Paint (LCP)",
+        description: `LCP is ${(cwv.lcp / 1000).toFixed(1)}s — Google considers anything above 4s poor. The main content block is taking too long to appear.`,
+        recommendation: "Compress and preload your hero image, reduce server response time (TTFB), and eliminate render-blocking resources.",
+        impact: 20,
+      });
+    } else if (cwv.lcp > 2500) {
+      issues.push({
+        id: "perf-lcp-needs-improvement",
+        category: "performance",
+        severity: "major",
+        title: "Slow Largest Contentful Paint (LCP)",
+        description: `LCP is ${(cwv.lcp / 1000).toFixed(1)}s — Google's threshold for a 'good' experience is under 2.5s.`,
+        recommendation: "Preload hero images with <link rel='preload'>, reduce server response time, and lazy-load below-the-fold content.",
+        impact: 12,
+      });
+    }
+
+    if (cwv.cls > 0.25) {
+      issues.push({
+        id: "perf-cls-poor",
+        category: "performance",
+        severity: "major",
+        title: "Poor Cumulative Layout Shift (CLS)",
+        description: `CLS score is ${cwv.cls.toFixed(3)} — elements are shifting noticeably as the page loads. Google's threshold for 'poor' is above 0.25.`,
+        recommendation: "Set explicit width and height on images and embeds, avoid inserting content above existing elements, and use CSS transform for animations.",
+        impact: 15,
+      });
+    } else if (cwv.cls > 0.1) {
+      issues.push({
+        id: "perf-cls-needs-improvement",
+        category: "performance",
+        severity: "minor",
+        title: "Layout instability detected (CLS)",
+        description: `CLS score is ${cwv.cls.toFixed(3)} — some content is shifting as the page loads. Google's 'good' threshold is under 0.1.`,
+        recommendation: "Add width and height attributes to all images, iframes, and ad containers to reserve space before they load.",
+        impact: 8,
+      });
+    }
+
+    if (cwv.tbt > 600) {
+      issues.push({
+        id: "perf-tbt-poor",
+        category: "performance",
+        severity: "major",
+        title: "High Total Blocking Time (TBT)",
+        description: `TBT is ${cwv.tbt}ms — long JavaScript tasks are blocking the main thread. Google's 'good' threshold is under 200ms.`,
+        recommendation: "Split large JS bundles, defer non-critical scripts, and avoid running heavy computations during page load.",
+        impact: 15,
+      });
+    } else if (cwv.tbt > 200) {
+      issues.push({
+        id: "perf-tbt-needs-improvement",
+        category: "performance",
+        severity: "minor",
+        title: "Elevated Total Blocking Time (TBT)",
+        description: `TBT is ${cwv.tbt}ms — JavaScript is blocking interaction for longer than Google's recommended 200ms.`,
+        recommendation: "Audit your JavaScript bundles and defer non-critical code with async or defer attributes.",
+        impact: 8,
+      });
+    }
+
+    if (cwv.fcp > 3000) {
+      issues.push({
+        id: "perf-fcp-poor",
+        category: "performance",
+        severity: "major",
+        title: "Slow First Contentful Paint (FCP)",
+        description: `FCP is ${(cwv.fcp / 1000).toFixed(1)}s — users see a blank screen for too long. Google's 'poor' threshold is above 3s.`,
+        recommendation: "Reduce server response time, eliminate render-blocking CSS/JS, and inline critical styles.",
+        impact: 12,
+      });
+    } else if (cwv.fcp > 1800) {
+      issues.push({
+        id: "perf-fcp-needs-improvement",
+        category: "performance",
+        severity: "minor",
+        title: "First Contentful Paint could be faster (FCP)",
+        description: `FCP is ${(cwv.fcp / 1000).toFixed(1)}s — Google's 'good' threshold is under 1.8s.`,
+        recommendation: "Preload key fonts, reduce render-blocking resources, and ensure fast server response times.",
+        impact: 6,
+      });
+    }
+  }
+
   return issues;
 }

@@ -96,6 +96,21 @@ export interface PageData {
   brokenLinks: Array<{ href: string; statusCode: number }>;
   /** Internal links that pass through 2+ redirects */
   redirectChains: Array<{ href: string; hops: number; finalUrl: string }>;
+  /** Core Web Vitals from Lighthouse — absent if Lighthouse failed */
+  coreWebVitals?: CoreWebVitals;
+}
+
+export interface CoreWebVitals {
+  /** Largest Contentful Paint (ms) */
+  lcp: number;
+  /** Cumulative Layout Shift score */
+  cls: number;
+  /** First Contentful Paint (ms) */
+  fcp: number;
+  /** Total Blocking Time (ms) */
+  tbt: number;
+  /** Speed Index (ms) */
+  si: number;
 }
 
 export interface HeadingNode {

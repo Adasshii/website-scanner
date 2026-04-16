@@ -5,6 +5,7 @@ import { analyzeIssues } from "./analyzer";
 import { buildOverlayData } from "./screenshots";
 import type { PageResult, ScanScores, Issue, IssueOverlay } from "../../types/scanner";
 import { scorePage } from "./scoring";
+import { runLighthouse } from "./lighthouse";
 
 let browser: Browser | null = null;
 
@@ -150,7 +151,7 @@ export interface ScanPageResultWithScreenshot {
 export async function scanPage(
   options: ScanPageOptions
 ): Promise<ScanPageResultWithScreenshot> {
-  const { url, timeoutMs = 30_000 } = options;
+  const { url, timeoutMs = 60_000 } = options;
   const b = await getBrowser();
   const context = await b.newContext({
     userAgent:
@@ -205,7 +206,13 @@ export async function scanPage(
     data.redirectChains = linkCheck.redirectChains;
     console.log(`  [scanner] robots=${siteFiles.hasRobotsTxt}, sitemap=${siteFiles.hasSitemap}, broken=${linkCheck.brokenLinks.length}, chains=${linkCheck.redirectChains.length}`);
 
-    // Step 4b: Analyze issues
+    // Step 4c: Core Web Vitals via Lighthouse (Phase 4) — sequential to avoid two Chrome instances at once
+    console.log(`  [scanner] Running Lighthouse CWV audit...`);
+    const cwv = await runLighthouse(url);
+    data.coreWebVitals = cwv ?? undefined;
+    console.log(`  [scanner] Lighthouse done: LCP=${cwv?.lcp ?? "n/a"}ms, CLS=${cwv?.cls ?? "n/a"}, TBT=${cwv?.tbt ?? "n/a"}ms`);
+
+    // Step 4d: Analyze issues
     const issues = analyzeIssues(axeResults, data);
     console.log(`  [scanner] Found ${issues.length} issues`);
 

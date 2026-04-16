@@ -8,8 +8,9 @@ import { LogoIcon } from "@/components/ui/logo";
 
 const STAGES = [
   { min: 0, label: "Fetching..." },
-  { min: 33, label: "Analyzing..." },
-  { min: 66, label: "Building report..." },
+  { min: 25, label: "Analyzing accessibility & SEO..." },
+  { min: 55, label: "Measuring performance..." },
+  { min: 80, label: "Building report..." },
 ] as const;
 
 function getStageLabel(progress: number): string {
@@ -42,9 +43,9 @@ function StartScanner() {
       return;
     }
 
-    // Animate progress from 0 → 90% over ~15 seconds
+    // Animate progress from 0 → 90% over ~35 seconds (Lighthouse adds ~15-20s)
     const startTime = Date.now();
-    const fillDuration = 15000;
+    const fillDuration = 35000;
 
     const tick = setInterval(() => {
       const elapsed = Date.now() - startTime;
