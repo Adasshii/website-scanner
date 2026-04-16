@@ -61,6 +61,7 @@ export function AnnotatedScreenshot({
   if (compact) {
     return (
       <div className="relative rounded-lg overflow-hidden border border-gray-200 max-w-[200px]">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={screenshotUrl}
           alt={`Screenshot of ${pageUrl}`}
@@ -74,6 +75,7 @@ export function AnnotatedScreenshot({
   return (
     <div className="mb-6">
       <div ref={containerRef} className="relative rounded-xl overflow-hidden border border-gray-200">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           ref={imgRef}
           src={screenshotUrl}

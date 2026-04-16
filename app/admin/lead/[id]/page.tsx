@@ -241,6 +241,7 @@ export default function LeadDetailPage() {
           <div className="bg-white rounded-2xl shadow-card p-6">
             <h3 className="font-semibold text-adashi-gulf mb-4">Homepage Screenshot</h3>
             <div className="rounded-lg overflow-hidden border border-gray-200 max-w-md">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={Object.values(scan.screenshots)[0].url}
                 alt={`Screenshot of ${lead.domain}`}
