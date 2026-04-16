@@ -45,6 +45,20 @@ interface GroupedIssue {
 
 // ── Helpers ──────────────────────────────────────────────────────────
 
+function selectorToPlainText(selector: string): string {
+  const s = selector.split(">").pop()?.trim() ?? selector;
+  const tag = s.match(/^([a-z0-9]+)/i)?.[1] ?? "";
+  const id = s.match(/#([\w-]+)/)?.[1];
+  const classes = Array.from(s.matchAll(/\.([\w-]+)/g)).map((m) => m[1]).slice(0, 2);
+  const attr = s.match(/\[([^\]=]+)/)?.[1];
+
+  if (id) return `#${id}`;
+  if (classes.length) return `${tag || "element"} .${classes.join(" .")}`;
+  if (attr) return `${tag || "element"} [${attr}]`;
+  if (tag) return `<${tag}> element`;
+  return selector;
+}
+
 const severityOrder: Record<IssueSeverity, number> = {
   critical: 0,
   major: 1,
@@ -268,8 +282,8 @@ export function FullReport({
         <h2 className="font-semibold text-adashi-gulf text-lg mb-6 text-center">
           Category Breakdown
         </h2>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-6">
-          {(Object.keys(categoryMeta) as IssueCategory[]).filter((cat) => scores[categoryMeta[cat].scoreKey] !== undefined).map((cat) => (
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-6">
+          {(Object.keys(categoryMeta) as IssueCategory[]).map((cat) => (
             <div key={cat} className="text-center">
               <ScoreRingSmall score={scores[categoryMeta[cat].scoreKey] ?? 100} label={categoryMeta[cat].label} />
               <p className="text-xs text-gray-400 mt-1">
@@ -404,17 +418,17 @@ export function FullReport({
         </div>
       )}
 
-      {/* ── Technical Details ───────────────────────────────────── */}
+      {/* ── Affected Elements ───────────────────────────────────── */}
       {technicalIssues.length > 0 && (
         <div className="mb-8">
           <CollapsibleSection
             defaultOpen={false}
             title={
-              <span className="font-semibold text-adashi-gulf">Technical Details</span>
+              <span className="font-semibold text-adashi-gulf">Affected Elements</span>
             }
             badge={
               <span className="text-xs text-gray-400">
-                {technicalIssues.length} item{technicalIssues.length !== 1 ? "s" : ""}
+                {technicalIssues.length} element{technicalIssues.length !== 1 ? "s" : ""}
               </span>
             }
           >
@@ -423,20 +437,9 @@ export function FullReport({
                 <div key={`tech-${issue.id}-${i}`} className="border-b border-gray-100 pb-4 last:border-0 last:pb-0">
                   <h4 className="font-medium text-adashi-gulf text-sm mb-1">{issue.title}</h4>
                   {issue.selector && (
-                    <div className="mb-1">
-                      <span className="text-xs text-gray-400">Selector: </span>
-                      <code className="text-xs bg-gray-100 text-gray-700 px-1.5 py-0.5 rounded font-mono">
-                        {issue.selector}
-                      </code>
-                    </div>
-                  )}
-                  {issue.axeRuleId && (
-                    <div>
-                      <span className="text-xs text-gray-400">axe-core rule: </span>
-                      <code className="text-xs bg-gray-100 text-gray-700 px-1.5 py-0.5 rounded font-mono">
-                        {issue.axeRuleId}
-                      </code>
-                    </div>
+                    <p className="text-xs text-gray-500">
+                      Found on: <span className="font-medium text-gray-700">{selectorToPlainText(issue.selector)}</span>
+                    </p>
                   )}
                 </div>
               ))}
