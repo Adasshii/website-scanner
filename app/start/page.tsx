@@ -43,9 +43,9 @@ function StartScanner() {
       return;
     }
 
-    // Animate progress from 0 → 90% over ~35 seconds (Lighthouse adds ~15-20s)
+    // Animate progress from 0 → 90% over ~75 seconds (Lighthouse adds significant time)
     const startTime = Date.now();
-    const fillDuration = 35000;
+    const fillDuration = 75000;
 
     const tick = setInterval(() => {
       const elapsed = Date.now() - startTime;

@@ -7,7 +7,7 @@ import { createServerClient } from "@/lib/supabase";
 import type { ScanRow } from "@/types/scanner";
 
 export const runtime = "nodejs";
-export const maxDuration = 60; // Vercel function timeout (seconds)
+export const maxDuration = 300; // Vercel function timeout (seconds) — Lighthouse needs ~60-90s
 
 export async function POST(request: NextRequest) {
   try {
