@@ -575,5 +575,58 @@ export function analyzeIssues(
     }
   }
 
+  // ── Technical SEO checks (Phase 3) ──────────────────────────────────
+
+  if (!data.hasRobotsTxt) {
+    issues.push({
+      id: "seo-no-robots",
+      category: "seo",
+      severity: "major",
+      title: "Missing robots.txt",
+      description: "No robots.txt file found at /robots.txt. Search engines use this file to understand which pages to crawl.",
+      recommendation: "Add a robots.txt at your domain root. Minimum: User-agent: * / Allow: / — then submit your sitemap URL.",
+      impact: 8,
+    });
+  }
+
+  if (!data.hasSitemap) {
+    issues.push({
+      id: "seo-no-sitemap",
+      category: "seo",
+      severity: "major",
+      title: "Missing XML sitemap",
+      description: "No sitemap.xml found and no Sitemap: directive in robots.txt. Sitemaps help search engines discover and index all your pages faster.",
+      recommendation: "Create an XML sitemap at /sitemap.xml and submit it to Google Search Console. Most CMS platforms (WordPress, Webflow) generate these automatically.",
+      impact: 10,
+    });
+  }
+
+  if (data.brokenLinks.length > 0) {
+    issues.push({
+      id: "seo-broken-links",
+      category: "seo",
+      severity: "major",
+      title: "Broken internal links",
+      description: `${data.brokenLinks.length} internal link(s) returned a 4xx error. Broken links hurt visitor experience and waste your crawl budget.`,
+      recommendation:
+        "Fix or remove: " +
+        data.brokenLinks.slice(0, 3).map((l) => l.href).join(", ") +
+        (data.brokenLinks.length > 3 ? `, and ${data.brokenLinks.length - 3} more.` : "."),
+      impact: Math.min(data.brokenLinks.length * 5, 25),
+    });
+  }
+
+  if (data.redirectChains.length > 0) {
+    issues.push({
+      id: "seo-redirect-chains",
+      category: "seo",
+      severity: "minor",
+      title: "Redirect chains detected",
+      description: `${data.redirectChains.length} internal link(s) pass through 2 or more redirects before reaching the final URL. Each hop adds latency and dilutes link equity.`,
+      recommendation: "Update internal links to point directly to the final destination URL, skipping intermediate redirects.",
+      impact: Math.min(data.redirectChains.length * 3, 12),
+    });
+  }
+
   return issues;
 }

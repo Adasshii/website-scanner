@@ -8,6 +8,107 @@ import { scorePage } from "./scoring";
 
 let browser: Browser | null = null;
 
+/** Fetch robots.txt and sitemap.xml existence for a given page URL */
+async function checkSiteFiles(pageUrl: string): Promise<{ hasRobotsTxt: boolean; hasSitemap: boolean }> {
+  let hasRobotsTxt = false;
+  let hasSitemap = false;
+  let robotsText = "";
+
+  try {
+    const origin = new URL(pageUrl).origin;
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 5000);
+    const res = await fetch(`${origin}/robots.txt`, { signal: controller.signal });
+    clearTimeout(timer);
+    hasRobotsTxt = res.status === 200;
+    if (hasRobotsTxt) robotsText = await res.text();
+  } catch { /* ignore */ }
+
+  try {
+    const origin = new URL(pageUrl).origin;
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 5000);
+    const res = await fetch(`${origin}/sitemap.xml`, { method: "HEAD", signal: controller.signal });
+    clearTimeout(timer);
+    hasSitemap = res.status === 200;
+  } catch { /* ignore */ }
+
+  if (!hasSitemap && robotsText) {
+    hasSitemap = /^Sitemap:/im.test(robotsText);
+  }
+
+  return { hasRobotsTxt, hasSitemap };
+}
+
+/** HEAD-check internal links for 4xx errors and redirect chains (max 15, 5 concurrent) */
+async function checkInternalLinks(
+  links: Array<{ href: string; isInternal: boolean }>,
+  origin: string
+): Promise<{
+  brokenLinks: Array<{ href: string; statusCode: number }>;
+  redirectChains: Array<{ href: string; hops: number; finalUrl: string }>;
+}> {
+  const brokenLinks: Array<{ href: string; statusCode: number }> = [];
+  const redirectChains: Array<{ href: string; hops: number; finalUrl: string }> = [];
+
+  const seen = new Set<string>();
+  const toCheck: string[] = [];
+  for (const link of links) {
+    if (!link.isInternal) continue;
+    try {
+      const u = new URL(link.href);
+      if (u.origin !== origin) continue;
+      u.hash = "";
+      const clean = u.toString();
+      if (!seen.has(clean)) {
+        seen.add(clean);
+        toCheck.push(clean);
+      }
+    } catch { continue; }
+    if (toCheck.length >= 15) break;
+  }
+
+  for (let i = 0; i < toCheck.length; i += 5) {
+    const batch = toCheck.slice(i, i + 5);
+    await Promise.all(batch.map(async (href) => {
+      let current = href;
+      let hops = 0;
+      let status = 0;
+      try {
+        for (let r = 0; r < 8; r++) {
+          const controller = new AbortController();
+          const timer = setTimeout(() => controller.abort(), 5000);
+          try {
+            const res = await fetch(current, {
+              method: "HEAD",
+              redirect: "manual",
+              signal: controller.signal,
+              headers: { "User-Agent": "AdashiScanner/1.0" },
+            });
+            clearTimeout(timer);
+            status = res.status;
+            if (status >= 300 && status < 400) {
+              const loc = res.headers.get("location");
+              if (!loc) break;
+              current = new URL(loc, current).toString();
+              hops++;
+            } else {
+              break;
+            }
+          } catch { clearTimeout(timer); break; }
+        }
+        if (status >= 400 && status < 500) {
+          brokenLinks.push({ href, statusCode: status });
+        } else if (hops >= 2) {
+          redirectChains.push({ href, hops, finalUrl: current });
+        }
+      } catch { /* skip */ }
+    }));
+  }
+
+  return { brokenLinks, redirectChains };
+}
+
 /** Get or launch a shared browser instance */
 export async function getBrowser(): Promise<Browser> {
   if (!browser || !browser.isConnected()) {
@@ -91,7 +192,20 @@ export async function scanPage(
     data.responseHeaders = responseHeaders;
     console.log(`  [scanner] Extracted: ${data.wordCount} words, ${data.images.length} images, ${data.links.length} links`);
 
-    // Step 4: Analyze issues
+    // Step 4a: External URL checks (Phase 3)
+    console.log(`  [scanner] Checking robots.txt, sitemap, and internal links...`);
+    const pageOrigin = new URL(url).origin;
+    const [siteFiles, linkCheck] = await Promise.all([
+      checkSiteFiles(url),
+      checkInternalLinks(data.links, pageOrigin),
+    ]);
+    data.hasRobotsTxt = siteFiles.hasRobotsTxt;
+    data.hasSitemap = siteFiles.hasSitemap;
+    data.brokenLinks = linkCheck.brokenLinks;
+    data.redirectChains = linkCheck.redirectChains;
+    console.log(`  [scanner] robots=${siteFiles.hasRobotsTxt}, sitemap=${siteFiles.hasSitemap}, broken=${linkCheck.brokenLinks.length}, chains=${linkCheck.redirectChains.length}`);
+
+    // Step 4b: Analyze issues
     const issues = analyzeIssues(axeResults, data);
     console.log(`  [scanner] Found ${issues.length} issues`);
 
@@ -163,6 +277,10 @@ export async function scanPage(
           renderBlockingScripts: 0,
           responseHeaders: {},
           pageSize: 0,
+          hasRobotsTxt: false,
+          hasSitemap: false,
+          brokenLinks: [],
+          redirectChains: [],
         },
         issues: [
           {

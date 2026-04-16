@@ -88,6 +88,14 @@ export interface PageData {
   responseHeaders: Record<string, string>;
   /** Page size in bytes */
   pageSize: number;
+  /** Whether /robots.txt returns 200 */
+  hasRobotsTxt: boolean;
+  /** Whether /sitemap.xml returns 200 or robots.txt has a Sitemap: directive */
+  hasSitemap: boolean;
+  /** Internal links returning 4xx */
+  brokenLinks: Array<{ href: string; statusCode: number }>;
+  /** Internal links that pass through 2+ redirects */
+  redirectChains: Array<{ href: string; hops: number; finalUrl: string }>;
 }
 
 export interface HeadingNode {
