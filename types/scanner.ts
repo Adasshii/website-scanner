@@ -69,8 +69,19 @@ export interface PageData {
   language: string;
   canonical: string;
   ogTags: Record<string, string>;
+  twitterTags: Record<string, string>;
   hasViewport: boolean;
   hasFavicon: boolean;
+  hasStructuredData: boolean;
+  hasSkipLink: boolean;
+  vagueLinkCount: number;
+  videosWithoutCaptions: number;
+  audioElements: number;
+  inputsMissingAutocomplete: number;
+  iframesWithoutTitle: number;
+  tablesWithoutHeaders: number;
+  emptyButtons: number;
+  renderBlockingScripts: number;
   /** Page size in bytes */
   pageSize: number;
 }

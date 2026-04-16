@@ -287,5 +287,188 @@ export function analyzeIssues(
     });
   }
 
+  const oldFormatImages = data.images.filter((img) => {
+    try {
+      const path = new URL(img.src).pathname.toLowerCase();
+      return /\.(jpe?g|png|gif|bmp|tiff?)(\?|$)/.test(path);
+    } catch { return false; }
+  });
+  if (oldFormatImages.length > 0) {
+    issues.push({
+      id: "perf-image-format",
+      category: "performance",
+      severity: "minor",
+      title: "Images not using modern formats",
+      description: `${oldFormatImages.length} image(s) use older formats (JPG, PNG, GIF). Modern formats like WebP or AVIF are 25-50% smaller.`,
+      recommendation: "Convert images to WebP or AVIF to reduce page weight and improve load times.",
+      impact: Math.min(oldFormatImages.length * 2, 10),
+    });
+  }
+
+  if (data.renderBlockingScripts > 0) {
+    issues.push({
+      id: "perf-render-blocking",
+      category: "performance",
+      severity: "minor",
+      title: "Render-blocking scripts in <head>",
+      description: `${data.renderBlockingScripts} script(s) in <head> load synchronously, delaying when the page becomes visible.`,
+      recommendation: "Add async or defer attribute to <script> tags that don't need to run before page render.",
+      impact: Math.min(data.renderBlockingScripts * 4, 12),
+    });
+  }
+
+  // ── Content checks (additional) ──────────────────────────────────
+
+  if (!data.hasFavicon) {
+    issues.push({
+      id: "content-no-favicon",
+      category: "content",
+      severity: "minor",
+      title: "Missing favicon",
+      description: "No favicon found. Favicons appear in browser tabs and bookmarks and reinforce your brand.",
+      recommendation: 'Add <link rel="icon" href="/favicon.ico"> to your <head>, or use a PNG/SVG favicon.',
+      impact: 3,
+    });
+  }
+
+  // ── SEO checks (additional) ──────────────────────────────────────
+
+  const missingOgTags = (["title", "description", "image"] as const).filter(
+    (tag) => !data.ogTags[tag]
+  );
+  if (missingOgTags.length > 0) {
+    issues.push({
+      id: "seo-missing-og-tags",
+      category: "seo",
+      severity: "minor",
+      title: "Missing Open Graph tags",
+      description: `Missing og:${missingOgTags.join(", og:")}. These control how your page appears when shared on social media.`,
+      recommendation: "Add Open Graph meta tags to your <head> so links look great when shared on LinkedIn, Facebook, and Slack.",
+      impact: missingOgTags.length * 2,
+    });
+  }
+
+  if (!data.twitterTags["card"]) {
+    issues.push({
+      id: "seo-missing-twitter-card",
+      category: "seo",
+      severity: "minor",
+      title: "Missing Twitter Card tags",
+      description: "No twitter:card meta tag found. Without it, links shared on X (Twitter) show as plain text with no image or preview.",
+      recommendation: 'Add <meta name="twitter:card" content="summary_large_image"> and matching twitter:title and twitter:image tags.',
+      impact: 3,
+    });
+  }
+
+  if (!data.hasStructuredData) {
+    issues.push({
+      id: "seo-no-structured-data",
+      category: "seo",
+      severity: "minor",
+      title: "No structured data found",
+      description: "No JSON-LD or Schema.org markup detected. Structured data helps search engines understand your content and can unlock rich results.",
+      recommendation: "Add JSON-LD structured data for your business type (LocalBusiness, Organization, etc.) using schema.org.",
+      impact: 4,
+    });
+  }
+
+  // ── Accessibility checks (beyond axe-core) ───────────────────────
+
+  if (!data.hasSkipLink) {
+    issues.push({
+      id: "a11y-no-skip-link",
+      category: "accessibility",
+      severity: "minor",
+      title: "Missing skip navigation link",
+      description: "No skip navigation link found. Keyboard and screen reader users must tab through the entire navigation on every page.",
+      recommendation: 'Add a "Skip to main content" link as the first focusable element on the page, pointing to your main content area.',
+      impact: 4,
+    });
+  }
+
+  if (data.vagueLinkCount > 0) {
+    issues.push({
+      id: "a11y-vague-links",
+      category: "accessibility",
+      severity: "minor",
+      title: "Links with vague text",
+      description: `${data.vagueLinkCount} link(s) use non-descriptive text like "click here" or "read more". Screen readers read links out of context, making these meaningless.`,
+      recommendation: "Replace vague link text with a description of what the link leads to, e.g. 'Read our accessibility guide' instead of 'Read more'.",
+      impact: Math.min(data.vagueLinkCount * 2, 8),
+    });
+  }
+
+  if (data.videosWithoutCaptions > 0) {
+    issues.push({
+      id: "a11y-video-no-captions",
+      category: "accessibility",
+      severity: "major",
+      title: "Videos without captions",
+      description: `${data.videosWithoutCaptions} video(s) have no captions or subtitles. Deaf and hard-of-hearing users cannot access this content.`,
+      recommendation: "Add a <track kind='captions'> element to each video, or use a video platform that provides automatic captions.",
+      impact: data.videosWithoutCaptions * 8,
+    });
+  }
+
+  if (data.audioElements > 0) {
+    issues.push({
+      id: "a11y-audio-no-transcript",
+      category: "accessibility",
+      severity: "major",
+      title: "Audio content may lack transcripts",
+      description: `${data.audioElements} audio element(s) found. Audio content needs a text transcript to be accessible to deaf users.`,
+      recommendation: "Provide a full text transcript alongside each audio element.",
+      impact: data.audioElements * 6,
+    });
+  }
+
+  if (data.inputsMissingAutocomplete > 0) {
+    issues.push({
+      id: "a11y-inputs-no-autocomplete",
+      category: "accessibility",
+      severity: "minor",
+      title: "Form inputs missing autocomplete",
+      description: `${data.inputsMissingAutocomplete} input(s) are missing the autocomplete attribute. This makes forms harder for users with cognitive disabilities and slower for everyone.`,
+      recommendation: "Add appropriate autocomplete values (e.g. autocomplete='email', 'name', 'tel') to all personal data inputs.",
+      impact: Math.min(data.inputsMissingAutocomplete * 2, 6),
+    });
+  }
+
+  if (data.iframesWithoutTitle > 0) {
+    issues.push({
+      id: "a11y-iframe-no-title",
+      category: "accessibility",
+      severity: "minor",
+      title: "iframes missing title attribute",
+      description: `${data.iframesWithoutTitle} iframe(s) have no title. Screen readers cannot tell users what the embedded content is.`,
+      recommendation: "Add a descriptive title attribute to every <iframe>, e.g. title='Google Maps location'.",
+      impact: data.iframesWithoutTitle * 3,
+    });
+  }
+
+  if (data.tablesWithoutHeaders > 0) {
+    issues.push({
+      id: "a11y-table-no-headers",
+      category: "accessibility",
+      severity: "major",
+      title: "Tables missing header cells",
+      description: `${data.tablesWithoutHeaders} table(s) have no <th> header cells. Screen readers cannot convey the meaning of each column or row.`,
+      recommendation: "Add <th> elements to define column and row headers. Use scope='col' or scope='row' to make relationships explicit.",
+      impact: data.tablesWithoutHeaders * 7,
+    });
+  }
+
+  if (data.emptyButtons > 0) {
+    issues.push({
+      id: "a11y-empty-buttons",
+      category: "accessibility",
+      severity: "major",
+      title: "Buttons with no accessible label",
+      description: `${data.emptyButtons} button(s) have no text, aria-label, or aria-labelledby. Screen readers will announce these as 'button' with no context.`,
+      recommendation: "Add visible text or an aria-label to every button so users know what it does.",
+      impact: data.emptyButtons * 8,
+    });
+  }
+
   return issues;
 }

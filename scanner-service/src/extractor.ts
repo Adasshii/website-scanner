@@ -123,6 +123,73 @@ export async function extractPageData(
       doc.querySelector('link[rel="shortcut icon"]')
     );
 
+    // Twitter Card tags
+    const twitterTags: Record<string, string> = {};
+    doc.querySelectorAll('meta[name^="twitter:"]').forEach((meta) => {
+      const name = meta.getAttribute("name") || "";
+      const content = meta.getAttribute("content") || "";
+      if (name && content) twitterTags[name.replace("twitter:", "")] = content;
+    });
+
+    // Structured data (JSON-LD or microdata)
+    const hasStructuredData = !!(
+      doc.querySelector('script[type="application/ld+json"]') ||
+      doc.querySelector("[itemscope]")
+    );
+
+    // Skip navigation link
+    const hasSkipLink = Array.from(doc.querySelectorAll('a[href^="#"]')).some((a) => {
+      const text = (a.textContent || "").toLowerCase();
+      return text.includes("skip") || text.includes("jump to main") || text.includes("go to content");
+    });
+
+    // Vague link text
+    const vagueTerms = ["click here", "read more", "here", "learn more", "more", "this", "link"];
+    const vagueLinkCount = Array.from(doc.querySelectorAll("a")).filter((a) => {
+      return vagueTerms.includes((a.textContent || "").trim().toLowerCase());
+    }).length;
+
+    // Videos without captions
+    const videosWithoutCaptions = Array.from(doc.querySelectorAll("video")).filter((v) => {
+      return !v.querySelector('track[kind="captions"]') && !v.querySelector('track[kind="subtitles"]');
+    }).length;
+
+    // Audio elements
+    const audioElements = doc.querySelectorAll("audio").length;
+
+    // Inputs missing autocomplete (name / email / phone fields)
+    const inputsMissingAutocomplete = Array.from(
+      doc.querySelectorAll('input[type="text"], input[type="email"], input[type="tel"], input:not([type])')
+    ).filter((input) => {
+      const ac = (input as HTMLInputElement).getAttribute("autocomplete");
+      return !ac || ac === "off";
+    }).length;
+
+    // iframes without title
+    const iframesWithoutTitle = Array.from(doc.querySelectorAll("iframe")).filter((iframe) => {
+      const title = iframe.getAttribute("title");
+      return !title || title.trim() === "";
+    }).length;
+
+    // Tables without headers
+    const tablesWithoutHeaders = Array.from(doc.querySelectorAll("table")).filter((table) => {
+      return !table.querySelector("th");
+    }).length;
+
+    // Empty buttons (no text, no aria-label, no aria-labelledby)
+    const emptyButtons = Array.from(doc.querySelectorAll("button")).filter((btn) => {
+      return (
+        !(btn.textContent || "").trim() &&
+        !btn.getAttribute("aria-label") &&
+        !btn.getAttribute("aria-labelledby")
+      );
+    }).length;
+
+    // Render-blocking scripts (sync scripts in <head>)
+    const renderBlockingScripts = Array.from(
+      doc.querySelectorAll("head script[src]")
+    ).filter((s) => !s.hasAttribute("async") && !s.hasAttribute("defer")).length;
+
     // Page size (rough: serialized HTML length)
     const pageSize = new Blob([doc.documentElement.outerHTML]).size;
 
@@ -137,8 +204,19 @@ export async function extractPageData(
       language,
       canonical,
       ogTags,
+      twitterTags,
       hasViewport,
       hasFavicon,
+      hasStructuredData,
+      hasSkipLink,
+      vagueLinkCount,
+      videosWithoutCaptions,
+      audioElements,
+      inputsMissingAutocomplete,
+      iframesWithoutTitle,
+      tablesWithoutHeaders,
+      emptyButtons,
+      renderBlockingScripts,
       pageSize,
     };
   }, baseUrl.origin);
