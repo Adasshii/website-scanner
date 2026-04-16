@@ -75,6 +75,6 @@ export async function runLighthouse(url: string): Promise<CoreWebVitals | null> 
     console.error("  [lighthouse] Failed:", err instanceof Error ? err.message : err);
     return null;
   } finally {
-    if (chrome) await chrome.kill().catch(() => {});
+    try { if (chrome) await chrome.kill(); } catch { /* ignore */ }
   }
 }
