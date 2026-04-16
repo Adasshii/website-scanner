@@ -1,0 +1,10 @@
+# Exclude local build artifacts and dependencies from Docker build context
+node_modules
+*/node_modules
+scanner-service/node_modules
+scanner-service/dist
+.env
+.env.*
+.git
+.next
+*.log
