@@ -61,6 +61,19 @@ const difficulty: Record<string, Issue["difficulty"]> = {
   "sec-no-xcto": "easy",
   "sec-no-csp": "medium",
   "sec-mixed-content": "medium",
+
+  // Design
+  "design-no-cta": "medium",
+  "design-unclear-headline": "easy",
+  "design-no-nav": "easy",
+  "design-no-contact-footer": "easy",
+
+  // New content checks
+  "content-low-readability": "medium",
+  "content-no-subheadings": "easy",
+
+  // New performance check
+  "perf-no-lazy-images": "easy",
 };
 
 export function getIssueDifficulty(id: string): Issue["difficulty"] {
