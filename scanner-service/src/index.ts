@@ -14,9 +14,11 @@ import {
   enhanceIssueDescriptions,
   generateSalesBrief,
   generateWhyItMatters,
+  generateDesignAnalysis,
+  type DesignAnalysis,
 } from "./ai";
 import { uploadScreenshot } from "./screenshots";
-import type { ScanRequest, PageResult, ScanScores, ScanSummary, Issue, ScreenshotInfo } from "../../types/scanner";
+import type { ScanRequest, PageResult, ScanScores, ScanSummary, Issue, IssueSeverity, ScreenshotInfo } from "../../types/scanner";
 import { SCORE_WEIGHTS } from "../../types/scanner";
 
 // Supabase client for async scan DB updates
@@ -63,10 +65,10 @@ app.post("/api/scan/quick", async (req, res) => {
     const summary = buildSummary([result]);
 
     // Upload screenshot if available
+    const supabase = getSupabase();
     let screenshots: Record<string, ScreenshotInfo> | null = null;
     if (screenshotBuffer) {
       try {
-        const supabase = getSupabase();
         const uploaded = await uploadScreenshot(supabase, "quick-" + Date.now(), 0, screenshotBuffer);
         if (uploaded) {
           screenshots = {
@@ -80,21 +82,80 @@ app.post("/api/scan/quick", async (req, res) => {
 
     // Enhance with AI (non-blocking — falls back to originals on failure)
     const domain = new URL(url).hostname;
+
+    // Design AI analysis
+    let designAnalysis: DesignAnalysis | null = null;
+    const screenshotUrl = screenshots?.[result.url]?.url ?? null;
+    if (screenshotUrl) {
+      const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+      const { data: cachedScan } = await supabase
+        .from("scans")
+        .select("design_ai_analysis, design_ai_analyzed_at")
+        .eq("domain", domain)
+        .not("design_ai_analysis", "is", null)
+        .gte("design_ai_analyzed_at", twentyFourHoursAgo)
+        .order("design_ai_analyzed_at", { ascending: false })
+        .limit(1)
+        .single();
+
+      if (cachedScan?.design_ai_analysis) {
+        designAnalysis = cachedScan.design_ai_analysis as DesignAnalysis;
+      } else {
+        designAnalysis = await generateDesignAnalysis(domain, screenshotUrl);
+      }
+    }
+
+    // Apply design AI to result scores
+    const htmlDesignIssues = result.issues.filter((iss) => iss.category === "design");
+    const htmlDeduction = htmlDesignIssues.reduce((sum, iss) => sum + iss.impact, 0);
+    const htmlDesignScore = Math.max(0, Math.min(100, Math.round(100 - htmlDeduction)));
+    const designScore = designAnalysis
+      ? Math.max(0, Math.min(100, Math.round(htmlDesignScore * 0.4 + designAnalysis.overallScore * 0.6)))
+      : htmlDesignScore;
+
+    const aiDesignIssues: Issue[] = (designAnalysis?.issues ?? []).map((sentence, i) => {
+      const severity: IssueSeverity = designAnalysis!.overallScore < 50 ? "major" : designAnalysis!.overallScore < 70 ? "minor" : "info";
+      return {
+        id: `design-ai-${i + 1}`,
+        category: "design",
+        severity,
+        title: sentence.split(".")[0].trim().slice(0, 80) || "Visual design issue",
+        description: sentence,
+        recommendation: "Review the visual design of this page with a designer.",
+        impact: severity === "major" ? 8 : severity === "minor" ? 3 : 1,
+      };
+    });
+
+    const overall = Math.round(
+      result.scores.performance! * 0.25 +
+      (result.scores.seo ?? 0) * 0.25 +
+      result.scores.accessibility * 0.15 +
+      result.scores.content * 0.15 +
+      (result.scores.security ?? 0) * 0.10 +
+      designScore * 0.10
+    );
+
+    const resultWithDesign = {
+      ...result,
+      issues: [...result.issues, ...aiDesignIssues],
+      scores: { ...result.scores, design: designScore, overall },
+    };
+
     const [analysis, enhancedIssues, whyItMattersMap] = await Promise.all([
-      generateComprehensiveAnalysis(domain, result.scores, summary, [result]),
-      enhanceIssueDescriptions(result.issues),
-      generateWhyItMatters(domain, result.issues),
+      generateComprehensiveAnalysis(domain, resultWithDesign.scores, summary, [resultWithDesign]),
+      enhanceIssueDescriptions(resultWithDesign.issues),
+      generateWhyItMatters(domain, resultWithDesign.issues),
     ]);
 
-    summary.verdict = analysis?.executiveSummary ?? generateFallbackVerdict(result.scores, summary.criticalIssues);
+    summary.verdict = analysis?.executiveSummary ?? generateFallbackVerdict(resultWithDesign.scores, summary.criticalIssues);
     const issuesWithContext = enhancedIssues.map((i) => ({
       ...i,
       whyItMatters: whyItMattersMap[i.id] ?? i.whyItMatters,
     }));
-    const enhancedResult = { ...result, issues: issuesWithContext };
+    const enhancedResult = { ...resultWithDesign, issues: issuesWithContext };
     summary.topIssues = enhancedIssues.slice(0, 10);
 
-    const costEstimate = analysis?.costEstimate ?? calculateCostEstimateFallback(result.scores, summary, result.loadTimeMs);
+    const costEstimate = analysis?.costEstimate ?? calculateCostEstimateFallback(resultWithDesign.scores, summary, resultWithDesign.loadTimeMs);
     const quickWins = analysis?.quickWins ?? null;
     const websitePersonality = analysis?.websitePersonality ?? null;
 
@@ -102,7 +163,7 @@ app.post("/api/scan/quick", async (req, res) => {
 
     res.json({
       pages: [enhancedResult],
-      scores: result.scores,
+      scores: resultWithDesign.scores,
       summary,
       screenshots,
       costEstimate,
@@ -222,17 +283,96 @@ app.post("/api/scan/full-async", async (req, res) => {
       console.error("[full-scan-async] Screenshot upload failed:", err);
     }
 
-    // Enhance with AI
+    // ── Design AI analysis (with 24h domain cache) ────────────────────
     const domain = new URL(url).hostname;
-    const allIssues = results.flatMap((r) => r.issues);
-    const avgLoadTime = results.length > 0
-      ? results.reduce((sum, r) => sum + r.loadTimeMs, 0) / results.length
+    let designAnalysis: DesignAnalysis | null = null;
+
+    // Pick the first available screenshot URL for the homepage/first page
+    const firstScreenshotUrl = screenshots
+      ? Object.values(screenshots)[0]?.url ?? null
+      : null;
+
+    if (firstScreenshotUrl) {
+      // Check cache: look for a recent design analysis for this domain (within 24h)
+      const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+      const { data: cachedScan } = await supabase
+        .from("scans")
+        .select("design_ai_analysis, design_ai_analyzed_at")
+        .eq("domain", domain)
+        .not("design_ai_analysis", "is", null)
+        .gte("design_ai_analyzed_at", twentyFourHoursAgo)
+        .order("design_ai_analyzed_at", { ascending: false })
+        .limit(1)
+        .single();
+
+      if (cachedScan?.design_ai_analysis) {
+        designAnalysis = cachedScan.design_ai_analysis as DesignAnalysis;
+        console.log(`[full-scan-async] Design AI cache hit for ${domain}`);
+      } else {
+        designAnalysis = await generateDesignAnalysis(domain, firstScreenshotUrl);
+        console.log(`[full-scan-async] Design AI analysis: score=${designAnalysis?.overallScore ?? "null"}`);
+      }
+    }
+
+    // Merge AI design issues into results and re-compute design scores
+    const aiDesignIssues: Issue[] = (designAnalysis?.issues ?? []).map((sentence, i) => {
+      const severity: IssueSeverity = designAnalysis!.overallScore < 50 ? "major" : designAnalysis!.overallScore < 70 ? "minor" : "info";
+      return {
+        id: `design-ai-${i + 1}`,
+        category: "design",
+        severity,
+        title: sentence.split(".")[0].trim().slice(0, 80) || "Visual design issue",
+        description: sentence,
+        recommendation: "Review the visual design of this page with a designer.",
+        impact: severity === "major" ? 8 : severity === "minor" ? 3 : 1,
+      };
+    });
+
+    // Apply AI design score to page scores (first page gets AI score, others get HTML-only)
+    const resultsWithDesign = results.map((page, i) => {
+      const htmlDesignIssues = page.issues.filter((iss) => iss.category === "design");
+      const htmlDeduction = htmlDesignIssues.reduce((sum, iss) => sum + iss.impact, 0);
+      const htmlDesignScore = Math.max(0, Math.min(100, Math.round(100 - htmlDeduction)));
+
+      let designScore: number;
+      if (i === 0 && designAnalysis) {
+        designScore = Math.round(htmlDesignScore * 0.4 + designAnalysis.overallScore * 0.6);
+      } else {
+        designScore = htmlDesignScore;
+      }
+      designScore = Math.max(0, Math.min(100, designScore));
+
+      // Merge AI issues into first page only
+      const mergedIssues = i === 0
+        ? [...page.issues, ...aiDesignIssues]
+        : page.issues;
+
+      const overall = Math.round(
+        page.scores.performance! * 0.25 +
+        (page.scores.seo ?? 0) * 0.25 +
+        page.scores.accessibility * 0.15 +
+        page.scores.content * 0.15 +
+        (page.scores.security ?? 0) * 0.10 +
+        designScore * 0.10
+      );
+
+      return {
+        ...page,
+        issues: mergedIssues,
+        scores: { ...page.scores, design: designScore, overall },
+      };
+    });
+
+    // Enhance with AI
+    const allIssues = resultsWithDesign.flatMap((r) => r.issues);
+    const avgLoadTime = resultsWithDesign.length > 0
+      ? resultsWithDesign.reduce((sum, r) => sum + r.loadTimeMs, 0) / resultsWithDesign.length
       : 0;
 
     const [analysis, enhancedIssues, salesBrief, whyItMattersMap] = await Promise.all([
-      generateComprehensiveAnalysis(domain, scores, summary, results),
+      generateComprehensiveAnalysis(domain, scores, summary, resultsWithDesign),
       enhanceIssueDescriptions(allIssues),
-      generateSalesBrief(domain, scores, summary, results),
+      generateSalesBrief(domain, scores, summary, resultsWithDesign),
       generateWhyItMatters(domain, allIssues),
     ]);
 
@@ -248,7 +388,7 @@ app.post("/api/scan/full-async", async (req, res) => {
     for (const issue of enhancedIssues) {
       issueMap.set(issue.id, { ...issue, whyItMatters: whyItMattersMap[issue.id] ?? issue.whyItMatters });
     }
-    const enhancedResults = results.map((page) => ({
+    const enhancedResults = resultsWithDesign.map((page) => ({
       ...page,
       issues: page.issues.map((issue) => issueMap.get(issue.id) || issue),
     }));
@@ -267,6 +407,8 @@ app.post("/api/scan/full-async", async (req, res) => {
         quick_wins: quickWins,
         website_personality: websitePersonality,
         sales_brief: salesBrief,
+        design_ai_analysis: designAnalysis,
+        design_ai_analyzed_at: designAnalysis ? new Date().toISOString() : null,
         completed_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       })
