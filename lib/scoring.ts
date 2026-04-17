@@ -1,5 +1,4 @@
 import type { ScanScores, PageResult, ScanSummary, Issue } from "@/types/scanner";
-import { SCORE_WEIGHTS } from "@/types/scanner";
 
 /**
  * Aggregate per-page scores into a single site-wide score.
