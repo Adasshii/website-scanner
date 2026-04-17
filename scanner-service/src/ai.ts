@@ -28,6 +28,11 @@ export interface ComprehensiveAnalysis {
   websitePersonality: string;
 }
 
+export interface DesignAnalysis {
+  overallScore: number;
+  issues: string[];
+}
+
 // ── Comprehensive Analysis (replaces generateExecutiveSummary) ────────
 
 /**
@@ -434,5 +439,95 @@ Return only the JSON object, no other text.`
   } catch (error) {
     console.error("[ai] Why it matters generation failed:", error);
     return {};
+  }
+}
+
+// ── Design Analysis (Gemini Vision) ──────────────────────────────────
+
+/**
+ * Analyze a website screenshot using Gemini Vision.
+ * Returns an overall design score (0-100) and up to 4 plain-English issue sentences.
+ * Silently returns null on any error or if screenshot URL is unavailable.
+ */
+export async function generateDesignAnalysis(
+  domain: string,
+  screenshotUrl: string
+): Promise<DesignAnalysis | null> {
+  const ai = getClient();
+  if (!ai || !screenshotUrl) return null;
+
+  try {
+    // Fetch screenshot bytes and convert to base64
+    const response = await fetch(screenshotUrl, { signal: AbortSignal.timeout(10_000) });
+    if (!response.ok) return null;
+    const buffer = await response.arrayBuffer();
+    const base64 = Buffer.from(buffer).toString("base64");
+    const mimeType = response.headers.get("content-type") || "image/png";
+
+    const model = ai.getGenerativeModel({
+      model: "gemini-2.0-flash",
+      generationConfig: { responseMimeType: "application/json" },
+    });
+
+    const result = await model.generateContent([
+      {
+        inlineData: {
+          mimeType,
+          data: base64,
+        },
+      },
+      `You are a professional web designer reviewing a website screenshot for a business owner. Rate each dimension 0-100 and identify the most important visual issues.
+
+Website: ${domain}
+
+Score each dimension (0=very poor, 100=excellent):
+- visualHierarchy: Is there a clear focal point? Does the eye flow naturally?
+- whitespace: Is spacing balanced? Does the layout breathe?
+- typography: Are fonts readable, consistent, and professional?
+- ctaProminence: Are calls-to-action visible and compelling?
+- professionalism: Does the overall design look polished and trustworthy?
+
+Also identify up to 4 specific visual issues that hurt conversions or credibility (plain English, one sentence each, for a non-technical business owner).
+
+Respond with JSON only:
+{
+  "visualHierarchy": <number>,
+  "whitespace": <number>,
+  "typography": <number>,
+  "ctaProminence": <number>,
+  "professionalism": <number>,
+  "issues": ["<issue 1>", "<issue 2>", ...]
+}`,
+    ]);
+
+    const text = result.response.text().trim();
+    const parsed = JSON.parse(text) as {
+      visualHierarchy: number;
+      whitespace: number;
+      typography: number;
+      ctaProminence: number;
+      professionalism: number;
+      issues: string[];
+    };
+
+    const scores = [
+      parsed.visualHierarchy,
+      parsed.whitespace,
+      parsed.typography,
+      parsed.ctaProminence,
+      parsed.professionalism,
+    ].filter((s) => typeof s === "number");
+
+    if (scores.length === 0) return null;
+
+    const overallScore = Math.round(scores.reduce((a, b) => a + b, 0) / scores.length);
+
+    return {
+      overallScore: Math.max(0, Math.min(100, overallScore)),
+      issues: (parsed.issues || []).slice(0, 4),
+    };
+  } catch (error) {
+    console.error("[ai] Design analysis failed:", error);
+    return null;
   }
 }
