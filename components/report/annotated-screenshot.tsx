@@ -16,6 +16,7 @@ const categoryColors: Record<IssueCategory, { bg: string; border: string; text: 
   seo: { bg: "bg-blue-500/15", border: "border-blue-500", text: "text-blue-700" },
   performance: { bg: "bg-yellow-500/15", border: "border-yellow-500", text: "text-yellow-700" },
   security: { bg: "bg-purple-500/15", border: "border-purple-500", text: "text-purple-700" },
+  design: { bg: "bg-pink-500/15", border: "border-pink-500", text: "text-pink-700" },
 };
 
 export function AnnotatedScreenshot({
