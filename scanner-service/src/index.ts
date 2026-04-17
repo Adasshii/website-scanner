@@ -20,6 +20,15 @@ import {
 import { uploadScreenshot } from "./screenshots";
 import type { ScanRequest, PageResult, ScanScores, ScanSummary, Issue, IssueSeverity, ScreenshotInfo } from "../../types/scanner";
 
+/** Race a promise against a timer; resolve to `fallback` if it times out */
+function withTimeout<T>(promise: Promise<T>, ms: number, fallback: T): Promise<T> {
+  let timer: ReturnType<typeof setTimeout>;
+  const timeout = new Promise<T>((resolve) => {
+    timer = setTimeout(() => resolve(fallback), ms);
+  });
+  return Promise.race([promise.finally(() => clearTimeout(timer)), timeout]);
+}
+
 // Supabase client for async scan DB updates
 function getSupabase() {
   const url = process.env.SUPABASE_URL;
@@ -102,14 +111,19 @@ app.post("/api/scan/quick", async (req, res) => {
       }
     }
 
-    // Run all AI calls in parallel — design vision + enhancements together
+    // Run all AI calls in parallel — each has a 30s individual timeout so a
+    // hanging Gemini call can't stall the entire scan response
+    const AI_CALL_TIMEOUT = 30_000;
     const [designAnalysis, analysis, enhancedIssues, whyItMattersMap] = await Promise.all([
-      cachedDesignAnalysis
-        ? Promise.resolve(cachedDesignAnalysis)
-        : screenshotUrl ? generateDesignAnalysis(domain, screenshotUrl) : Promise.resolve(null),
-      generateComprehensiveAnalysis(domain, result.scores, summary, [result]),
-      enhanceIssueDescriptions(result.issues),
-      generateWhyItMatters(domain, result.issues),
+      withTimeout(
+        cachedDesignAnalysis
+          ? Promise.resolve(cachedDesignAnalysis)
+          : screenshotUrl ? generateDesignAnalysis(domain, screenshotUrl) : Promise.resolve(null),
+        AI_CALL_TIMEOUT, null
+      ),
+      withTimeout(generateComprehensiveAnalysis(domain, result.scores, summary, [result]), AI_CALL_TIMEOUT, null),
+      withTimeout(enhanceIssueDescriptions(result.issues), AI_CALL_TIMEOUT, result.issues),
+      withTimeout(generateWhyItMatters(domain, result.issues), AI_CALL_TIMEOUT, {}),
     ]);
 
     // Apply design AI to result scores
@@ -369,11 +383,12 @@ app.post("/api/scan/full-async", async (req, res) => {
       ? resultsWithDesign.reduce((sum, r) => sum + r.loadTimeMs, 0) / resultsWithDesign.length
       : 0;
 
+    const AI_CALL_TIMEOUT = 45_000; // full scan allows a bit more time per call
     const [analysis, enhancedIssues, salesBrief, whyItMattersMap] = await Promise.all([
-      generateComprehensiveAnalysis(domain, scores, summary, resultsWithDesign),
-      enhanceIssueDescriptions(allIssues),
-      generateSalesBrief(domain, scores, summary, resultsWithDesign),
-      generateWhyItMatters(domain, allIssues),
+      withTimeout(generateComprehensiveAnalysis(domain, scores, summary, resultsWithDesign), AI_CALL_TIMEOUT, null),
+      withTimeout(enhanceIssueDescriptions(allIssues), AI_CALL_TIMEOUT, allIssues),
+      withTimeout(generateSalesBrief(domain, scores, summary, resultsWithDesign), AI_CALL_TIMEOUT, null),
+      withTimeout(generateWhyItMatters(domain, allIssues), AI_CALL_TIMEOUT, {}),
     ]);
 
     summary.verdict = analysis?.executiveSummary ?? generateFallbackVerdict(scores, summary.criticalIssues);
