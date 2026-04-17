@@ -81,10 +81,10 @@ app.post("/api/scan/quick", async (req, res) => {
 
     // Enhance with AI (non-blocking — falls back to originals on failure)
     const domain = new URL(url).hostname;
-
-    // Design AI analysis
-    let designAnalysis: DesignAnalysis | null = null;
     const screenshotUrl = screenshots?.[result.url]?.url ?? null;
+
+    // Design AI: check cache first (fast), then run all AI calls in parallel
+    let cachedDesignAnalysis: DesignAnalysis | null = null;
     if (screenshotUrl) {
       const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
       const { data: cachedScan } = await supabase
@@ -98,11 +98,19 @@ app.post("/api/scan/quick", async (req, res) => {
         .single();
 
       if (cachedScan?.design_ai_analysis) {
-        designAnalysis = cachedScan.design_ai_analysis as DesignAnalysis;
-      } else {
-        designAnalysis = await generateDesignAnalysis(domain, screenshotUrl);
+        cachedDesignAnalysis = cachedScan.design_ai_analysis as DesignAnalysis;
       }
     }
+
+    // Run all AI calls in parallel — design vision + enhancements together
+    const [designAnalysis, analysis, enhancedIssues, whyItMattersMap] = await Promise.all([
+      cachedDesignAnalysis
+        ? Promise.resolve(cachedDesignAnalysis)
+        : screenshotUrl ? generateDesignAnalysis(domain, screenshotUrl) : Promise.resolve(null),
+      generateComprehensiveAnalysis(domain, result.scores, summary, [result]),
+      enhanceIssueDescriptions(result.issues),
+      generateWhyItMatters(domain, result.issues),
+    ]);
 
     // Apply design AI to result scores
     const htmlDesignIssues = result.issues.filter((iss) => iss.category === "design");
@@ -139,19 +147,14 @@ app.post("/api/scan/quick", async (req, res) => {
       scores: { ...result.scores, design: designScore, overall },
     };
 
-    const [analysis, enhancedIssues, whyItMattersMap] = await Promise.all([
-      generateComprehensiveAnalysis(domain, resultWithDesign.scores, summary, [resultWithDesign]),
-      enhanceIssueDescriptions(resultWithDesign.issues),
-      generateWhyItMatters(domain, resultWithDesign.issues),
-    ]);
-
     summary.verdict = analysis?.executiveSummary ?? generateFallbackVerdict(resultWithDesign.scores, summary.criticalIssues);
-    const issuesWithContext = enhancedIssues.map((i) => ({
+    const allIssues = [...enhancedIssues, ...aiDesignIssues];
+    const issuesWithContext = allIssues.map((i) => ({
       ...i,
       whyItMatters: whyItMattersMap[i.id] ?? i.whyItMatters,
     }));
     const enhancedResult = { ...resultWithDesign, issues: issuesWithContext };
-    summary.topIssues = enhancedIssues.slice(0, 10);
+    summary.topIssues = issuesWithContext.slice(0, 10);
 
     const costEstimate = analysis?.costEstimate ?? calculateCostEstimateFallback(resultWithDesign.scores, summary, resultWithDesign.loadTimeMs);
     const quickWins = analysis?.quickWins ?? null;

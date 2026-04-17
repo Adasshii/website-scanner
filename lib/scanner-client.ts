@@ -60,7 +60,7 @@ export class ScannerClient {
         Authorization: `Bearer ${this.apiKey}`,
       },
       body: JSON.stringify(body),
-      signal: AbortSignal.timeout(120_000), // 2 minute timeout for full scans
+      signal: AbortSignal.timeout(180_000), // 3 minute timeout
     });
 
     if (!res.ok) {
