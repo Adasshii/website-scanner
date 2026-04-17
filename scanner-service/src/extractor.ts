@@ -72,6 +72,7 @@ export async function extractPageData(
       height?: number;
       hasAlt: boolean;
       hasDimensions: boolean;
+      isLazy: boolean;
     }[] = [];
     doc.querySelectorAll("img").forEach((img) => {
       const width = img.naturalWidth || img.width || undefined;
@@ -85,6 +86,7 @@ export async function extractPageData(
         hasDimensions: !!(
           img.getAttribute("width") && img.getAttribute("height")
         ),
+        isLazy: img.getAttribute("loading") === "lazy",
       });
     });
 

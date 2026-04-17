@@ -813,7 +813,7 @@ export function analyzeIssues(
   // ── Missing performance check ────────────────────────────────────
 
   const imagesWithoutLazy = data.images.filter(
-    (img) => img.src && !img.src.startsWith("data:")
+    (img) => img.src && !img.src.startsWith("data:") && !img.isLazy
   );
   if (imagesWithoutLazy.length >= 3) {
     issues.push({

@@ -137,6 +137,8 @@ export interface ImageInfo {
   hasAlt: boolean;
   /** Whether dimensions are explicitly set */
   hasDimensions: boolean;
+  /** Whether loading="lazy" is set */
+  isLazy: boolean;
 }
 
 // ── Issues ─────────────────────────────────────────────────────────
