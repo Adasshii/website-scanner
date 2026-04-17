@@ -35,15 +35,17 @@ export interface ScanScores {
   seo: number;
   performance: number;
   security?: number; // optional — absent on scans before Phase 2
+  design?: number; // optional — absent on scans before Design category
 }
 
 /** Weights must add up to 1.0 */
 export const SCORE_WEIGHTS = {
-  accessibility: 0.35,
-  content: 0.20,
-  seo: 0.20,
-  performance: 0.15,
+  performance: 0.25,
+  seo: 0.25,
+  accessibility: 0.15,
+  content: 0.15,
   security: 0.10,
+  design: 0.10,
 } as const;
 
 // ── Per-page results ───────────────────────────────────────────────
@@ -140,7 +142,7 @@ export interface ImageInfo {
 // ── Issues ─────────────────────────────────────────────────────────
 
 export type IssueSeverity = "critical" | "major" | "minor" | "info";
-export type IssueCategory = "accessibility" | "content" | "seo" | "performance" | "security";
+export type IssueCategory = "accessibility" | "content" | "seo" | "performance" | "security" | "design";
 
 export interface Issue {
   id: string;
