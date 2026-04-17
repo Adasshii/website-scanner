@@ -94,8 +94,8 @@ export function ScanResults({ scanId, domain, scores, summary, issues, scannedAt
           <ScoreRingSmall score={scores.content} label="Content" />
           <ScoreRingSmall score={scores.seo} label="SEO" />
           <ScoreRingSmall score={scores.performance} label="Performance" />
-          <ScoreRingSmall score={scores.security ?? 100} label="Security" />
-          <ScoreRingSmall score={scores.design ?? 100} label="Design" />
+          <ScoreRingSmall score={scores.security ?? 0} label="Security" />
+          <ScoreRingSmall score={scores.design ?? 0} label="Design" />
         </div>
       </div>
 
