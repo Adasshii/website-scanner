@@ -19,7 +19,6 @@ import {
 } from "./ai";
 import { uploadScreenshot } from "./screenshots";
 import type { ScanRequest, PageResult, ScanScores, ScanSummary, Issue, IssueSeverity, ScreenshotInfo } from "../../types/scanner";
-import { SCORE_WEIGHTS } from "../../types/scanner";
 
 // Supabase client for async scan DB updates
 function getSupabase() {
