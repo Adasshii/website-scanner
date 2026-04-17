@@ -113,18 +113,17 @@ app.post("/api/scan/quick", async (req, res) => {
       ? Math.max(0, Math.min(100, Math.round(htmlDesignScore * 0.4 + designAnalysis.overallScore * 0.6)))
       : htmlDesignScore;
 
-    const aiDesignIssues: Issue[] = (designAnalysis?.issues ?? []).map((sentence, i) => {
-      const severity: IssueSeverity = designAnalysis!.overallScore < 50 ? "major" : designAnalysis!.overallScore < 70 ? "minor" : "info";
-      return {
-        id: `design-ai-${i + 1}`,
-        category: "design",
-        severity,
-        title: sentence.split(".")[0].trim().slice(0, 80) || "Visual design issue",
-        description: sentence,
-        recommendation: "Review the visual design of this page with a designer.",
-        impact: severity === "major" ? 8 : severity === "minor" ? 3 : 1,
-      };
-    });
+    const aiScore = designAnalysis?.overallScore ?? 100;
+    const aiSeverity: IssueSeverity = aiScore < 50 ? "major" : aiScore < 70 ? "minor" : "info";
+    const aiDesignIssues: Issue[] = (designAnalysis?.issues ?? []).map((sentence, i) => ({
+      id: `design-ai-${i + 1}`,
+      category: "design" as const,
+      severity: aiSeverity,
+      title: sentence.split(".")[0].trim().slice(0, 80) || "Visual design issue",
+      description: sentence,
+      recommendation: "Review the visual design of this page with a designer.",
+      impact: aiSeverity === "major" ? 8 : aiSeverity === "minor" ? 3 : 1,
+    }));
 
     const overall = Math.round(
       result.scores.performance! * 0.25 +
@@ -315,18 +314,17 @@ app.post("/api/scan/full-async", async (req, res) => {
     }
 
     // Merge AI design issues into results and re-compute design scores
-    const aiDesignIssues: Issue[] = (designAnalysis?.issues ?? []).map((sentence, i) => {
-      const severity: IssueSeverity = designAnalysis!.overallScore < 50 ? "major" : designAnalysis!.overallScore < 70 ? "minor" : "info";
-      return {
-        id: `design-ai-${i + 1}`,
-        category: "design",
-        severity,
-        title: sentence.split(".")[0].trim().slice(0, 80) || "Visual design issue",
-        description: sentence,
-        recommendation: "Review the visual design of this page with a designer.",
-        impact: severity === "major" ? 8 : severity === "minor" ? 3 : 1,
-      };
-    });
+    const aiScore = designAnalysis?.overallScore ?? 100;
+    const aiSeverity: IssueSeverity = aiScore < 50 ? "major" : aiScore < 70 ? "minor" : "info";
+    const aiDesignIssues: Issue[] = (designAnalysis?.issues ?? []).map((sentence, i) => ({
+      id: `design-ai-${i + 1}`,
+      category: "design" as const,
+      severity: aiSeverity,
+      title: sentence.split(".")[0].trim().slice(0, 80) || "Visual design issue",
+      description: sentence,
+      recommendation: "Review the visual design of this page with a designer.",
+      impact: aiSeverity === "major" ? 8 : aiSeverity === "minor" ? 3 : 1,
+    }));
 
     // Apply AI design score to page scores (first page gets AI score, others get HTML-only)
     const resultsWithDesign = results.map((page, i) => {
@@ -449,7 +447,7 @@ app.post("/api/scan/full-async", async (req, res) => {
 
 function aggregateScores(pages: PageResult[]): ScanScores {
   if (pages.length === 0) {
-    return { overall: 0, accessibility: 0, content: 0, seo: 0, performance: 0 };
+    return { overall: 0, accessibility: 0, content: 0, seo: 0, performance: 0, security: 0, design: 0 };
   }
 
   const avg = (key: keyof ScanScores) =>
@@ -459,15 +457,19 @@ function aggregateScores(pages: PageResult[]): ScanScores {
   const content = avg("content");
   const seo = avg("seo");
   const performance = avg("performance");
+  const security = avg("security");
+  const design = avg("design");
 
   const overall = Math.round(
-    accessibility * SCORE_WEIGHTS.accessibility +
-    content * SCORE_WEIGHTS.content +
-    seo * SCORE_WEIGHTS.seo +
-    performance * SCORE_WEIGHTS.performance
+    performance * 0.25 +
+    seo * 0.25 +
+    accessibility * 0.15 +
+    content * 0.15 +
+    security * 0.10 +
+    design * 0.10
   );
 
-  return { overall, accessibility, content, seo, performance };
+  return { overall, accessibility, content, seo, performance, security, design };
 }
 
 function buildSummary(pages: PageResult[]): ScanSummary {
