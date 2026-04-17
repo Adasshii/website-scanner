@@ -3,11 +3,13 @@ import type { Issue, IssueCategory, ScanScores, PageData } from "../../types/sca
 /**
  * Compute per-page scores based on issues found and page data.
  * Each category starts at 100 and deductions are subtracted.
+ * Pass aiDesignScore (0-100) to blend with the HTML-based design score.
  */
 export function scorePage(
   issues: Issue[],
   data: PageData,
-  loadTimeMs: number
+  loadTimeMs: number,
+  aiDesignScore?: number
 ): ScanScores {
   const deductions: Record<IssueCategory, number> = {
     accessibility: 0,
@@ -15,6 +17,7 @@ export function scorePage(
     seo: 0,
     performance: 0,
     security: 0,
+    design: 0,
   };
 
   // Sum up impact deductions per category
@@ -42,15 +45,22 @@ export function scorePage(
   const performance = clamp(100 - deductions.performance);
   const security = clamp(100 - deductions.security);
 
+  // Design score: blend HTML checks with AI vision score if available
+  const htmlDesignScore = clamp(100 - deductions.design);
+  const design = aiDesignScore !== undefined
+    ? clamp(htmlDesignScore * 0.4 + aiDesignScore * 0.6)
+    : htmlDesignScore;
+
   const overall = Math.round(
-    accessibility * 0.35 +
-    content * 0.20 +
-    seo * 0.20 +
-    performance * 0.15 +
-    security * 0.10
+    performance * 0.25 +
+    seo * 0.25 +
+    accessibility * 0.15 +
+    content * 0.15 +
+    security * 0.10 +
+    design * 0.10
   );
 
-  return { overall, accessibility, content, seo, performance, security };
+  return { overall, accessibility, content, seo, performance, security, design };
 }
 
 function clamp(value: number): number {
