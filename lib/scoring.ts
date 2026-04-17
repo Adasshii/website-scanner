@@ -8,7 +8,7 @@ import { SCORE_WEIGHTS } from "@/types/scanner";
  */
 export function aggregateScores(pages: PageResult[]): ScanScores {
   if (pages.length === 0) {
-    return { overall: 0, accessibility: 0, content: 0, seo: 0, performance: 0, security: 0 };
+    return { overall: 0, accessibility: 0, content: 0, seo: 0, performance: 0, security: 0, design: 0 };
   }
 
   const avg = (key: keyof ScanScores) =>
@@ -19,16 +19,18 @@ export function aggregateScores(pages: PageResult[]): ScanScores {
   const seo = avg("seo");
   const performance = avg("performance");
   const security = avg("security");
+  const design = avg("design");
 
   const overall = Math.round(
-    accessibility * SCORE_WEIGHTS.accessibility +
-    content * SCORE_WEIGHTS.content +
-    seo * SCORE_WEIGHTS.seo +
-    performance * SCORE_WEIGHTS.performance +
-    security * SCORE_WEIGHTS.security
+    performance * 0.25 +
+    seo * 0.25 +
+    accessibility * 0.15 +
+    content * 0.15 +
+    security * 0.10 +
+    design * 0.10
   );
 
-  return { overall, accessibility, content, seo, performance, security };
+  return { overall, accessibility, content, seo, performance, security, design };
 }
 
 /**

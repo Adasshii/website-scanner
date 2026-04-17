@@ -14,11 +14,12 @@ const difficultyStyles: Record<string, string> = {
 };
 
 const categoryLabels: Record<string, string> = {
-  accessibility: "Accessibility",
+  accessibility: "Usability",
   content: "Content",
   seo: "SEO",
   performance: "Performance",
   security: "Security",
+  design: "Design",
 };
 
 function stripUrls(text: string): string {

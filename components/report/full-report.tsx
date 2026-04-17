@@ -67,11 +67,12 @@ const severityOrder: Record<IssueSeverity, number> = {
 };
 
 const categoryMeta: Record<IssueCategory, { label: string; scoreKey: keyof ScanScores }> = {
-  accessibility: { label: "Accessibility", scoreKey: "accessibility" },
+  accessibility: { label: "Usability", scoreKey: "accessibility" },
   content: { label: "Content", scoreKey: "content" },
   seo: { label: "SEO", scoreKey: "seo" },
   performance: { label: "Performance", scoreKey: "performance" },
   security: { label: "Security", scoreKey: "security" },
+  design: { label: "Design", scoreKey: "design" },
 };
 
 function groupIssuesByCategory(pages: PageResult[]) {
@@ -81,6 +82,7 @@ function groupIssuesByCategory(pages: PageResult[]) {
     seo: [],
     performance: [],
     security: [],
+    design: [],
   };
 
   // Track issue occurrences across pages
@@ -282,7 +284,7 @@ export function FullReport({
         <h2 className="font-semibold text-adashi-gulf text-lg mb-6 text-center">
           Category Breakdown
         </h2>
-        <div className="grid grid-cols-2 sm:grid-cols-5 gap-6">
+        <div className="grid grid-cols-2 sm:grid-cols-6 gap-6">
           {(Object.keys(categoryMeta) as IssueCategory[]).map((cat) => (
             <div key={cat} className="text-center">
               <ScoreRingSmall score={scores[categoryMeta[cat].scoreKey] ?? 100} label={categoryMeta[cat].label} />
