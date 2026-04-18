@@ -5,8 +5,9 @@ import type { CoreWebVitals } from "../../types/scanner";
  * Run a Lighthouse performance audit against a URL.
  * Uses Playwright's bundled Chromium so no second browser install is needed.
  * Returns null if the audit fails for any reason (network issues, timeouts, etc.).
+ * The timeout is enforced INSIDE this function so Chrome is always killed on exit.
  */
-export async function runLighthouse(url: string): Promise<CoreWebVitals | null> {
+export async function runLighthouse(url: string, timeoutMs = 45_000): Promise<CoreWebVitals | null> {
   // Dynamic imports: lighthouse 13+ is ESM-only, chrome-launcher is CJS.
   // Dynamic import() from a CJS module works in Node 12+ for ESM packages.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -35,28 +36,34 @@ export async function runLighthouse(url: string): Promise<CoreWebVitals | null> 
 
     console.log(`  [lighthouse] Chrome launched on port ${chrome.port}`);
 
-    const result = await lighthouse(url, {
-      port: chrome.port,
-      output: "json",
-      logLevel: "error",
-      onlyCategories: ["performance"],
-      formFactor: "desktop",
-      throttling: {
-        rttMs: 40,
-        throughputKbps: 10240,
-        cpuSlowdownMultiplier: 1,
-        requestLatencyMs: 0,
-        downloadThroughputKbps: 0,
-        uploadThroughputKbps: 0,
-      },
-      screenEmulation: {
-        mobile: false,
-        width: 1280,
-        height: 720,
-        deviceScaleFactor: 1,
-        disabled: false,
-      },
-    });
+    // Timeout races INSIDE the function so the finally block always runs and kills Chrome
+    const result = await Promise.race([
+      lighthouse(url, {
+        port: chrome.port,
+        output: "json",
+        logLevel: "error",
+        onlyCategories: ["performance"],
+        formFactor: "desktop",
+        throttling: {
+          rttMs: 40,
+          throughputKbps: 10240,
+          cpuSlowdownMultiplier: 1,
+          requestLatencyMs: 0,
+          downloadThroughputKbps: 0,
+          uploadThroughputKbps: 0,
+        },
+        screenEmulation: {
+          mobile: false,
+          width: 1280,
+          height: 720,
+          deviceScaleFactor: 1,
+          disabled: false,
+        },
+      }),
+      new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error(`Lighthouse timed out after ${timeoutMs}ms`)), timeoutMs)
+      ),
+    ]);
 
     const audits = result?.lhr?.audits;
     if (!audits) {

@@ -152,7 +152,7 @@ export interface ScanPageResultWithScreenshot {
 export async function scanPage(
   options: ScanPageOptions
 ): Promise<ScanPageResultWithScreenshot> {
-  const { url, timeoutMs = 60_000 } = options;
+  const { url, timeoutMs = 30_000 } = options;
   const b = await getBrowser();
   const context = await b.newContext({
     userAgent:
@@ -181,11 +181,21 @@ export async function scanPage(
 
     const loadTimeMs = Date.now() - startTime;
 
-    // Step 2: Run axe-core accessibility audit
+    // Step 2: Run axe-core accessibility audit (30s cap — can stall on complex pages)
     console.log(`  [scanner] Running axe-core...`);
-    const axeResults = await new AxeBuilder({ page })
-      .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "best-practice"])
-      .analyze();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const emptyAxeResults: any = { violations: [], incomplete: [], passes: [], inapplicable: [] };
+    const axeResults = await Promise.race([
+      new AxeBuilder({ page })
+        .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "best-practice"])
+        .analyze(),
+      new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error("axe-core timeout")), 30_000)
+      ),
+    ]).catch((err) => {
+      console.warn(`  [scanner] axe-core failed: ${err instanceof Error ? err.message : err}`);
+      return emptyAxeResults;
+    });
     console.log(`  [scanner] axe-core done: ${axeResults.violations.length} violations`);
 
     // Step 3: Extract page data
@@ -208,12 +218,9 @@ export async function scanPage(
     console.log(`  [scanner] robots=${siteFiles.hasRobotsTxt}, sitemap=${siteFiles.hasSitemap}, broken=${linkCheck.brokenLinks.length}, chains=${linkCheck.redirectChains.length}`);
 
     // Step 4c: Core Web Vitals via Lighthouse (Phase 4) — sequential to avoid two Chrome instances at once
-    // Hard 45s cap: Lighthouse has no built-in timeout and can stall for 120s on heavy sites
+    // Timeout enforced inside runLighthouse so Chrome is always killed even on timeout
     console.log(`  [scanner] Running Lighthouse CWV audit...`);
-    const cwv = await Promise.race([
-      runLighthouse(url),
-      new Promise<null>((resolve) => setTimeout(() => resolve(null), 45_000)),
-    ]);
+    const cwv = await runLighthouse(url);
     data.coreWebVitals = cwv ?? undefined;
     console.log(`  [scanner] Lighthouse done: LCP=${cwv?.lcp ?? "n/a"}ms, CLS=${cwv?.cls ?? "n/a"}, TBT=${cwv?.tbt ?? "n/a"}ms`);
 
