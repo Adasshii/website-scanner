@@ -27,6 +27,8 @@ export function ScanResults({ scanId, domain, scores, summary, issues, scannedAt
   const topIssues = sortedIssues.slice(0, maxIssues);
   const teaserIssues = sortedIssues.slice(maxIssues, maxIssues + 3);
 
+  const scanFailed = issues.some((i) => i.id === "scan-error");
+
   return (
     <div className="mx-auto max-w-4xl px-4 sm:px-6 py-10 sm:py-16">
       {/* Header */}
@@ -42,6 +44,19 @@ export function ScanResults({ scanId, domain, scores, summary, issues, scannedAt
           })}
         </p>
       </div>
+
+      {/* Scan failure notice */}
+      {scanFailed && (
+        <div className="bg-orange-50 border border-orange-200 rounded-2xl p-5 mb-8 flex gap-3">
+          <span className="text-orange-500 text-xl leading-none">&#9888;</span>
+          <div>
+            <p className="font-semibold text-orange-800 mb-1">We couldn&apos;t fully scan this website</p>
+            <p className="text-orange-700 text-sm leading-relaxed">
+              Our scanner wasn&apos;t able to load <strong>{domain}</strong>. This usually happens with very heavy websites, sites that block automated tools, or pages that require a login. The scores below reflect what we could measure before the error occurred.
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Overall Score */}
       <div className="bg-white rounded-2xl shadow-card p-6 sm:p-8 mb-8">
