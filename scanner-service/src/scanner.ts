@@ -142,6 +142,7 @@ export interface ScanPageOptions {
 export interface ScanPageResultWithScreenshot {
   result: PageResult;
   screenshotBuffer: Buffer | null;
+  designScreenshotBuffer: Buffer | null;
   overlays: IssueOverlay[];
 }
 
@@ -220,12 +221,15 @@ export async function scanPage(
     const issues = analyzeIssues(axeResults, data);
     console.log(`  [scanner] Found ${issues.length} issues`);
 
-    // Step 5: Capture full-page screenshot
+    // Step 5: Capture screenshots
     let screenshotBuffer: Buffer | null = null;
+    let designScreenshotBuffer: Buffer | null = null;
     let overlays: IssueOverlay[] = [];
     try {
       console.log(`  [scanner] Capturing screenshot...`);
       screenshotBuffer = await page.screenshot({ fullPage: true, type: "jpeg", quality: 80 }) as Buffer;
+      // Viewport-only, low-quality image for Gemini Vision — much smaller payload than the full-page display screenshot
+      designScreenshotBuffer = await page.screenshot({ fullPage: false, type: "jpeg", quality: 50 }) as Buffer;
       overlays = await buildOverlayData(page, issues);
       console.log(`  [scanner] Screenshot captured, ${overlays.length} overlays`);
     } catch (err) {
@@ -246,6 +250,7 @@ export async function scanPage(
         scores,
       },
       screenshotBuffer,
+      designScreenshotBuffer,
       overlays,
     };
   } catch (error) {
@@ -308,6 +313,7 @@ export async function scanPage(
         scores: { overall: 0, accessibility: 0, content: 0, seo: 0, performance: 0, security: 0 },
       },
       screenshotBuffer: null,
+      designScreenshotBuffer: null,
       overlays: [],
     };
   } finally {

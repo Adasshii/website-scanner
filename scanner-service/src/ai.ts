@@ -451,18 +451,28 @@ Return only the JSON object, no other text.`
  */
 export async function generateDesignAnalysis(
   domain: string,
-  screenshotUrl: string
+  screenshotUrl: string,
+  screenshotBuffer?: Buffer | null
 ): Promise<DesignAnalysis | null> {
   const ai = getClient();
-  if (!ai || !screenshotUrl) return null;
+  if (!ai) return null;
 
   try {
-    // Fetch screenshot bytes and convert to base64
-    const response = await fetch(screenshotUrl, { signal: AbortSignal.timeout(10_000) });
-    if (!response.ok) return null;
-    const buffer = await response.arrayBuffer();
-    const base64 = Buffer.from(buffer).toString("base64");
-    const mimeType = response.headers.get("content-type") || "image/png";
+    let base64: string;
+    let mimeType: string;
+
+    if (screenshotBuffer) {
+      // Use the pre-captured buffer directly — no HTTP round-trip needed
+      base64 = screenshotBuffer.toString("base64");
+      mimeType = "image/jpeg";
+    } else {
+      if (!screenshotUrl) return null;
+      const response = await fetch(screenshotUrl, { signal: AbortSignal.timeout(10_000) });
+      if (!response.ok) return null;
+      const arrayBuffer = await response.arrayBuffer();
+      base64 = Buffer.from(arrayBuffer).toString("base64");
+      mimeType = response.headers.get("content-type") || "image/png";
+    }
 
     const model = ai.getGenerativeModel({
       model: "gemini-2.0-flash",

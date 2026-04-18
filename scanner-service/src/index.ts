@@ -67,7 +67,7 @@ app.post("/api/scan/quick", async (req, res) => {
 
   try {
     console.log(`[quick-scan] Starting: ${url}`);
-    const { result, screenshotBuffer, overlays } = await scanPage({ url });
+    const { result, screenshotBuffer, designScreenshotBuffer, overlays } = await scanPage({ url });
     console.log(`[quick-scan] Done: ${url} — score ${result.scores.overall}`);
 
     const summary = buildSummary([result]);
@@ -118,7 +118,7 @@ app.post("/api/scan/quick", async (req, res) => {
       withTimeout(
         cachedDesignAnalysis
           ? Promise.resolve(cachedDesignAnalysis)
-          : screenshotUrl ? generateDesignAnalysis(domain, screenshotUrl) : Promise.resolve(null),
+          : screenshotUrl ? generateDesignAnalysis(domain, screenshotUrl, designScreenshotBuffer) : Promise.resolve(null),
         AI_CALL_TIMEOUT, null
       ),
       withTimeout(generateComprehensiveAnalysis(domain, result.scores, summary, [result]), AI_CALL_TIMEOUT, null),
@@ -302,12 +302,14 @@ app.post("/api/scan/full-async", async (req, res) => {
     const domain = new URL(url).hostname;
     let designAnalysis: DesignAnalysis | null = null;
 
-    // Pick the first available screenshot URL for the homepage/first page
+    // Use the first page's design screenshot buffer (viewport-only, ~150KB) to avoid
+    // fetching a large image from Supabase. Fall back to URL if buffer unavailable.
+    const firstDesignBuffer = scanResults[0]?.designScreenshotBuffer ?? null;
     const firstScreenshotUrl = screenshots
       ? Object.values(screenshots)[0]?.url ?? null
       : null;
 
-    if (firstScreenshotUrl) {
+    if (firstDesignBuffer || firstScreenshotUrl) {
       // Check cache: look for a recent design analysis for this domain (within 24h)
       const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
       const { data: cachedScan } = await supabase
@@ -324,7 +326,7 @@ app.post("/api/scan/full-async", async (req, res) => {
         designAnalysis = cachedScan.design_ai_analysis as DesignAnalysis;
         console.log(`[full-scan-async] Design AI cache hit for ${domain}`);
       } else {
-        designAnalysis = await generateDesignAnalysis(domain, firstScreenshotUrl);
+        designAnalysis = await generateDesignAnalysis(domain, firstScreenshotUrl ?? "", firstDesignBuffer);
         console.log(`[full-scan-async] Design AI analysis: score=${designAnalysis?.overallScore ?? "null"}`);
       }
     }
