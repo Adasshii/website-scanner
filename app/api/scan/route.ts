@@ -127,9 +127,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Call the scanner service
+    // Call the scanner service — pass scanId so scanner can update design score async
     const scanner = new ScannerClient();
-    const result = await scanner.quickScan(url);
+    const result = await scanner.quickScan(url, scanId);
 
     // Update the scan row with results
     const completedAt = new Date().toISOString();

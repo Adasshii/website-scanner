@@ -19,6 +19,7 @@ import {
 } from "./ai";
 import { uploadScreenshot } from "./screenshots";
 import type { ScanRequest, PageResult, ScanScores, ScanSummary, Issue, IssueSeverity, ScreenshotInfo } from "../../types/scanner";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
 /** Race a promise against a timer; resolve to `fallback` if it times out */
 function withTimeout<T>(promise: Promise<T>, ms: number, fallback: T): Promise<T> {
@@ -55,10 +56,117 @@ app.get("/health", (_req, res) => {
 
 app.use("/api", authMiddleware);
 
+// ── Background design analysis (async, updates Supabase directly) ──
+
+async function runDesignAnalysisBackground(
+  supabase: SupabaseClient,
+  scanId: string,
+  domain: string,
+  screenshotUrl: string | null,
+  designScreenshotBuffer: Buffer | null,
+  htmlDesignScore: number,
+  currentScores: ScanScores,
+): Promise<void> {
+  console.log(`[design-bg] Starting for scan ${scanId}`);
+
+  const markDone = async (updates?: Record<string, unknown>) => {
+    try {
+      await supabase.from("scans").update({
+        design_ai_analyzed_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        ...updates,
+      }).eq("id", scanId);
+    } catch (err) {
+      console.error(`[design-bg] DB update failed for ${scanId}:`, err);
+    }
+  };
+
+  try {
+    // Check 24h cache first
+    const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+    const { data: cachedScan } = await supabase
+      .from("scans")
+      .select("design_ai_analysis, design_ai_analyzed_at")
+      .eq("domain", domain)
+      .not("design_ai_analysis", "is", null)
+      .gte("design_ai_analyzed_at", twentyFourHoursAgo)
+      .order("design_ai_analyzed_at", { ascending: false })
+      .limit(1)
+      .single();
+
+    const designAnalysis: DesignAnalysis | null =
+      cachedScan?.design_ai_analysis
+        ? (cachedScan.design_ai_analysis as DesignAnalysis)
+        : await withTimeout(
+            generateDesignAnalysis(domain, screenshotUrl ?? "", designScreenshotBuffer),
+            60_000,
+            null
+          );
+
+    if (!designAnalysis) {
+      console.log(`[design-bg] No result for ${scanId}, keeping HTML score`);
+      await markDone();
+      return;
+    }
+
+    const designScore = Math.max(0, Math.min(100, Math.round(htmlDesignScore * 0.4 + designAnalysis.overallScore * 0.6)));
+    const overall = Math.round(
+      (currentScores.performance ?? 0) * 0.25 +
+      (currentScores.seo ?? 0) * 0.25 +
+      (currentScores.accessibility ?? 0) * 0.15 +
+      (currentScores.content ?? 0) * 0.15 +
+      (currentScores.security ?? 0) * 0.10 +
+      designScore * 0.10
+    );
+
+    const aiScore = designAnalysis.overallScore;
+    const aiSeverity: IssueSeverity = aiScore < 50 ? "major" : aiScore < 70 ? "minor" : "info";
+    const aiDesignIssues: Issue[] = designAnalysis.issues.map((sentence, i) => ({
+      id: `design-ai-${i + 1}`,
+      category: "design" as const,
+      severity: aiSeverity,
+      title: sentence.split(".")[0].trim().slice(0, 80) || "Visual design issue",
+      description: sentence,
+      recommendation: "Review the visual design of this page with a designer.",
+      impact: aiSeverity === "major" ? 8 : aiSeverity === "minor" ? 3 : 1,
+    }));
+
+    // Fetch current pages and prepend AI design issues to pages[0]
+    const { data: currentScan } = await supabase
+      .from("scans")
+      .select("pages")
+      .eq("id", scanId)
+      .single();
+
+    const updatedPages = Array.isArray(currentScan?.pages) && currentScan.pages.length > 0
+      ? currentScan.pages.map((page: PageResult, i: number) =>
+          i === 0
+            ? {
+                ...page,
+                issues: [...page.issues, ...aiDesignIssues],
+                scores: { ...page.scores, design: designScore, overall },
+              }
+            : page
+        )
+      : currentScan?.pages ?? [];
+
+    await markDone({
+      scores: { ...currentScores, design: designScore, overall },
+      pages: updatedPages,
+      design_ai_analysis: designAnalysis,
+    });
+
+    console.log(`[design-bg] Done for scan ${scanId}: design=${designScore}, overall=${overall}`);
+  } catch (err) {
+    console.error(`[design-bg] Failed for scan ${scanId}:`, err);
+    await markDone();
+  }
+}
+
 // ── Quick scan: single page ────────────────────────────────────────
 
 app.post("/api/scan/quick", async (req, res) => {
-  const { url } = req.body as Pick<ScanRequest, "url">;
+  const { url, scanId } = req.body as { url: string; scanId?: string };
 
   if (!url) {
     res.status(400).json({ error: "url is required" });
@@ -88,69 +196,18 @@ app.post("/api/scan/quick", async (req, res) => {
       }
     }
 
-    // Enhance with AI (non-blocking — falls back to originals on failure)
     const domain = new URL(url).hostname;
     const screenshotUrl = screenshots?.[result.url]?.url ?? null;
 
-    // Design AI: check cache first (fast), then run all AI calls in parallel
-    let cachedDesignAnalysis: DesignAnalysis | null = null;
-    if (screenshotUrl) {
-      const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-      const { data: cachedScan } = await supabase
-        .from("scans")
-        .select("design_ai_analysis, design_ai_analyzed_at")
-        .eq("domain", domain)
-        .not("design_ai_analysis", "is", null)
-        .gte("design_ai_analyzed_at", twentyFourHoursAgo)
-        .order("design_ai_analyzed_at", { ascending: false })
-        .limit(1)
-        .single();
-
-      if (cachedScan?.design_ai_analysis) {
-        cachedDesignAnalysis = cachedScan.design_ai_analysis as DesignAnalysis;
-      }
-    }
-
-    // Run all AI calls in parallel — each has a 30s individual timeout so a
-    // hanging Gemini call can't stall the entire scan response
-    const AI_CALL_TIMEOUT = 30_000;
-    const [designAnalysis, analysis, enhancedIssues, whyItMattersMap] = await Promise.all([
-      withTimeout(
-        cachedDesignAnalysis
-          ? Promise.resolve(cachedDesignAnalysis)
-          : screenshotUrl ? generateDesignAnalysis(domain, screenshotUrl, designScreenshotBuffer) : Promise.resolve(null),
-        AI_CALL_TIMEOUT, null
-      ),
-      withTimeout(generateComprehensiveAnalysis(domain, result.scores, summary, [result]), AI_CALL_TIMEOUT, null),
-      withTimeout(enhanceIssueDescriptions(result.issues), AI_CALL_TIMEOUT, result.issues),
-      withTimeout(generateWhyItMatters(domain, result.issues), AI_CALL_TIMEOUT, {}),
-    ]);
-
-    // Apply design AI to result scores — if the page crashed, score is 0
+    // Compute HTML-only design score (no AI — that runs async in background)
     const hasScanError = result.issues.some((i) => i.id === "scan-error");
     const htmlDesignIssues = result.issues.filter((iss) => iss.category === "design");
     const htmlDeduction = htmlDesignIssues.reduce((sum, iss) => sum + iss.impact, 0);
     const htmlDesignScore = Math.max(0, Math.min(100, Math.round(100 - htmlDeduction)));
-    const designScore = hasScanError
-      ? 0
-      : designAnalysis
-        ? Math.max(0, Math.min(100, Math.round(htmlDesignScore * 0.4 + designAnalysis.overallScore * 0.6)))
-        : htmlDesignScore;
-
-    const aiScore = designAnalysis?.overallScore ?? 100;
-    const aiSeverity: IssueSeverity = aiScore < 50 ? "major" : aiScore < 70 ? "minor" : "info";
-    const aiDesignIssues: Issue[] = (designAnalysis?.issues ?? []).map((sentence, i) => ({
-      id: `design-ai-${i + 1}`,
-      category: "design" as const,
-      severity: aiSeverity,
-      title: sentence.split(".")[0].trim().slice(0, 80) || "Visual design issue",
-      description: sentence,
-      recommendation: "Review the visual design of this page with a designer.",
-      impact: aiSeverity === "major" ? 8 : aiSeverity === "minor" ? 3 : 1,
-    }));
+    const designScore = hasScanError ? 0 : htmlDesignScore;
 
     const overall = Math.round(
-      result.scores.performance! * 0.25 +
+      (result.scores.performance ?? 0) * 0.25 +
       (result.scores.seo ?? 0) * 0.25 +
       result.scores.accessibility * 0.15 +
       result.scores.content * 0.15 +
@@ -160,13 +217,19 @@ app.post("/api/scan/quick", async (req, res) => {
 
     const resultWithDesign = {
       ...result,
-      issues: [...result.issues, ...aiDesignIssues],
       scores: { ...result.scores, design: designScore, overall },
     };
 
+    // Run the 3 non-design AI calls in parallel
+    const AI_CALL_TIMEOUT = 30_000;
+    const [analysis, enhancedIssues, whyItMattersMap] = await Promise.all([
+      withTimeout(generateComprehensiveAnalysis(domain, resultWithDesign.scores, summary, [resultWithDesign]), AI_CALL_TIMEOUT, null),
+      withTimeout(enhanceIssueDescriptions(result.issues), AI_CALL_TIMEOUT, result.issues),
+      withTimeout(generateWhyItMatters(domain, result.issues), AI_CALL_TIMEOUT, {}),
+    ]);
+
     summary.verdict = analysis?.executiveSummary ?? generateFallbackVerdict(resultWithDesign.scores, summary.criticalIssues);
-    const allIssues = [...enhancedIssues, ...aiDesignIssues];
-    const issuesWithContext = allIssues.map((i) => ({
+    const issuesWithContext = enhancedIssues.map((i) => ({
       ...i,
       whyItMatters: whyItMattersMap[i.id] ?? i.whyItMatters,
     }));
@@ -177,7 +240,10 @@ app.post("/api/scan/quick", async (req, res) => {
     const quickWins = analysis?.quickWins ?? null;
     const websitePersonality = analysis?.websitePersonality ?? null;
 
-    console.log(`[quick-scan] AI enhanced: ${url}`);
+    // Design analysis runs asynchronously — scanId required to update DB when done
+    const designAnalysisPending = !hasScanError && !!scanId && !!(screenshotUrl || designScreenshotBuffer);
+
+    console.log(`[quick-scan] AI enhanced: ${url}${designAnalysisPending ? " (design pending)" : ""}`);
 
     res.json({
       pages: [enhancedResult],
@@ -187,7 +253,23 @@ app.post("/api/scan/quick", async (req, res) => {
       costEstimate,
       quickWins,
       websitePersonality,
+      designAnalysisPending,
     });
+
+    // Fire background design analysis after responding — Railway keeps the process alive
+    if (designAnalysisPending) {
+      setImmediate(() => {
+        runDesignAnalysisBackground(
+          supabase,
+          scanId!,
+          domain,
+          screenshotUrl,
+          designScreenshotBuffer,
+          htmlDesignScore,
+          resultWithDesign.scores,
+        ).catch((err) => console.error("[design-bg] Uncaught error:", err));
+      });
+    }
   } catch (error) {
     console.error(`[quick-scan] Error:`, error);
     res.status(500).json({

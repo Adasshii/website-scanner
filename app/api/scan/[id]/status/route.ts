@@ -13,7 +13,7 @@ export async function GET(
 
     const { data: scan, error } = await supabase
       .from("scans")
-      .select("status, error_message, updated_at")
+      .select("status, error_message, updated_at, design_ai_analyzed_at, scores")
       .eq("id", id)
       .single();
 
@@ -25,6 +25,8 @@ export async function GET(
       status: scan.status,
       error_message: scan.error_message,
       updated_at: scan.updated_at,
+      designReady: scan.design_ai_analyzed_at !== null,
+      scores: scan.scores,
     });
   } catch (error) {
     console.error("Status check error:", error);

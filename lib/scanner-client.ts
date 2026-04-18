@@ -9,6 +9,8 @@ export interface ScannerResponse {
   costEstimate?: CostEstimate | null;
   quickWins?: QuickWin[] | null;
   websitePersonality?: string | null;
+  /** True when design AI analysis is running in the background */
+  designAnalysisPending?: boolean;
 }
 
 /**
@@ -30,9 +32,9 @@ export class ScannerClient {
     this.apiKey = apiKey;
   }
 
-  /** Run a quick scan (single page) */
-  async quickScan(url: string): Promise<ScannerResponse> {
-    return this.request("/api/scan/quick", { url });
+  /** Run a quick scan (single page). Pass scanId to enable async design analysis. */
+  async quickScan(url: string, scanId?: string): Promise<ScannerResponse> {
+    return this.request("/api/scan/quick", scanId ? { url, scanId } : { url });
   }
 
   /** Run a full scan (multi-page) */

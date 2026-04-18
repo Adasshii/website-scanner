@@ -14,6 +14,7 @@ interface ScanData {
   summary: ScanSummary | null;
   pages: Array<{ issues: Issue[]; scores: ScanScores }>;
   created_at: string;
+  design_ai_analyzed_at: string | null;
 }
 
 export default async function ScanPage({
@@ -66,6 +67,12 @@ export default async function ScanPage({
     (p: { issues: Issue[] }) => p.issues || []
   ) || [];
 
+  // Design analysis is pending when quick_done and background job hasn't finished yet
+  const designAnalysisPending =
+    scanData.status === "quick_done" &&
+    scanData.design_ai_analyzed_at === null &&
+    !allIssues.some((i) => i.id === "scan-error");
+
   return (
     <div className="min-h-screen flex flex-col bg-gray-50/30">
       <Header />
@@ -78,6 +85,7 @@ export default async function ScanPage({
           issues={allIssues}
           scannedAt={scanData.created_at}
           status={scanData.status as "quick_done" | "completed"}
+          designAnalysisPending={designAnalysisPending}
         />
       </main>
       <Footer />

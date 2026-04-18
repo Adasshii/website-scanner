@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useRef } from "react";
 import { ScoreRing, ScoreRingSmall } from "@/components/scan/score-ring";
 import { IssueCard } from "@/components/scan/issue-card";
 import { EmailGate } from "@/components/scan/email-gate";
@@ -15,10 +16,32 @@ interface ScanResultsProps {
   issues: Issue[];
   scannedAt: string;
   status: ScanStatus;
+  designAnalysisPending?: boolean;
 }
 
-export function ScanResults({ scanId, domain, scores, summary, issues, scannedAt, status }: ScanResultsProps) {
+export function ScanResults({ scanId, domain, scores, summary, issues, scannedAt, status, designAnalysisPending }: ScanResultsProps) {
   const router = useRouter();
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const pollCountRef = useRef(0);
+
+  useEffect(() => {
+    if (!designAnalysisPending) return;
+
+    pollRef.current = setInterval(async () => {
+      pollCountRef.current += 1;
+      try {
+        const res = await fetch(`/api/scan/${scanId}/status`);
+        if (!res.ok) return;
+        const data = await res.json();
+        if (data.designReady || pollCountRef.current >= 24) {
+          clearInterval(pollRef.current!);
+          if (data.designReady) router.refresh();
+        }
+      } catch { /* ignore network errors */ }
+    }, 5000);
+
+    return () => { if (pollRef.current) clearInterval(pollRef.current); };
+  }, [designAnalysisPending, scanId, router]);
   const sortedIssues = [...issues].sort((a, b) => b.impact - a.impact);
 
   // Quick scan: show top 5 issues. Full scan (completed): show all (up to 10)
@@ -110,7 +133,7 @@ export function ScanResults({ scanId, domain, scores, summary, issues, scannedAt
           <ScoreRingSmall score={scores.seo} label="SEO" />
           <ScoreRingSmall score={scores.performance} label="Performance" />
           <ScoreRingSmall score={scores.security ?? 0} label="Security" />
-          <ScoreRingSmall score={scores.design ?? 0} label="Design" />
+          <ScoreRingSmall score={scores.design ?? 0} label="Design" pending={designAnalysisPending} />
         </div>
       </div>
 

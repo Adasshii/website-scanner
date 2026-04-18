@@ -68,6 +68,19 @@ export function ScoreRing({ score, size = 160, strokeWidth = 10, label }: ScoreR
   );
 }
 
-export function ScoreRingSmall({ score, label }: { score: number; label: string }) {
-  return <ScoreRing score={score} size={90} strokeWidth={7} label={label} />;
+export function ScoreRingSmall({ score, label, pending }: { score: number; label: string; pending?: boolean }) {
+  return (
+    <div className="relative">
+      <ScoreRing score={score} size={90} strokeWidth={7} label={label} />
+      {pending && (
+        <span
+          className="absolute top-0 right-1/2 translate-x-8 -translate-y-1 flex h-2.5 w-2.5"
+          title="Analyzing design..."
+        >
+          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75" />
+          <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-blue-500" />
+        </span>
+      )}
+    </div>
+  );
 }
