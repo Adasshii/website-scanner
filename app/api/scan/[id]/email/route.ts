@@ -83,26 +83,30 @@ export async function POST(
       quickScore: scan.scores?.overall ?? 0,
     }).catch((err) => console.error("Failed to send confirmation email:", err));
 
-    // Trigger async full scan on the scanner service (fire-and-forget)
+    // Trigger async full scan — must be awaited so Vercel doesn't terminate
+    // the function before the request reaches Railway. The scanner returns
+    // { accepted: true } immediately so this completes in < 2s.
     const scannerUrl = process.env.SCANNER_SERVICE_URL;
     const scannerKey = process.env.SCANNER_API_KEY;
 
     if (scannerUrl && scannerKey) {
-      fetch(`${scannerUrl.replace(/\/$/, "")}/api/scan/full-async`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${scannerKey}`,
-        },
-        body: JSON.stringify({
-          url: scan.url,
-          scanId: id,
-          maxPages: 10,
-        }),
-        signal: AbortSignal.timeout(5_000), // just needs to reach the scanner
-      }).catch((err) => {
+      try {
+        await fetch(`${scannerUrl.replace(/\/$/, "")}/api/scan/full-async`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${scannerKey}`,
+          },
+          body: JSON.stringify({
+            url: scan.url,
+            scanId: id,
+            maxPages: 10,
+          }),
+          signal: AbortSignal.timeout(10_000),
+        });
+      } catch (err) {
         console.error("Failed to trigger full scan:", err);
-      });
+      }
     }
 
     return NextResponse.json({ success: true });

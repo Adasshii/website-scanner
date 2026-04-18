@@ -126,13 +126,16 @@ app.post("/api/scan/quick", async (req, res) => {
       withTimeout(generateWhyItMatters(domain, result.issues), AI_CALL_TIMEOUT, {}),
     ]);
 
-    // Apply design AI to result scores
+    // Apply design AI to result scores — if the page crashed, score is 0
+    const hasScanError = result.issues.some((i) => i.id === "scan-error");
     const htmlDesignIssues = result.issues.filter((iss) => iss.category === "design");
     const htmlDeduction = htmlDesignIssues.reduce((sum, iss) => sum + iss.impact, 0);
     const htmlDesignScore = Math.max(0, Math.min(100, Math.round(100 - htmlDeduction)));
-    const designScore = designAnalysis
-      ? Math.max(0, Math.min(100, Math.round(htmlDesignScore * 0.4 + designAnalysis.overallScore * 0.6)))
-      : htmlDesignScore;
+    const designScore = hasScanError
+      ? 0
+      : designAnalysis
+        ? Math.max(0, Math.min(100, Math.round(htmlDesignScore * 0.4 + designAnalysis.overallScore * 0.6)))
+        : htmlDesignScore;
 
     const aiScore = designAnalysis?.overallScore ?? 100;
     const aiSeverity: IssueSeverity = aiScore < 50 ? "major" : aiScore < 70 ? "minor" : "info";
