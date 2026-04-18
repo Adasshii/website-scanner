@@ -131,10 +131,10 @@ async function runDesignAnalysisBackground(
       impact: aiSeverity === "major" ? 8 : aiSeverity === "minor" ? 3 : 1,
     }));
 
-    // Fetch current pages and prepend AI design issues to pages[0]
+    // Fetch current pages + summary so we can update both consistently
     const { data: currentScan } = await supabase
       .from("scans")
-      .select("pages")
+      .select("pages, summary")
       .eq("id", scanId)
       .single();
 
@@ -150,9 +150,17 @@ async function runDesignAnalysisBackground(
         )
       : currentScan?.pages ?? [];
 
+    // Rebuild summary from updated pages, preserving the AI-generated verdict
+    const freshSummary = buildSummary(updatedPages);
+    const existingVerdict = (currentScan?.summary as ScanSummary | null)?.verdict;
+    const updatedSummary: ScanSummary = existingVerdict
+      ? { ...freshSummary, verdict: existingVerdict }
+      : freshSummary;
+
     await markDone({
       scores: { ...currentScores, design: designScore, overall },
       pages: updatedPages,
+      summary: updatedSummary,
       design_ai_analysis: designAnalysis,
     });
 
