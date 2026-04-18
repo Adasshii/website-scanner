@@ -207,8 +207,12 @@ export async function scanPage(
     console.log(`  [scanner] robots=${siteFiles.hasRobotsTxt}, sitemap=${siteFiles.hasSitemap}, broken=${linkCheck.brokenLinks.length}, chains=${linkCheck.redirectChains.length}`);
 
     // Step 4c: Core Web Vitals via Lighthouse (Phase 4) — sequential to avoid two Chrome instances at once
+    // Hard 45s cap: Lighthouse has no built-in timeout and can stall for 120s on heavy sites
     console.log(`  [scanner] Running Lighthouse CWV audit...`);
-    const cwv = await runLighthouse(url);
+    const cwv = await Promise.race([
+      runLighthouse(url),
+      new Promise<null>((resolve) => setTimeout(() => resolve(null), 45_000)),
+    ]);
     data.coreWebVitals = cwv ?? undefined;
     console.log(`  [scanner] Lighthouse done: LCP=${cwv?.lcp ?? "n/a"}ms, CLS=${cwv?.cls ?? "n/a"}, TBT=${cwv?.tbt ?? "n/a"}ms`);
 
