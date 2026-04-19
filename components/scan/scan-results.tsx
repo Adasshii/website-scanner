@@ -66,17 +66,16 @@ export function ScanResults({ scanId, domain, scores, summary, issues, scannedAt
 
   return (
     <div className="mx-auto max-w-4xl px-4 sm:px-6 py-10 sm:py-16">
+
       {/* Header */}
       <div className="text-center mb-10">
         <h1 className="font-display text-2xl sm:text-3xl text-adashi-gulf mb-2">
           Scan Results
         </h1>
         <p className="text-gray-500">
-          <a href={`https://${domain}`} target="_blank" rel="noopener noreferrer" className="hover:underline">{domain}</a> &middot; Scanned {new Date(scannedAt).toLocaleDateString("en-US", {
-            month: "short",
-            day: "numeric",
-            year: "numeric",
-          })}
+          <a href={`https://${domain}`} target="_blank" rel="noopener noreferrer" className="hover:underline">{domain}</a>
+          {" "}&middot;{" "}
+          Scanned {new Date(scannedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
         </p>
       </div>
 
@@ -87,20 +86,20 @@ export function ScanResults({ scanId, domain, scores, summary, issues, scannedAt
           <div>
             <p className="font-semibold text-orange-800 mb-1">We couldn&apos;t fully scan this website</p>
             <p className="text-orange-700 text-sm leading-relaxed">
-              Our scanner wasn&apos;t able to load <strong>{domain}</strong>. This usually happens with very heavy websites, sites that block automated tools, or pages that require a login. The scores below reflect what we could measure before the error occurred.
+              Our scanner wasn&apos;t able to load <strong>{domain}</strong>. This usually happens with very heavy websites,
+              sites that block automated tools, or pages that require a login. The scores below reflect what we could measure
+              before the error occurred.
             </p>
           </div>
         </div>
       )}
 
-      {/* Overall Score */}
-      <div className="bg-white rounded-2xl shadow-card p-6 sm:p-8 mb-8">
+      {/* 1. Overall Score + Verdict */}
+      <div className="bg-white rounded-2xl shadow-card p-6 sm:p-8 mb-6">
         <div className="flex flex-col sm:flex-row items-center gap-6 sm:gap-10">
           <ScoreRing score={scores.overall} />
           <div className="flex-1 text-center sm:text-left">
-            <h2 className="font-display text-xl sm:text-2xl text-adashi-gulf mb-2">
-              Overall Score
-            </h2>
+            <h2 className="font-display text-xl sm:text-2xl text-adashi-gulf mb-2">Overall Score</h2>
             <span
               className={`inline-block text-xs font-semibold px-2 py-0.5 rounded-full mb-2 ${
                 scores.overall >= 80
@@ -110,35 +109,63 @@ export function ScanResults({ scanId, domain, scores, summary, issues, scannedAt
                     : "bg-red-100 text-red-700"
               }`}
             >
-              {scores.overall >= 80
-                ? "Good"
-                : scores.overall >= 60
-                  ? "Needs improvement"
-                  : "Poor"}
+              {scores.overall >= 80 ? "Good" : scores.overall >= 60 ? "Needs improvement" : "Poor"}
             </span>
             <p className="text-gray-600 leading-relaxed">{summary.verdict}</p>
             <div className="mt-3 flex flex-wrap gap-3 justify-center sm:justify-start text-sm text-gray-500">
               <span>{summary.totalIssues} issues found</span>
               {summary.criticalIssues > 0 && (
-                <span className="text-red-600 font-medium">
-                  {summary.criticalIssues} critical
-                </span>
+                <span className="text-red-600 font-medium">{summary.criticalIssues} critical</span>
               )}
               {summary.majorIssues > 0 && (
-                <span className="text-orange-600 font-medium">
-                  {summary.majorIssues} major
-                </span>
+                <span className="text-orange-600 font-medium">{summary.majorIssues} major</span>
               )}
             </div>
           </div>
         </div>
       </div>
 
-      {/* Category Scores */}
-      <div className="bg-white rounded-2xl shadow-card p-6 sm:p-8 mb-8">
-        <h2 className="font-semibold text-adashi-gulf text-lg mb-6 text-center">
-          Category Breakdown
-        </h2>
+      {/* 2. Revenue Impact — immediately after score, while urgency is fresh */}
+      {isQuickDone && costEstimate && (
+        <div className="bg-white rounded-2xl shadow-card p-6 sm:p-8 mb-6">
+          <p className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-4">Revenue impact</p>
+          <div className="flex items-end gap-4 mb-2">
+            <span className="font-display text-6xl sm:text-7xl font-bold text-red-500 leading-none">
+              {costEstimate.totalLostPercent}%
+            </span>
+            <span className="text-gray-500 text-sm pb-2 leading-snug">
+              of potential<br />customers lost
+            </span>
+          </div>
+          <p className="text-sm text-gray-400 mb-6">
+            Estimated based on your performance, SEO, and usability scores.
+          </p>
+          <div className="relative">
+            <div className="blur-[3px] pointer-events-none select-none space-y-3" aria-hidden="true">
+              {(costEstimate.factors.length > 0 ? costEstimate.factors : [{}, {}, {}]).slice(0, 3).map((_, i) => (
+                <div key={i} className="flex items-center gap-3">
+                  <div className="h-3 bg-red-100 rounded-full" style={{ width: `${68 - i * 16}%` }} />
+                  <span className="text-sm font-medium text-gray-400 w-12">
+                    –{(costEstimate.totalLostPercent * (0.5 - i * 0.13)).toFixed(0)}%
+                  </span>
+                </div>
+              ))}
+            </div>
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="flex items-center gap-1.5 bg-white/95 border border-gray-200 px-3 py-1.5 rounded-full shadow-sm">
+                <svg className="w-3.5 h-3.5 text-adashi-gulf" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                </svg>
+                <span className="text-xs font-medium text-adashi-gulf">Full breakdown below</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 3. Category Breakdown — where the problems are */}
+      <div className="bg-white rounded-2xl shadow-card p-6 sm:p-8 mb-6">
+        <h2 className="font-semibold text-adashi-gulf text-lg mb-6 text-center">Category Breakdown</h2>
         <div className="grid grid-cols-2 sm:grid-cols-6 gap-6">
           <ScoreRingSmall score={scores.accessibility} label="Usability" />
           <ScoreRingSmall score={scores.content} label="Content" />
@@ -149,39 +176,9 @@ export function ScanResults({ scanId, domain, scores, summary, issues, scannedAt
         </div>
       </div>
 
-      {/* Top 3 Issues Highlight */}
-      {isQuickDone && sortedIssues.length > 0 && (
-        <div className="bg-white rounded-2xl shadow-card p-6 sm:p-8 mb-8">
-          <h2 className="font-semibold text-adashi-gulf text-lg mb-4 text-center">
-            Your 3 biggest issues
-          </h2>
-          <div className="space-y-3">
-            {sortedIssues.slice(0, 3).map((issue, i) => (
-              <div key={`${issue.id}-${i}`} className="flex items-center gap-3">
-                <span
-                  className={`inline-block text-xs font-semibold px-2 py-0.5 rounded-full border ${
-                    issue.severity === "critical"
-                      ? "bg-red-100 text-red-700 border-red-200"
-                      : issue.severity === "major"
-                        ? "bg-orange-100 text-orange-700 border-orange-200"
-                        : issue.severity === "minor"
-                          ? "bg-yellow-100 text-yellow-700 border-yellow-200"
-                          : "bg-blue-100 text-blue-700 border-blue-200"
-                  }`}
-                >
-                  {issue.severity}
-                </span>
-                <span className="flex-1 text-sm text-adashi-gulf font-medium truncate">{issue.title}</span>
-                <span className="text-sm text-red-500 font-medium whitespace-nowrap">-{issue.impact} pts</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Top Issues */}
+      {/* 4. Top Issues — the specific evidence */}
       {topIssues.length > 0 && (
-        <div className="mb-8">
+        <div className="mb-6">
           <h2 className="font-semibold text-adashi-gulf text-lg mb-4">
             Top Issues
             {isQuickDone && (
@@ -198,47 +195,11 @@ export function ScanResults({ scanId, domain, scores, summary, issues, scannedAt
         </div>
       )}
 
-      {/* Premium tease sections — only visible on quick_done */}
+      {/* 5 + 6. Quick Wins + Personality teases — hope before the gate */}
       {isQuickDone && (
         <div className="space-y-4 mb-4">
 
-          {/* Cost estimate tease */}
-          {costEstimate && (
-            <div className="bg-white rounded-2xl shadow-card p-6 sm:p-8">
-              <p className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-4">Revenue impact</p>
-              <div className="flex items-end gap-4 mb-2">
-                <span className="font-display text-6xl sm:text-7xl font-bold text-red-500 leading-none">
-                  {costEstimate.totalLostPercent}%
-                </span>
-                <span className="text-gray-500 text-sm pb-2 leading-snug">
-                  of potential<br />customers lost
-                </span>
-              </div>
-              <p className="text-sm text-gray-400 mb-6">
-                Estimated based on your performance, SEO, and usability scores.
-              </p>
-              <div className="relative">
-                <div className="blur-[3px] pointer-events-none select-none space-y-3" aria-hidden="true">
-                  {(costEstimate.factors.length > 0 ? costEstimate.factors : [{}, {}, {}]).slice(0, 3).map((_, i) => (
-                    <div key={i} className="flex items-center gap-3">
-                      <div className="h-3 bg-red-100 rounded-full" style={{ width: `${68 - i * 16}%` }} />
-                      <span className="text-sm font-medium text-gray-400 w-12">–{(costEstimate.totalLostPercent * (0.5 - i * 0.13)).toFixed(0)}%</span>
-                    </div>
-                  ))}
-                </div>
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="flex items-center gap-1.5 bg-white/95 border border-gray-200 px-3 py-1.5 rounded-full shadow-sm">
-                    <svg className="w-3.5 h-3.5 text-adashi-gulf" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                    </svg>
-                    <span className="text-xs font-medium text-adashi-gulf">Full breakdown below</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Quick wins tease — always visible, static placeholders when AI data is null */}
+          {/* Quick wins tease */}
           <div className="bg-white rounded-2xl shadow-card p-6 sm:p-8">
             <div className="flex items-center gap-4 mb-5">
               <div className="flex-shrink-0 w-10 h-10 bg-amber-50 rounded-xl flex items-center justify-center">
@@ -248,9 +209,7 @@ export function ScanResults({ scanId, domain, scores, summary, issues, scannedAt
               </div>
               <div>
                 <p className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-1">Quick wins</p>
-                <h3 className="font-semibold text-adashi-gulf">
-                  {quickWinsData.length} actionable fixes identified
-                </h3>
+                <h3 className="font-semibold text-adashi-gulf">{quickWinsData.length} actionable fixes identified</h3>
               </div>
             </div>
             <div className="space-y-2">
@@ -270,7 +229,7 @@ export function ScanResults({ scanId, domain, scores, summary, issues, scannedAt
             </div>
           </div>
 
-          {/* Website personality tease — always visible, static placeholder when AI data is null */}
+          {/* Website personality tease */}
           <div className="bg-white rounded-2xl shadow-card p-6 sm:p-8">
             <div className="flex items-center gap-4 mb-4">
               <div className="flex-shrink-0 w-10 h-10 bg-purple-50 rounded-xl flex items-center justify-center">
@@ -285,9 +244,7 @@ export function ScanResults({ scanId, domain, scores, summary, issues, scannedAt
               </div>
             </div>
             <div className="relative overflow-hidden" style={{ maxHeight: "4.5rem" }}>
-              <p className="text-gray-600 leading-relaxed text-sm">
-                {personalityText.slice(0, 180)}
-              </p>
+              <p className="text-gray-600 leading-relaxed text-sm">{personalityText.slice(0, 180)}</p>
               <div className="absolute bottom-0 left-0 right-0 h-10 bg-gradient-to-t from-white to-transparent" />
             </div>
             <div className="mt-3 flex items-center gap-1.5 text-xs text-gray-400">
@@ -301,7 +258,7 @@ export function ScanResults({ scanId, domain, scores, summary, issues, scannedAt
         </div>
       )}
 
-      {/* Email Gate + Blurred Section (only for quick_done status) */}
+      {/* 7. Email Gate + Blurred Section */}
       {isQuickDone && (
         <div className="space-y-6 mb-8">
           <EmailGate
@@ -312,11 +269,9 @@ export function ScanResults({ scanId, domain, scores, summary, issues, scannedAt
         </div>
       )}
 
-      {/* CTA */}
+      {/* 8. CTA */}
       <div className="bg-adashi-gulf text-white rounded-2xl p-6 sm:p-8 text-center">
-        <h2 className="font-display text-xl sm:text-2xl mb-2">
-          Want help fixing these issues?
-        </h2>
+        <h2 className="font-display text-xl sm:text-2xl mb-2">Want help fixing these issues?</h2>
         <p className="text-adashi-pastel mb-4">
           Book a free strategy call with Adashi and we&apos;ll walk you through the fixes.
         </p>
@@ -329,6 +284,7 @@ export function ScanResults({ scanId, domain, scores, summary, issues, scannedAt
           Book a free call
         </a>
       </div>
+
     </div>
   );
 }
