@@ -5,7 +5,7 @@ import { ScoreRing, ScoreRingSmall } from "@/components/scan/score-ring";
 import { IssueCard } from "@/components/scan/issue-card";
 import { EmailGate } from "@/components/scan/email-gate";
 import { BlurredSection } from "@/components/scan/blurred-section";
-import type { ScanScores, ScanSummary, Issue, ScanStatus } from "@/types/scanner";
+import type { ScanScores, ScanSummary, Issue, ScanStatus, CostEstimate, QuickWin } from "@/types/scanner";
 import { useRouter } from "next/navigation";
 
 interface ScanResultsProps {
@@ -17,9 +17,12 @@ interface ScanResultsProps {
   scannedAt: string;
   status: ScanStatus;
   designAnalysisPending?: boolean;
+  costEstimate?: CostEstimate | null;
+  quickWins?: QuickWin[] | null;
+  websitePersonality?: string | null;
 }
 
-export function ScanResults({ scanId, domain, scores, summary, issues, scannedAt, status, designAnalysisPending }: ScanResultsProps) {
+export function ScanResults({ scanId, domain, scores, summary, issues, scannedAt, status, designAnalysisPending, costEstimate, quickWins, websitePersonality }: ScanResultsProps) {
   const router = useRouter();
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const pollCountRef = useRef(0);
@@ -183,6 +186,116 @@ export function ScanResults({ scanId, domain, scores, summary, issues, scannedAt
               <IssueCard key={`${issue.id}-${i}`} issue={issue} />
             ))}
           </div>
+        </div>
+      )}
+
+      {/* Premium tease sections — only visible on quick_done */}
+      {isQuickDone && (
+        <div className="space-y-4 mb-4">
+
+          {/* Cost estimate tease */}
+          {costEstimate && (
+            <div className="bg-white rounded-2xl shadow-card p-6 sm:p-8">
+              <div className="flex items-start gap-4 mb-5">
+                <div className="flex-shrink-0 w-10 h-10 bg-red-50 rounded-xl flex items-center justify-center">
+                  <svg className="w-5 h-5 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6" />
+                  </svg>
+                </div>
+                <div>
+                  <p className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-1">Revenue impact</p>
+                  <h3 className="font-display text-lg sm:text-xl text-adashi-gulf leading-snug">
+                    Your site may be losing up to{" "}
+                    <span className="text-red-500">{costEstimate.totalLostPercent}%</span>{" "}
+                    of potential customers
+                  </h3>
+                </div>
+              </div>
+              <div className="relative">
+                <div className="blur-sm pointer-events-none select-none space-y-2.5" aria-hidden="true">
+                  {costEstimate.factors.slice(0, 3).map((_, i) => (
+                    <div key={i} className="flex items-center gap-3">
+                      <div className="h-2.5 bg-red-100 rounded-full" style={{ width: `${70 - i * 18}%` }} />
+                      <span className="text-sm text-gray-300 w-12">–{8 - i * 2}%</span>
+                    </div>
+                  ))}
+                </div>
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <div className="flex items-center gap-1.5 bg-white/95 border border-gray-200 px-3 py-1.5 rounded-full shadow-sm">
+                    <svg className="w-3.5 h-3.5 text-adashi-gulf" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                    </svg>
+                    <span className="text-xs font-medium text-adashi-gulf">Full breakdown below</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Quick wins tease */}
+          {quickWins && quickWins.length > 0 && (
+            <div className="bg-white rounded-2xl shadow-card p-6 sm:p-8">
+              <div className="flex items-center gap-4 mb-5">
+                <div className="flex-shrink-0 w-10 h-10 bg-amber-50 rounded-xl flex items-center justify-center">
+                  <svg className="w-5 h-5 text-amber-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                  </svg>
+                </div>
+                <div>
+                  <p className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-1">Quick wins</p>
+                  <h3 className="font-semibold text-adashi-gulf">
+                    {quickWins.length} actionable fixes identified
+                  </h3>
+                </div>
+              </div>
+              <div className="space-y-2">
+                {quickWins.map((win, i) => (
+                  <div key={i} className="border border-gray-100 rounded-xl p-3 flex items-center gap-3">
+                    <span className="text-xs font-medium text-amber-700 bg-amber-50 px-2 py-1 rounded-lg whitespace-nowrap flex-shrink-0">
+                      {win.estimatedTime}
+                    </span>
+                    <p className="flex-1 text-sm font-medium text-adashi-gulf blur-sm select-none" aria-hidden="true">
+                      {win.title}
+                    </p>
+                    <svg className="w-4 h-4 text-gray-300 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                    </svg>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Website personality tease */}
+          {websitePersonality && (
+            <div className="bg-white rounded-2xl shadow-card p-6 sm:p-8">
+              <div className="flex items-center gap-4 mb-4">
+                <div className="flex-shrink-0 w-10 h-10 bg-purple-50 rounded-xl flex items-center justify-center">
+                  <svg className="w-5 h-5 text-purple-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                  </svg>
+                </div>
+                <div>
+                  <p className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-1">Website personality</p>
+                  <h3 className="font-semibold text-adashi-gulf">How visitors perceive {domain}</h3>
+                </div>
+              </div>
+              <div className="relative overflow-hidden">
+                <p className="text-gray-600 leading-relaxed text-sm">
+                  {websitePersonality.slice(0, 120)}
+                </p>
+                <div className="absolute bottom-0 left-0 right-0 h-8 bg-gradient-to-t from-white to-transparent" />
+              </div>
+              <div className="mt-3 flex items-center gap-1.5 text-xs text-gray-400">
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                </svg>
+                <span>Full assessment unlocked with your report</span>
+              </div>
+            </div>
+          )}
+
         </div>
       )}
 

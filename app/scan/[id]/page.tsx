@@ -3,7 +3,7 @@ import { createServerClient } from "@/lib/supabase";
 import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
 import { ScanResults } from "@/components/scan/scan-results";
-import type { ScanScores, Issue, ScanSummary } from "@/types/scanner";
+import type { ScanScores, Issue, ScanSummary, CostEstimate, QuickWin } from "@/types/scanner";
 
 interface ScanData {
   id: string;
@@ -15,6 +15,9 @@ interface ScanData {
   pages: Array<{ issues: Issue[]; scores: ScanScores }>;
   created_at: string;
   design_ai_analyzed_at: string | null;
+  cost_estimate: CostEstimate | null;
+  quick_wins: QuickWin[] | null;
+  website_personality: string | null;
 }
 
 export default async function ScanPage({
@@ -86,6 +89,9 @@ export default async function ScanPage({
           scannedAt={scanData.created_at}
           status={scanData.status as "quick_done" | "completed"}
           designAnalysisPending={designAnalysisPending}
+          costEstimate={scanData.cost_estimate}
+          quickWins={scanData.quick_wins}
+          websitePersonality={scanData.website_personality}
         />
       </main>
       <Footer />

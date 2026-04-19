@@ -136,10 +136,10 @@ export function EmailGate({ scanId, onFullScanComplete }: EmailGateProps) {
     <div className="bg-white rounded-2xl shadow-card p-6 sm:p-8">
       <div className="text-center mb-6">
         <h3 className="font-display text-xl sm:text-2xl text-adashi-gulf mb-2">
-          Get your full report
+          Unlock your full report
         </h3>
         <p className="text-gray-500">
-          Enter your email to unlock a detailed multi-page analysis with actionable recommendations.
+          Get the full cost breakdown, your quick wins, and a complete multi-page audit — free.
         </p>
       </div>
 
