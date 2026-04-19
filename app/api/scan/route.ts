@@ -9,6 +9,14 @@ import type { ScanRow } from "@/types/scanner";
 export const runtime = "nodejs";
 export const maxDuration = 300; // Vercel function timeout (seconds) — Lighthouse needs ~60-90s
 
+function extractHomepageScreenshotUrl(
+  screenshots: Record<string, { url: string }> | null | undefined
+): string | null {
+  if (!screenshots) return null;
+  const first = Object.values(screenshots)[0];
+  return first?.url ?? null;
+}
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
@@ -63,7 +71,7 @@ export async function POST(request: NextRequest) {
     const oneHourAgoCache = new Date(Date.now() - 60 * 60 * 1000).toISOString();
     const { data: cached } = await supabase
       .from("scans")
-      .select("id, url, domain, type, status, scores, pages, summary, started_at, completed_at, screenshots, cost_estimate, quick_wins, website_personality")
+      .select("id, url, domain, type, status, scores, pages, summary, started_at, completed_at, screenshots, cost_estimate, quick_wins, website_personality, homepage_screenshot_url")
       .eq("domain", domain)
       .in("status", ["quick_done", "completed"])
       .gte("created_at", oneHourAgoCache)
@@ -87,6 +95,7 @@ export async function POST(request: NextRequest) {
         costEstimate: cached.cost_estimate,
         quickWins: cached.quick_wins,
         websitePersonality: cached.website_personality,
+        homepageScreenshotUrl: cached.homepage_screenshot_url ?? null,
         cached: true,
       });
     }
@@ -134,6 +143,7 @@ export async function POST(request: NextRequest) {
 
     // Update the scan row with results
     const completedAt = new Date().toISOString();
+    const homepageScreenshotUrl = extractHomepageScreenshotUrl(result.screenshots);
     const { error: updateError } = await supabase
       .from("scans")
       .update({
@@ -145,6 +155,7 @@ export async function POST(request: NextRequest) {
         cost_estimate: result.costEstimate || null,
         quick_wins: result.quickWins || null,
         website_personality: result.websitePersonality || null,
+        homepage_screenshot_url: homepageScreenshotUrl,
         completed_at: completedAt,
         updated_at: completedAt,
       })
