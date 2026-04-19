@@ -18,6 +18,7 @@ interface ScanData {
   cost_estimate: CostEstimate | null;
   quick_wins: QuickWin[] | null;
   website_personality: string | null;
+  homepage_screenshot_url: string | null;
 }
 
 export default async function ScanPage({
@@ -92,6 +93,7 @@ export default async function ScanPage({
           costEstimate={scanData.cost_estimate}
           quickWins={scanData.quick_wins}
           websitePersonality={scanData.website_personality}
+          screenshotUrl={scanData.homepage_screenshot_url}
         />
       </main>
       <Footer />
