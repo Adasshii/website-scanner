@@ -200,6 +200,7 @@ export interface QuickWin {
   title: string;
   description: string;
   estimatedTime: string;
+  needsDeveloper: boolean;
   expectedImpact: string;
 }
 
@@ -274,6 +275,8 @@ export interface ScanRow {
   design_ai_analysis: { overallScore: number; issues: string[] } | null;
   /** When the design AI analysis was last generated */
   design_ai_analyzed_at: string | null;
+  /** Public URL of the scanned homepage screenshot for display */
+  homepage_screenshot_url: string | null;
 }
 
 export interface LeadRow {

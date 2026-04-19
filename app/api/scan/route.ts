@@ -117,6 +117,7 @@ export async function POST(request: NextRequest) {
       sales_brief: null,
       design_ai_analysis: null,
       design_ai_analyzed_at: null,
+      homepage_screenshot_url: null,
     } satisfies Omit<ScanRow, "created_at">);
 
     if (insertError) {
