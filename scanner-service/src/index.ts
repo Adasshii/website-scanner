@@ -38,6 +38,20 @@ function getSupabase() {
   return createClient(url, key, { auth: { persistSession: false } });
 }
 
+// Track in-flight full scans so SIGTERM/crash can mark them failed
+const activeFullScans = new Map<string, SupabaseClient>();
+
+async function failScan(scanId: string, supabase: SupabaseClient, reason: string) {
+  try {
+    await supabase
+      .from("scans")
+      .update({ status: "failed", error_message: reason, updated_at: new Date().toISOString() })
+      .eq("id", scanId);
+  } catch (err) {
+    console.error(`[scan-recovery] DB update failed for ${scanId}:`, err);
+  }
+}
+
 const app = express();
 const PORT = parseInt(process.env.PORT || "3001", 10);
 
@@ -351,6 +365,18 @@ app.post("/api/scan/full-async", async (req, res) => {
   const pageLimit = Math.min(maxPages, 25);
   const supabase = getSupabase();
 
+  // Register so shutdown/crash handlers can mark this scan failed
+  activeFullScans.set(scanId, supabase);
+
+  // Hard ceiling: mark failed if not finished within 15 minutes
+  const scanTimeout = setTimeout(async () => {
+    if (activeFullScans.has(scanId)) {
+      console.error(`[full-scan-async] Scan ${scanId} timed out after 15 minutes`);
+      activeFullScans.delete(scanId);
+      await failScan(scanId, supabase, "Full scan timed out after 15 minutes");
+    }
+  }, 15 * 60 * 1000);
+
   try {
     console.log(`[full-scan-async] Starting: ${url} (scan ${scanId}, max ${pageLimit} pages)`);
 
@@ -524,6 +550,8 @@ app.post("/api/scan/full-async", async (req, res) => {
       })
       .eq("id", scanId);
 
+    clearTimeout(scanTimeout);
+    activeFullScans.delete(scanId);
     console.log(`[full-scan-async] Completed: ${url} — overall ${scores.overall}`);
 
     // Notify the Next.js app to send the report-ready email
@@ -543,6 +571,8 @@ app.post("/api/scan/full-async", async (req, res) => {
       });
     }
   } catch (error) {
+    clearTimeout(scanTimeout);
+    activeFullScans.delete(scanId);
     console.error(`[full-scan-async] Failed:`, error);
     await supabase
       .from("scans")
@@ -648,9 +678,26 @@ const server = app.listen(PORT, () => {
 // Graceful shutdown
 async function shutdown() {
   console.log("Shutting down...");
+  for (const [id, sb] of activeFullScans) {
+    console.log(`[shutdown] Marking scan ${id} as failed (service restarting)`);
+    await failScan(id, sb, "Service restarted during scan");
+  }
+  activeFullScans.clear();
   await closeBrowser();
   server.close(() => process.exit(0));
 }
 
 process.on("SIGTERM", shutdown);
 process.on("SIGINT", shutdown);
+
+process.on("uncaughtException", async (err) => {
+  console.error("[process] Uncaught exception:", err);
+  for (const [id, sb] of activeFullScans) {
+    await failScan(id, sb, "Service crashed during scan");
+  }
+  process.exit(1);
+});
+
+process.on("unhandledRejection", (reason) => {
+  console.error("[process] Unhandled rejection:", reason);
+});

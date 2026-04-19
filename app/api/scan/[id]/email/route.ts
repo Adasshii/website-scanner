@@ -91,7 +91,7 @@ export async function POST(
 
     if (scannerUrl && scannerKey) {
       try {
-        await fetch(`${scannerUrl.replace(/\/$/, "")}/api/scan/full-async`, {
+        const triggerRes = await fetch(`${scannerUrl.replace(/\/$/, "")}/api/scan/full-async`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -104,8 +104,20 @@ export async function POST(
           }),
           signal: AbortSignal.timeout(10_000),
         });
+        if (!triggerRes.ok) {
+          throw new Error(`Scanner returned ${triggerRes.status}`);
+        }
       } catch (err) {
         console.error("Failed to trigger full scan:", err);
+        // Revert status so the user can retry — nothing is running
+        await supabase
+          .from("scans")
+          .update({ status: "quick_done", updated_at: new Date().toISOString() })
+          .eq("id", id);
+        return NextResponse.json(
+          { error: "Could not start the full scan. Please try again in a moment." },
+          { status: 503 }
+        );
       }
     }
 
