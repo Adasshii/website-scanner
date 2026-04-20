@@ -6,18 +6,11 @@ interface QuickWinsProps {
   quickWins: QuickWin[];
 }
 
-const timeColors: Record<string, string> = {
-  "5-minute fix": "bg-green-100 text-green-700",
-  "~30 minutes": "bg-yellow-100 text-yellow-700",
-  "needs a developer": "bg-blue-100 text-blue-700",
-};
-
-function getTimeBadgeColor(time: string): string {
-  const lower = time.toLowerCase();
-  if (lower.includes("5") && lower.includes("min")) return timeColors["5-minute fix"];
-  if (lower.includes("30") || lower.includes("hour")) return timeColors["~30 minutes"];
-  if (lower.includes("developer") || lower.includes("dev")) return timeColors["needs a developer"];
-  return "bg-gray-100 text-gray-700";
+function getTimeBadgeColor(win: QuickWin): string {
+  if (win.needsDeveloper) return "bg-blue-100 text-blue-700";
+  const time = win.estimatedTime.toLowerCase();
+  if (time.includes("hour") || time.includes("day")) return "bg-yellow-100 text-yellow-700";
+  return "bg-green-100 text-green-700";
 }
 
 export function QuickWinsSection({ quickWins }: QuickWinsProps) {
@@ -54,7 +47,7 @@ export function QuickWinsSection({ quickWins }: QuickWinsProps) {
 
                 <div className="flex flex-wrap items-center gap-2">
                   <span
-                    className={`inline-block px-2.5 py-1 rounded-lg text-xs font-medium ${getTimeBadgeColor(win.estimatedTime)}`}
+                    className={`inline-block px-2.5 py-1 rounded-lg text-xs font-medium ${getTimeBadgeColor(win)}`}
                   >
                     {win.estimatedTime}
                   </span>

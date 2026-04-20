@@ -33,6 +33,46 @@ export interface DesignAnalysis {
   issues: string[];
 }
 
+// ── Effort classification ─────────────────────────────────────────────
+
+function classifyIssueEffort(
+  issue: Issue,
+  affectedPageCount: number
+): { needsDeveloper: boolean; effortHint: string } {
+  const title = issue.title.toLowerCase();
+  const cat = issue.category;
+
+  if (cat === "security") return { needsDeveloper: true, effortHint: "security config change" };
+
+  if (
+    cat === "performance" &&
+    (title.includes("server") || title.includes("cache") || title.includes("compress") || title.includes("redirect"))
+  ) {
+    return { needsDeveloper: true, effortHint: "server or build config" };
+  }
+
+  if (
+    cat === "content" ||
+    (cat === "seo" && (title.includes("meta") || title.includes("title") || title.includes("description")))
+  ) {
+    const mins = Math.min(affectedPageCount * 5, 120);
+    const timeStr = mins < 60 ? `~${mins} min` : `~${Math.round(mins / 60)} hour${mins >= 120 ? "s" : ""}`;
+    return { needsDeveloper: false, effortHint: `${timeStr} (${affectedPageCount} page${affectedPageCount !== 1 ? "s" : ""})` };
+  }
+
+  if (cat === "accessibility") {
+    if (title.includes("alt") || title.includes("label") || title.includes("contrast")) {
+      const mins = Math.min(affectedPageCount * 8, 90);
+      return { needsDeveloper: false, effortHint: `~${mins} min (${affectedPageCount} page${affectedPageCount !== 1 ? "s" : ""})` };
+    }
+    return { needsDeveloper: true, effortHint: "accessibility code change" };
+  }
+
+  if (cat === "design") return { needsDeveloper: true, effortHint: "design/layout change" };
+
+  return { needsDeveloper: true, effortHint: "code change" };
+}
+
 // ── Comprehensive Analysis (replaces generateExecutiveSummary) ────────
 
 /**
@@ -53,6 +93,24 @@ export async function generateComprehensiveAnalysis(
     const topIssueList = summary.topIssues
       .slice(0, 10)
       .map((i) => `- [${i.severity}/${i.category}] ${i.title}: ${i.description}`)
+      .join("\n");
+
+    // Compute how many pages each top issue appears on
+    const issuePageCounts = new Map<string, number>();
+    for (const page of pages) {
+      for (const issue of page.issues) {
+        issuePageCounts.set(issue.id, (issuePageCounts.get(issue.id) ?? 0) + 1);
+      }
+    }
+
+    // Pre-compute effort classifications for the top issues
+    const effortData = summary.topIssues.slice(0, 10).map((issue) => ({
+      issue,
+      ...classifyIssueEffort(issue, issuePageCounts.get(issue.id) ?? 1),
+    }));
+
+    const effortContext = effortData
+      .map((e, idx) => `  ${idx + 1}. "${e.issue.title}" [${e.issue.category}]: needsDeveloper=${e.needsDeveloper}, estimatedTime hint="${e.effortHint}"`)
       .join("\n");
 
     // Build page data summary for the AI
@@ -122,8 +180,9 @@ Provide your analysis as JSON with these exact fields:
   "quickWins": [
     {
       "title": "<plain language issue>",
-      "description": "<what to fix and why>",
-      "estimatedTime": "<5-minute fix | ~30 minutes | needs a developer>",
+      "description": "<what to fix and why, 1-2 sentences>",
+      "estimatedTime": "<specific time estimate, e.g. '~10 min', '~1 hour', '~half a day'>",
+      "needsDeveloper": <boolean — copy exact value from effort data above>,
       "expectedImpact": "<one sentence about expected improvement>"
     }
   ],
@@ -131,14 +190,18 @@ Provide your analysis as JSON with these exact fields:
   "websitePersonality": "3-4 sentences describing how the site comes across to a first-time visitor. Cover tone, warmth, professionalism, clarity. Write for a business owner."
 }
 
-Cost estimate benchmarks (use as guidance, adjust based on the actual data):
-- 5% per critical accessibility issue (cap at 25%)
-- 10% for poor readability (content score below 60)
-- 5-10% for weak or missing CTAs
-- 10% for slow load time (average over 3 seconds)
-Present totalLostPercent as the combined estimate.
+Cost estimate benchmarks — grounded in industry research:
+- Slow page load (avg > 3s): 10-15%. Google/SOASTA: 53% of mobile visitors abandon after 3s; Portent: each extra second reduces conversions ~4.4%.
+- Accessibility (score < 80): up to 20% based on how low the score is. ~26% of adults have a disability; a low score means real users cannot complete tasks on the site.
+- Poor content / readability (content score < 60): 10%. Nielsen Norman: users read ~20% of page text. Buried content drives silent exits.
+- Missing or weak CTAs (content score < 70 or CTA issues found): 8%. HubSpot: 70%+ of SMB sites lack a clear CTA.
+- Poor SEO (seo score < 50): 12%. ~68% of online experiences start with search. Poor SEO means fewer visitors arrive.
+Present totalLostPercent as the combined impact, capped at 45%.
 
-Quick wins: Select the 3 highest impact-to-effort fixes. Each should be a different type of fix.
+Quick wins: Select the 3 highest impact-to-effort fixes from the issues above. Each should be a different fix type.
+Effort data pre-computed from the actual scan:
+${effortContext}
+Use the estimatedTime hint for each selected issue as-is. Use the needsDeveloper value as-is.
 
 Return ONLY valid JSON, no other text.`
     );
@@ -204,15 +267,18 @@ export function calculateCostEstimateFallback(
   const factors: CostFactor[] = [];
   let total = 0;
 
-  // Critical accessibility issues: 5% each, cap at 25%
-  if (summary.criticalIssues > 0) {
-    const impact = Math.min(summary.criticalIssues * 5, 25);
-    factors.push({
-      name: "Accessibility barriers",
-      percentImpact: impact,
-      explanation: `${summary.criticalIssues} critical accessibility issue${summary.criticalIssues !== 1 ? "s" : ""} may prevent some visitors from using your site.`,
-    });
-    total += impact;
+  // Accessibility impact: derived from score, not just critical issue count.
+  // CDC: ~26% of adults have a disability. A score of 0 means near-total exclusion.
+  if (scores.accessibility < 80) {
+    const impact = Math.min(Math.round((80 - scores.accessibility) * 0.25), 20);
+    if (impact > 0) {
+      factors.push({
+        name: "Accessibility barriers",
+        percentImpact: impact,
+        explanation: `Accessibility score of ${scores.accessibility}/100 means some visitors cannot fully use your site.`,
+      });
+      total += impact;
+    }
   }
 
   // Poor readability (content score < 60): 10%
@@ -230,7 +296,7 @@ export function calculateCostEstimateFallback(
     (i) => i.title.toLowerCase().includes("cta") || i.title.toLowerCase().includes("call to action")
   );
   if (ctaIssues.length > 0 || scores.content < 70) {
-    const impact = 7;
+    const impact = 8;
     factors.push({
       name: "Weak calls-to-action",
       percentImpact: impact,
@@ -239,18 +305,28 @@ export function calculateCostEstimateFallback(
     total += impact;
   }
 
-  // Slow load time (>3 seconds): 10%
+  // Slow load time (>3 seconds): 12% (Google/SOASTA: 53% of mobile visitors abandon at 3s)
   if (avgLoadTimeMs > 3000) {
     factors.push({
       name: "Slow page load",
-      percentImpact: 10,
+      percentImpact: 12,
       explanation: "Pages loading over 3 seconds cause many visitors to leave before seeing your content.",
     });
-    total += 10;
+    total += 12;
+  }
+
+  // Poor SEO: 12% (68% of online experiences start with search)
+  if (scores.seo < 50) {
+    factors.push({
+      name: "Poor search visibility",
+      percentImpact: 12,
+      explanation: "Low SEO score means fewer visitors find your site through search engines.",
+    });
+    total += 12;
   }
 
   return {
-    totalLostPercent: Math.min(total, 50),
+    totalLostPercent: Math.min(total, 45),
     factors,
   };
 }

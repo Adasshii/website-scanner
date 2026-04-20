@@ -24,7 +24,7 @@ interface LeadDetail {
     summary: { totalPages: number; totalIssues: number; criticalIssues: number; topIssues: Array<{ severity: string; title: string }> } | null;
     screenshots: Record<string, { url: string }> | null;
     cost_estimate: { totalLostPercent: number } | null;
-    quick_wins: Array<{ title: string; description: string; estimatedTime: string; expectedImpact: string }> | null;
+    quick_wins: Array<{ title: string; description: string; estimatedTime: string; needsDeveloper: boolean; expectedImpact: string }> | null;
     website_personality: string | null;
     sales_brief: string | null;
     created_at: string;
