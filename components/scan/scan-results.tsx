@@ -88,7 +88,7 @@ export function ScanResults({
     { title: "Structural change that compounds over time", estimatedTime: "Varies", needsDeveloper: true, description: "", expectedImpact: "" },
   ];
   const personalityText = websitePersonality ??
-    "Unlock your report to see how visitors perceive your site — we analyse tone, trust signals, clarity, and whether your first impression matches your audience's expectations.";
+    "Unlock your report to see how visitors perceive your site. We analyse tone, trust signals, clarity, and whether your first impression matches your audience's expectations.";
 
   const grade = scores.overall >= 80 ? "Good" : scores.overall >= 60 ? "Needs improvement" : "Poor";
   const gradeBadgeClass = scores.overall >= 80
