@@ -373,29 +373,31 @@ export function ScanResults({
             </div>
           )}
 
-          {/* Email gate + CTA — combined after the locked section */}
+          {/* Email gate — only on quick_done */}
           {isQuickDone && (
-            <div id="email-gate" className="space-y-4 mb-8">
+            <div id="email-gate" className="mb-6">
               <EmailGate
                 scanId={scanId}
                 onFullScanComplete={() => router.refresh()}
               />
-              <div className="bg-adashi-gulf text-white rounded-2xl p-6 sm:p-8 text-center">
-                <h2 className="font-display text-xl sm:text-2xl mb-2">Want help fixing these issues?</h2>
-                <p className="text-adashi-pastel mb-4">
-                  Book a free strategy call with Adashi and we&apos;ll walk you through the fixes.
-                </p>
-                <a
-                  href="https://adashi.io/contact"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-block bg-adashi-blue hover:bg-adashi-science text-white font-semibold px-6 py-3 rounded-xl transition-colors"
-                >
-                  Book a free call
-                </a>
-              </div>
             </div>
           )}
+
+          {/* CTA — always shown */}
+          <div className="bg-adashi-gulf text-white rounded-2xl p-6 sm:p-8 text-center mb-8">
+            <h2 className="font-display text-xl sm:text-2xl mb-2">Want help fixing these issues?</h2>
+            <p className="text-adashi-pastel mb-4">
+              Book a free strategy call with Adashi and we&apos;ll walk you through the fixes.
+            </p>
+            <a
+              href="https://adashi.io/contact"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-block bg-adashi-blue hover:bg-adashi-science text-white font-semibold px-6 py-3 rounded-xl transition-colors"
+            >
+              Book a free call
+            </a>
+          </div>
 
         </div>
       </div>
