@@ -20,6 +20,7 @@ interface ScanData {
   quick_wins: QuickWin[] | null;
   website_personality: string | null;
   screenshots: Record<string, ScreenshotInfo> | null;
+  homepage_screenshot_url: string | null;
 }
 
 export async function generateMetadata({
@@ -112,6 +113,7 @@ export default async function ReportPage({
           quickWins={scanData.quick_wins}
           websitePersonality={scanData.website_personality}
           screenshots={scanData.screenshots}
+          screenshotUrl={scanData.homepage_screenshot_url ?? null}
         />
       </main>
       <Footer />
