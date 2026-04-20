@@ -88,7 +88,7 @@ export function ScanResults({
     { title: "Structural change that compounds over time", estimatedTime: "Varies", needsDeveloper: true, description: "", expectedImpact: "" },
   ];
   const personalityText = websitePersonality ??
-    "Your site projects a clear personality, but whether it matches what your visitors expect is another question entirely. The tone, structure, and first impression all send signals before a visitor reads a single word...";
+    "Unlock your report to see how visitors perceive your site — we analyse tone, trust signals, clarity, and whether your first impression matches your audience's expectations.";
 
   const grade = scores.overall >= 80 ? "Good" : scores.overall >= 60 ? "Needs improvement" : "Poor";
   const gradeBadgeClass = scores.overall >= 80
@@ -180,8 +180,8 @@ export function ScanResults({
         {/* Main content column */}
         <div className="flex-1 min-w-0">
 
-          {/* Mobile score strip — visible only below lg */}
-          <div className="lg:hidden bg-white rounded-2xl shadow-card p-4 mb-6 flex items-center gap-4">
+          {/* Score + verdict strip — visible on all screen sizes */}
+          <div className="bg-white rounded-2xl shadow-card p-4 mb-6 flex items-start gap-4">
             <div className="flex-shrink-0 text-center">
               <div className={`font-display text-4xl font-bold leading-none ${scoreTextColor(scores.overall)}`}>
                 {scores.overall}
@@ -192,7 +192,16 @@ export function ScanResults({
               <span className={`inline-block text-xs font-semibold px-2 py-0.5 rounded-full mb-1 ${gradeBadgeClass}`}>
                 {grade}
               </span>
-              <p className="text-gray-600 text-sm truncate">{summary.verdict.slice(0, 80)}</p>
+              <p className="text-gray-600 text-sm leading-relaxed mb-1">{summary.verdict}</p>
+              <div className="flex flex-wrap gap-2 text-xs text-gray-500">
+                <span>{summary.totalIssues} issues found</span>
+                {summary.criticalIssues > 0 && (
+                  <span className="text-red-600 font-medium">{summary.criticalIssues} critical</span>
+                )}
+                {summary.majorIssues > 0 && (
+                  <span className="text-orange-600 font-medium">{summary.majorIssues} major</span>
+                )}
+              </div>
             </div>
           </div>
 
@@ -237,26 +246,12 @@ export function ScanResults({
             </div>
           )}
 
-          {/* Verdict card */}
-          <div className="bg-white rounded-2xl shadow-card p-6 sm:p-8 mb-6">
-            <p className="text-gray-600 leading-relaxed mb-3">{summary.verdict}</p>
-            <div className="flex flex-wrap gap-3 text-sm text-gray-500">
-              <span>{summary.totalIssues} issues found</span>
-              {summary.criticalIssues > 0 && (
-                <span className="text-red-600 font-medium">{summary.criticalIssues} critical</span>
-              )}
-              {summary.majorIssues > 0 && (
-                <span className="text-orange-600 font-medium">{summary.majorIssues} major</span>
-              )}
-            </div>
-          </div>
-
           {/* Revenue Impact */}
           {isQuickDone && costEstimate && (
             <div className="bg-white rounded-2xl shadow-card p-6 sm:p-8 mb-6">
               <p className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-4">Revenue impact</p>
               <div className="flex items-end gap-4 mb-2">
-                <span className="font-display text-6xl sm:text-7xl font-bold text-red-500 leading-none">
+                <span className="font-display text-3xl sm:text-4xl font-bold text-red-500 leading-none">
                   {costEstimate.totalLostPercent}%
                 </span>
                 <span className="text-gray-500 text-sm pb-2 leading-snug">
@@ -371,32 +366,36 @@ export function ScanResults({
             </div>
           )}
 
-          {/* Email gate + blurred section */}
+          {/* Blurred section — shown before the email gate so the lock is visible first */}
           {isQuickDone && (
-            <div id="email-gate" className="space-y-6 mb-8">
-              <EmailGate
-                scanId={scanId}
-                onFullScanComplete={() => router.refresh()}
-              />
+            <div className="mb-6">
               <BlurredSection issues={teaserIssues} />
             </div>
           )}
 
-          {/* Bottom CTA */}
-          <div className="bg-adashi-gulf text-white rounded-2xl p-6 sm:p-8 text-center">
-            <h2 className="font-display text-xl sm:text-2xl mb-2">Want help fixing these issues?</h2>
-            <p className="text-adashi-pastel mb-4">
-              Book a free strategy call with Adashi and we&apos;ll walk you through the fixes.
-            </p>
-            <a
-              href="https://adashi.io/contact"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-block bg-adashi-blue hover:bg-adashi-science text-white font-semibold px-6 py-3 rounded-xl transition-colors"
-            >
-              Book a free call
-            </a>
-          </div>
+          {/* Email gate + CTA — combined after the locked section */}
+          {isQuickDone && (
+            <div id="email-gate" className="space-y-4 mb-8">
+              <EmailGate
+                scanId={scanId}
+                onFullScanComplete={() => router.refresh()}
+              />
+              <div className="bg-adashi-gulf text-white rounded-2xl p-6 sm:p-8 text-center">
+                <h2 className="font-display text-xl sm:text-2xl mb-2">Want help fixing these issues?</h2>
+                <p className="text-adashi-pastel mb-4">
+                  Book a free strategy call with Adashi and we&apos;ll walk you through the fixes.
+                </p>
+                <a
+                  href="https://adashi.io/contact"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-block bg-adashi-blue hover:bg-adashi-science text-white font-semibold px-6 py-3 rounded-xl transition-colors"
+                >
+                  Book a free call
+                </a>
+              </div>
+            </div>
+          )}
 
         </div>
       </div>
