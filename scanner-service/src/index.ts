@@ -10,6 +10,9 @@ import { discoverPages } from "./discovery";
 import {
   generateComprehensiveAnalysis,
   generateFallbackVerdict,
+  generateFallbackVisitorExperience,
+  generateFallbackQuickWins,
+  generateFallbackWebsitePersonality,
   calculateCostEstimateFallback,
   enhanceIssueDescriptions,
   generateSalesBrief,
@@ -259,8 +262,9 @@ app.post("/api/scan/quick", async (req, res) => {
     summary.topIssues = issuesWithContext.slice(0, 10);
 
     const costEstimate = analysis?.costEstimate ?? calculateCostEstimateFallback(resultWithDesign.scores, summary, resultWithDesign.loadTimeMs);
-    const quickWins = analysis?.quickWins ?? null;
-    const websitePersonality = analysis?.websitePersonality ?? null;
+    const quickWins = analysis?.quickWins ?? generateFallbackQuickWins(resultWithDesign.issues);
+    const websitePersonality = analysis?.websitePersonality ?? generateFallbackWebsitePersonality(resultWithDesign.scores);
+    const visitorExperience = analysis?.visitorExperience ?? generateFallbackVisitorExperience(resultWithDesign.scores, summary);
 
     // Design analysis runs asynchronously — scanId required to update DB when done
     const designAnalysisPending = !hasScanError && !!scanId && !!(screenshotUrl || designScreenshotBuffer);
@@ -275,6 +279,7 @@ app.post("/api/scan/quick", async (req, res) => {
       costEstimate,
       quickWins,
       websitePersonality,
+      visitorExperience,
       designAnalysisPending,
     });
 
@@ -304,14 +309,14 @@ app.post("/api/scan/quick", async (req, res) => {
 // ── Full scan: discover + scan multiple pages ──────────────────────
 
 app.post("/api/scan/full", async (req, res) => {
-  const { url, maxPages = 10 } = req.body as Pick<ScanRequest, "url" | "maxPages">;
+  const { url, maxPages = 7 } = req.body as Pick<ScanRequest, "url" | "maxPages">;
 
   if (!url) {
     res.status(400).json({ error: "url is required" });
     return;
   }
 
-  const pageLimit = Math.min(maxPages ?? 10, 25); // Hard cap at 25
+  const pageLimit = Math.min(maxPages ?? 7, 7); // Hard cap at 7
 
   try {
     console.log(`[full-scan] Discovering pages: ${url} (max ${pageLimit})`);
@@ -347,7 +352,7 @@ app.post("/api/scan/full", async (req, res) => {
 // ── Async full scan: fire-and-forget, updates DB directly ─────────
 
 app.post("/api/scan/full-async", async (req, res) => {
-  const { url, scanId, maxPages = 10 } = req.body as {
+  const { url, scanId, maxPages = 7 } = req.body as {
     url: string;
     scanId: string;
     maxPages?: number;
@@ -362,7 +367,7 @@ app.post("/api/scan/full-async", async (req, res) => {
   res.json({ accepted: true, scanId });
 
   // Run full scan in background
-  const pageLimit = Math.min(maxPages, 25);
+  const pageLimit = Math.min(maxPages, 7);
   const supabase = getSupabase();
 
   // Register so shutdown/crash handlers can mark this scan failed
@@ -516,8 +521,9 @@ app.post("/api/scan/full-async", async (req, res) => {
     summary.topIssues = enhancedIssues.slice(0, 10);
 
     const costEstimate = analysis?.costEstimate ?? calculateCostEstimateFallback(scores, summary, avgLoadTime);
-    const quickWins = analysis?.quickWins ?? null;
-    const websitePersonality = analysis?.websitePersonality ?? null;
+    const quickWins = analysis?.quickWins ?? generateFallbackQuickWins(allIssues);
+    const websitePersonality = analysis?.websitePersonality ?? generateFallbackWebsitePersonality(scores);
+    const visitorExperience = analysis?.visitorExperience ?? generateFallbackVisitorExperience(scores, summary);
 
     // Map enhanced issues (with whyItMatters) back to their pages
     const issueMap = new Map<string, Issue>();
@@ -542,6 +548,7 @@ app.post("/api/scan/full-async", async (req, res) => {
         cost_estimate: costEstimate,
         quick_wins: quickWins,
         website_personality: websitePersonality,
+        visitor_experience: visitorExperience,
         sales_brief: salesBrief,
         design_ai_analysis: designAnalysis,
         design_ai_analyzed_at: designAnalysis ? new Date().toISOString() : null,

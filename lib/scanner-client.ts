@@ -9,6 +9,7 @@ export interface ScannerResponse {
   costEstimate?: CostEstimate | null;
   quickWins?: QuickWin[] | null;
   websitePersonality?: string | null;
+  visitorExperience?: string | null;
   /** True when design AI analysis is running in the background */
   designAnalysisPending?: boolean;
 }

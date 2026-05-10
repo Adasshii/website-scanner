@@ -1,0 +1,180 @@
+"use client";
+
+import { CostEstimateSection } from "@/components/report/cost-estimate";
+import { QuickWinsSection } from "@/components/report/quick-wins";
+import { WebsitePersonalitySection } from "@/components/report/website-personality";
+import type {
+  ScanScores,
+  ScanSummary,
+  CostEstimate,
+  QuickWin,
+} from "@/types/scanner";
+
+// ── Types ─────────────────────────────────────────────────────────────
+
+interface BusinessReportProps {
+  domain: string;
+  scores: ScanScores;
+  summary: ScanSummary;
+  screenshotUrl?: string | null;
+  costEstimate?: CostEstimate | null;
+  quickWins?: QuickWin[] | null;
+  websitePersonality?: string | null;
+  visitorExperience?: string | null;
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────
+
+function scoreTextColor(score: number): string {
+  if (score >= 80) return "text-green-600";
+  if (score >= 60) return "text-amber-600";
+  return "text-red-500";
+}
+
+function gradeBadgeClass(score: number): string {
+  if (score >= 80) return "bg-green-100 text-green-700";
+  if (score >= 60) return "bg-orange-100 text-orange-700";
+  return "bg-red-100 text-red-700";
+}
+
+function grade(score: number): string {
+  if (score >= 80) return "Good";
+  if (score >= 60) return "Needs improvement";
+  return "Poor";
+}
+
+// ── Visitor Experience Section ────────────────────────────────────────
+
+function VisitorExperienceSection({ text }: { text: string }) {
+  const paragraphs = text.split(/\n\n+/).filter(Boolean);
+
+  return (
+    <section data-section="visitor-experience" className="bg-white rounded-2xl shadow-card p-5 sm:p-6 mb-6">
+      <div className="flex items-center gap-2 mb-4">
+        <svg className="w-4 h-4 text-adashi-blue flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+          <path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+        </svg>
+        <h2 className="font-semibold text-adashi-gulf text-base">How visitors experience your site</h2>
+      </div>
+      <div className="space-y-4">
+        {paragraphs.map((p, i) => (
+          <p key={i} className="text-sm text-gray-600 leading-relaxed">{p}</p>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+// ── Main component ────────────────────────────────────────────────────
+
+export function BusinessReport({
+  domain,
+  scores,
+  summary,
+  screenshotUrl,
+  costEstimate,
+  quickWins,
+  websitePersonality,
+  visitorExperience,
+}: BusinessReportProps) {
+  const badgeClass = gradeBadgeClass(scores.overall);
+  const gradeLabel = grade(scores.overall);
+
+  return (
+    <div>
+      {/* Score + verdict strip */}
+      <div data-section="score-strip" className="bg-white rounded-2xl shadow-card p-4 mb-6 flex items-start gap-4">
+        <div className="flex-shrink-0 text-center">
+          <div className={`font-display text-4xl font-bold leading-none ${scoreTextColor(scores.overall)}`}>
+            {scores.overall}
+          </div>
+          <div className="text-gray-400 text-xs">/100</div>
+        </div>
+        <div className="flex-1 min-w-0">
+          <span className={`inline-block text-xs font-semibold px-2 py-0.5 rounded-full mb-1 ${badgeClass}`}>
+            {gradeLabel}
+          </span>
+          <p className="text-gray-600 text-sm leading-relaxed mb-1">{summary.verdict}</p>
+          <div className="flex flex-wrap gap-2 text-xs text-gray-500">
+            <span>{summary.totalIssues} issues found</span>
+            {summary.criticalIssues > 0 && (
+              <span className="text-red-600 font-medium">{summary.criticalIssues} need immediate attention</span>
+            )}
+            {summary.majorIssues > 0 && (
+              <span className="text-orange-600 font-medium">{summary.majorIssues} worth fixing soon</span>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Screenshot hero */}
+      {screenshotUrl && (
+        <section data-section="screenshot-hero" className="bg-white rounded-2xl shadow-card overflow-hidden mb-6">
+          <div className="relative">
+            <img
+              src={screenshotUrl}
+              alt={`Screenshot of ${domain}`}
+              className="w-full object-cover object-top"
+              style={{ maxHeight: "260px" }}
+            />
+            <div className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-white to-transparent" />
+          </div>
+          <div className="px-4 py-3 flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-green-500 flex-shrink-0" />
+            <a
+              href={`https://${domain}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-sm text-gray-500 hover:underline truncate"
+            >
+              {domain}
+            </a>
+          </div>
+        </section>
+      )}
+
+      {/* Visitor experience briefing */}
+      {visitorExperience && <VisitorExperienceSection text={visitorExperience} />}
+
+      {/* Cost estimate */}
+      {costEstimate && (
+        <section data-section="revenue-impact">
+          <CostEstimateSection costEstimate={costEstimate} />
+        </section>
+      )}
+
+      {/* Quick wins */}
+      {quickWins && quickWins.length > 0 && (
+        <section data-section="quick-wins">
+          <QuickWinsSection quickWins={quickWins} />
+        </section>
+      )}
+
+      {/* Website personality */}
+      {websitePersonality && (
+        <section data-section="website-personality">
+          <WebsitePersonalitySection personality={websitePersonality} />
+        </section>
+      )}
+
+      {/* CTA */}
+      <div data-section="cta" className="bg-adashi-gulf text-white rounded-2xl p-6 sm:p-8 text-center">
+        <h2 className="font-display text-xl sm:text-2xl mb-2">
+          Want help fixing these issues?
+        </h2>
+        <p className="text-adashi-pastel mb-4">
+          Book a free strategy call with Adashi and we&apos;ll walk you through the fixes.
+        </p>
+        <a
+          href="https://adashi.io/contact"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-block bg-adashi-blue hover:bg-adashi-science text-white font-semibold px-6 py-3 rounded-xl transition-colors"
+        >
+          Book a free call
+        </a>
+      </div>
+    </div>
+  );
+}

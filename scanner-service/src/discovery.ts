@@ -7,8 +7,9 @@ export interface DiscoveryOptions {
 }
 
 /**
- * Discover internal pages by crawling links from the start URL.
- * Returns a deduplicated list of page URLs to scan.
+ * Discover internal pages by loading the homepage and extracting its links.
+ * Returns a priority-sorted list capped at maxPages, favouring high-value
+ * pages (home, about, contact, services, pricing) over blog/tag pages.
  */
 export async function discoverPages(
   options: DiscoveryOptions
@@ -16,10 +17,7 @@ export async function discoverPages(
   const { startUrl, maxPages, timeoutMs = 15_000 } = options;
   const baseUrl = new URL(startUrl);
   const origin = baseUrl.origin;
-
-  const visited = new Set<string>();
-  const queue: string[] = [normalizeUrl(startUrl)];
-  const discovered: string[] = [];
+  const homepageNorm = normalizeUrl(startUrl);
 
   const browser = await getBrowser();
   const context = await browser.newContext({
@@ -29,57 +27,66 @@ export async function discoverPages(
     ignoreHTTPSErrors: true,
   });
 
+  const seen = new Set<string>([homepageNorm]);
+  const candidates: string[] = [];
+
   try {
-    while (queue.length > 0 && discovered.length < maxPages) {
-      const url = queue.shift()!;
-      const normalized = normalizeUrl(url);
+    const page = await context.newPage();
+    await page.goto(startUrl, {
+      waitUntil: "domcontentloaded",
+      timeout: timeoutMs,
+    });
 
-      if (visited.has(normalized)) continue;
-      visited.add(normalized);
-      discovered.push(url);
-
-      // Only crawl links from the pages we visit (BFS)
-      if (discovered.length < maxPages) {
-        try {
-          const page = await context.newPage();
-          await page.goto(url, {
-            waitUntil: "domcontentloaded",
-            timeout: timeoutMs,
-          });
-
-          const links = await page.evaluate((orig: string) => {
-            const anchors = Array.from(document.querySelectorAll("a[href]"));
-            return anchors
-              .map((a) => (a as HTMLAnchorElement).href)
-              .filter((href) => {
-                try {
-                  const u = new URL(href);
-                  return u.origin === orig && u.protocol.startsWith("http");
-                } catch {
-                  return false;
-                }
-              });
-          }, origin);
-
-          // Add new links to queue
-          for (const link of links) {
-            const norm = normalizeUrl(link);
-            if (!visited.has(norm) && !queue.includes(link)) {
-              queue.push(link);
-            }
+    const links = await page.evaluate((orig: string) => {
+      const anchors = Array.from(document.querySelectorAll("a[href]"));
+      return anchors
+        .map((a) => (a as HTMLAnchorElement).href)
+        .filter((href) => {
+          try {
+            const u = new URL(href);
+            return u.origin === orig && u.protocol.startsWith("http");
+          } catch {
+            return false;
           }
+        });
+    }, origin);
 
-          await page.close();
-        } catch {
-          // Skip pages that fail to load during discovery
-        }
+    await page.close();
+
+    for (const link of links) {
+      const norm = normalizeUrl(link);
+      if (!seen.has(norm)) {
+        seen.add(norm);
+        candidates.push(link);
       }
     }
+  } catch {
+    // Homepage failed to load — return just the start URL
+    return [startUrl];
   } finally {
     await context.close();
   }
 
-  return discovered;
+  // Sort candidates by business value, then take the top (maxPages - 1)
+  candidates.sort((a, b) => pagePriority(a) - pagePriority(b));
+
+  return [startUrl, ...candidates.slice(0, maxPages - 1)];
+}
+
+/**
+ * Lower score = higher priority. Homepage is always first (index 0).
+ * Includes common non-English slug variants for international clients.
+ */
+function pagePriority(url: string): number {
+  const path = new URL(url).pathname.toLowerCase().replace(/\/$/, "");
+  if (/\/(about|over-ons|uber-uns|acerca|a-propos)/.test(path)) return 1;
+  if (/\/(contact|kontakt|contacto|reach|get-in-touch)/.test(path)) return 2;
+  if (/\/(pricing|prices|plans|tarif|preise|packages)/.test(path)) return 3;
+  if (/\/(services|service|diensten|leistungen|solutions|what-we-do)/.test(path)) return 4;
+  if (/\/(team|staff|people|who-we-are|over-het-team)/.test(path)) return 5;
+  if (/\/(faq|help|support)/.test(path)) return 6;
+  if (/\/(work|portfolio|cases|projects|clients)/.test(path)) return 7;
+  return 99;
 }
 
 /**

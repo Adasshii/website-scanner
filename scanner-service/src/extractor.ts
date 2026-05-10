@@ -133,11 +133,37 @@ export async function extractPageData(
       if (name && content) twitterTags[name.replace("twitter:", "")] = content;
     });
 
-    // Structured data (JSON-LD or microdata)
-    const hasStructuredData = !!(
-      doc.querySelector('script[type="application/ld+json"]') ||
-      doc.querySelector("[itemscope]")
-    );
+    // Schema.org detection — JSON-LD
+    const schemaTypes: string[] = [];
+    let schemaInvalidCount = 0;
+    doc.querySelectorAll('script[type="application/ld+json"]').forEach((script) => {
+      try {
+        const parsed = JSON.parse(script.textContent || "");
+        const entries = Array.isArray(parsed["@graph"]) ? parsed["@graph"] : [parsed];
+        for (const entry of entries) {
+          if (entry["@type"]) {
+            const types: string[] = Array.isArray(entry["@type"]) ? entry["@type"] : [entry["@type"]];
+            types.forEach((t: string) => { if (t && !schemaTypes.includes(t)) schemaTypes.push(t); });
+          }
+        }
+      } catch {
+        schemaInvalidCount++;
+      }
+    });
+
+    // Microdata types (schema.org URLs only)
+    doc.querySelectorAll("[itemtype]").forEach((el) => {
+      const itemtype = el.getAttribute("itemtype") || "";
+      const match = itemtype.match(/schema\.org\/(.+)/);
+      if (match && match[1]) {
+        const t = match[1].replace(/\/$/, "");
+        if (!schemaTypes.includes(t)) schemaTypes.push(t);
+      }
+    });
+
+    const hasStructuredData = schemaTypes.length > 0 || schemaInvalidCount > 0 ||
+      !!doc.querySelector('script[type="application/ld+json"]') ||
+      !!doc.querySelector("[itemscope]");
 
     // Skip navigation link
     const hasSkipLink = Array.from(doc.querySelectorAll('a[href^="#"]')).some((a) => {
@@ -210,6 +236,8 @@ export async function extractPageData(
       hasViewport,
       hasFavicon,
       hasStructuredData,
+      schemaTypes,
+      schemaInvalidCount,
       hasSkipLink,
       vagueLinkCount,
       videosWithoutCaptions,

@@ -71,7 +71,7 @@ export async function POST(request: NextRequest) {
     const oneHourAgoCache = new Date(Date.now() - 60 * 60 * 1000).toISOString();
     const { data: cached } = await supabase
       .from("scans")
-      .select("id, url, domain, type, status, scores, pages, summary, started_at, completed_at, screenshots, cost_estimate, quick_wins, website_personality, homepage_screenshot_url")
+      .select("id, url, domain, type, status, scores, pages, summary, started_at, completed_at, screenshots, cost_estimate, quick_wins, website_personality, visitor_experience, homepage_screenshot_url")
       .eq("domain", domain)
       .in("status", ["quick_done", "completed"])
       .gte("created_at", oneHourAgoCache)
@@ -95,6 +95,7 @@ export async function POST(request: NextRequest) {
         costEstimate: cached.cost_estimate,
         quickWins: cached.quick_wins,
         websitePersonality: cached.website_personality,
+        visitorExperience: cached.visitor_experience ?? null,
         homepageScreenshotUrl: cached.homepage_screenshot_url ?? null,
         cached: true,
       });
@@ -123,6 +124,7 @@ export async function POST(request: NextRequest) {
       cost_estimate: null,
       quick_wins: null,
       website_personality: null,
+      visitor_experience: null,
       sales_brief: null,
       design_ai_analysis: null,
       design_ai_analyzed_at: null,
@@ -155,6 +157,7 @@ export async function POST(request: NextRequest) {
         cost_estimate: result.costEstimate || null,
         quick_wins: result.quickWins || null,
         website_personality: result.websitePersonality || null,
+        visitor_experience: result.visitorExperience || null,
         homepage_screenshot_url: homepageScreenshotUrl,
         completed_at: completedAt,
         updated_at: completedAt,

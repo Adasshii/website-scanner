@@ -100,6 +100,10 @@ export interface PageData {
   redirectChains: Array<{ href: string; hops: number; finalUrl: string }>;
   /** Core Web Vitals from Lighthouse — absent if Lighthouse failed */
   coreWebVitals?: CoreWebVitals;
+  /** Schema.org @type values detected via JSON-LD or microdata — absent on scans before schema detection */
+  schemaTypes?: string[];
+  /** Number of JSON-LD script blocks that failed to parse */
+  schemaInvalidCount?: number;
 }
 
 export interface CoreWebVitals {
@@ -269,6 +273,8 @@ export interface ScanRow {
   quick_wins: QuickWin[] | null;
   /** AI-generated website personality read */
   website_personality: string | null;
+  /** AI-generated visitor experience briefing for business owners */
+  visitor_experience: string | null;
   /** AI-generated sales brief for admin use */
   sales_brief: string | null;
   /** Cached Gemini Vision design analysis result */

@@ -47,7 +47,7 @@ export async function sendConfirmationEmail(params: {
 }): Promise<string | null> {
   const resend = getResend();
   if (!resend) {
-    console.warn("[email] RESEND_API_KEY not set — skipping confirmation email");
+    console.warn("[email] RESEND_API_KEY not set, skipping confirmation email");
     return null;
   }
 
@@ -65,7 +65,7 @@ export async function sendConfirmationEmail(params: {
   });
 
   if (error || !data?.id) {
-    console.error("[email] Failed to send confirmation email:", error);
+    console.error("[email] Failed to send confirmation email:", JSON.stringify(error));
     return null;
   }
 
@@ -93,7 +93,7 @@ export async function sendReportReadyEmail(params: {
 }): Promise<string | null> {
   const resend = getResend();
   if (!resend) {
-    console.warn("[email] RESEND_API_KEY not set — skipping report email");
+    console.warn("[email] RESEND_API_KEY not set, skipping report email");
     return null;
   }
 
@@ -119,7 +119,7 @@ export async function sendReportReadyEmail(params: {
   });
 
   if (error || !data?.id) {
-    console.error("[email] Failed to send report-ready email:", error);
+    console.error("[email] Failed to send report-ready email:", JSON.stringify(error));
     return null;
   }
 
@@ -144,7 +144,7 @@ export async function sendFollowUpEmail(params: {
 }): Promise<string | null> {
   const resend = getResend();
   if (!resend) {
-    console.warn("[email] RESEND_API_KEY not set — skipping follow-up email");
+    console.warn("[email] RESEND_API_KEY not set, skipping follow-up email");
     return null;
   }
 
@@ -154,7 +154,7 @@ export async function sendFollowUpEmail(params: {
   const { data, error } = await resend.emails.send({
     from: `Adashi Scanner <${FROM_EMAIL}>`,
     to,
-    subject: `Quick follow-up on your website report — ${domain}`,
+    subject: `Quick follow-up on your website report: ${domain}`,
     html: followUpTemplate({ domain, reportUrl, topQuickWin }),
   });
 
@@ -187,7 +187,7 @@ export async function sendAdminNotificationEmail(params: {
 }): Promise<string | null> {
   const resend = getResend();
   if (!resend) {
-    console.warn("[email] RESEND_API_KEY not set — skipping admin notification");
+    console.warn("[email] RESEND_API_KEY not set, skipping admin notification");
     return null;
   }
 
@@ -200,7 +200,7 @@ export async function sendAdminNotificationEmail(params: {
   const { data, error } = await resend.emails.send({
     from: `Adashi Scanner <${FROM_EMAIL}>`,
     to: adminEmail,
-    subject: `New lead: ${domain} — Score: ${overallScore}/100`,
+    subject: `New lead: ${domain}, Score: ${overallScore}/100`,
     html: adminNotificationTemplate({
       leadEmail,
       domain,
@@ -213,7 +213,7 @@ export async function sendAdminNotificationEmail(params: {
   });
 
   if (error || !data?.id) {
-    console.error("[email] Failed to send admin notification:", error);
+    console.error("[email] Failed to send admin notification:", JSON.stringify(error));
     return null;
   }
 
@@ -265,7 +265,7 @@ function confirmationTemplate(params: {
       </p>
 
       <p style="margin:0 0 24px;color:#64748b;text-align:center;line-height:1.6;">
-        You don't need to keep any page open — we'll send you another email as soon as your full report is ready.
+        You don't need to keep any page open. We'll send you another email as soon as your full report is ready.
       </p>
 
       <!-- CTA -->

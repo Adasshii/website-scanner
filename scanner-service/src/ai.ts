@@ -26,6 +26,7 @@ export interface ComprehensiveAnalysis {
   costEstimate: CostEstimate;
   quickWins: QuickWin[];
   websitePersonality: string;
+  visitorExperience: string;
 }
 
 export interface DesignAnalysis {
@@ -138,7 +139,7 @@ export async function generateComprehensiveAnalysis(
       : 0;
 
     const model = ai.getGenerativeModel({
-      model: "gemini-2.0-flash",
+      model: "gemini-2.5-flash",
       generationConfig: { responseMimeType: "application/json" },
     });
 
@@ -187,7 +188,9 @@ Provide your analysis as JSON with these exact fields:
     }
   ],
 
-  "websitePersonality": "3-4 sentences describing how the site comes across to a first-time visitor. Cover tone, warmth, professionalism, clarity. Write for a business owner."
+  "websitePersonality": "3-4 sentences describing how the site comes across to a first-time visitor. Cover tone, warmth, professionalism, clarity. Write for a business owner.",
+
+  "visitorExperience": "A structured briefing for a business owner covering the full state of their website. Write approximately 300-400 words across 5 paragraphs, separated by \\n\\n. No technical jargon — translate everything into business and visitor terms.\n\nParagraph 1 — First impression and speed: Describe how fast or slow the site loads from a visitor's perspective. Reference the load time and Core Web Vitals in plain terms (e.g. 'visitors wait around X seconds'). Compare to industry benchmarks. Mention layout stability and mobile experience if relevant.\n\nParagraph 2 — Search visibility: Explain how Google sees this site based on the SEO score and top SEO issues. Frame it as: how easy is it for new customers to find you through search? Be specific about what's working and what's limiting reach.\n\nParagraph 3 — Trust and credibility: Cover what a first-time visitor notices subconsciously — security signals, whether the site feels polished and professional, accessibility gaps that affect real users. Frame this as what builds or erodes trust.\n\nParagraph 4 — Business impact: Connect the above to real outcomes. What is this likely costing the business in lost traffic, early exits, missed conversions? Use specific percentages or numbers where the data supports it.\n\nParagraph 5 — Outlook: Give an honest, encouraging assessment of where the site stands overall and what becomes possible if the top issues are addressed."
 }
 
 Cost estimate benchmarks — grounded in industry research:
@@ -214,7 +217,8 @@ Return ONLY valid JSON, no other text.`
       !parsed.executiveSummary ||
       !parsed.costEstimate ||
       !parsed.quickWins ||
-      !parsed.websitePersonality
+      !parsed.websitePersonality ||
+      !parsed.visitorExperience
     ) {
       console.error("[ai] Comprehensive analysis returned incomplete data");
       return null;
@@ -255,6 +259,63 @@ function getWeakestCategory(scores: ScanScores): string {
   ];
   categories.sort((a, b) => a.score - b.score);
   return categories[0].name;
+}
+
+// ── Fallback visitor experience (template-based) ─────────────────────
+
+export function generateFallbackVisitorExperience(
+  scores: ScanScores,
+  summary: ScanSummary
+): string {
+  const paragraphs: string[] = [];
+
+  // First impression and speed
+  if (scores.performance >= 80) {
+    paragraphs.push("Visitors arriving at this site will find it loads quickly. Fast load times reduce early exits and create a positive first impression before anyone has read a single word.");
+  } else if (scores.performance >= 60) {
+    paragraphs.push("The site loads at an average pace. Some visitors — particularly those on mobile connections — may experience a noticeable wait before the page becomes usable. Improving load speed is one of the highest-return fixes available.");
+  } else {
+    paragraphs.push("Visitors are likely experiencing slow load times. Research consistently shows that slow pages drive away a significant share of visitors before they ever see your content. Speed improvements here would have a direct impact on how many people actually engage with the site.");
+  }
+
+  // Search visibility
+  if (scores.seo >= 80) {
+    paragraphs.push("From a search perspective, this site is in good shape. Google can read and understand the content clearly, which means new visitors are more likely to find it through organic search.");
+  } else if (scores.seo >= 50) {
+    paragraphs.push("Search visibility is moderate. Some key signals that Google uses to rank and index pages are missing or incomplete, which limits how many new visitors can discover the site through search.");
+  } else {
+    paragraphs.push("The site has significant gaps in its search visibility. Without the right technical signals in place, Google has difficulty understanding and ranking the content — meaning a large portion of potential visitors will simply never find it.");
+  }
+
+  // Trust and credibility
+  if (scores.accessibility >= 80 && (scores.security ?? 0) >= 80) {
+    paragraphs.push("The site presents as professional and trustworthy. Security is properly configured and accessibility is handled well, meaning visitors with disabilities can use the site without barriers.");
+  } else if (scores.accessibility < 60) {
+    paragraphs.push(`Accessibility is an area that needs attention. A score of ${scores.accessibility}/100 suggests that some visitors — including those using screen readers or relying on keyboard navigation — will encounter barriers that prevent them from fully using the site.`);
+  } else {
+    paragraphs.push("There are some trust and credibility gaps that observant visitors may notice. Addressing the security and accessibility issues flagged in this report would make the site feel more polished and professional.");
+  }
+
+  // Business impact
+  const weakestScore = Math.min(scores.accessibility, scores.seo, scores.performance, scores.content);
+  if (summary.criticalIssues > 0) {
+    paragraphs.push(`With ${summary.criticalIssues} critical issue${summary.criticalIssues !== 1 ? "s" : ""} and ${summary.majorIssues} major issue${summary.majorIssues !== 1 ? "s" : ""} identified, this site is likely losing a meaningful share of visitors and conversions. The issues aren't unusual for a site of this type, but they do represent real, measurable business cost.`);
+  } else if (weakestScore < 60) {
+    paragraphs.push("The weakest areas of this site are likely creating friction that costs visitors and conversions — even if visitors don't consciously notice the cause. Fixing these issues removes barriers that stand between the site and better results.");
+  } else {
+    paragraphs.push("Overall this site is performing reasonably well. The issues identified are not critical, but addressing them would improve the experience for a broader range of visitors and strengthen the site's standing with search engines.");
+  }
+
+  // Outlook
+  if (scores.overall >= 80) {
+    paragraphs.push("This site is in strong shape. A focused round of improvements targeting the remaining issues would push it into excellent territory and give it a clear edge over most comparable sites.");
+  } else if (scores.overall >= 60) {
+    paragraphs.push("This site has a solid foundation with clear room to grow. Addressing the quick wins first will deliver the fastest results, and a more thorough improvement pass would meaningfully elevate the overall experience.");
+  } else {
+    paragraphs.push("There is real work to do here, but the good news is that most of the issues are fixable. Prioritising the critical items first will have an immediate impact, and each improvement compounds into a noticeably better experience for visitors.");
+  }
+
+  return paragraphs.join("\n\n");
 }
 
 // ── Fallback cost estimate (deterministic) ───────────────────────────
@@ -356,7 +417,7 @@ export async function enhanceIssueDescriptions(
       .join("\n\n");
 
     const model = ai.getGenerativeModel({
-      model: "gemini-2.0-flash",
+      model: "gemini-2.5-flash",
       generationConfig: { responseMimeType: "application/json" },
     });
 
@@ -430,7 +491,7 @@ export async function generateSalesBrief(
       .map((i) => `- [${i.severity}] ${i.title}: ${i.description}`)
       .join("\n");
 
-    const model = ai.getGenerativeModel({ model: "gemini-2.0-flash" });
+    const model = ai.getGenerativeModel({ model: "gemini-2.5-flash" });
 
     const result = await model.generateContent(
       `You are a sales strategist preparing a brief for a web design agency owner before a potential client call. Based on the following website scan results, write a concise sales brief.
@@ -489,7 +550,7 @@ export async function generateWhyItMatters(
       .map((i, idx) => `${idx + 1}. id="${i.id}" title="${i.title}"`)
       .join("\n");
 
-    const model = ai.getGenerativeModel({ model: "gemini-2.0-flash" });
+    const model = ai.getGenerativeModel({ model: "gemini-2.5-flash" });
 
     const result = await model.generateContent(
       `You are writing plain-English business impact summaries for a website audit report shown to non-technical business owners.
@@ -516,6 +577,36 @@ Return only the JSON object, no other text.`
     console.error("[ai] Why it matters generation failed:", error);
     return {};
   }
+}
+
+// ── Fallback quick wins (derived from scan issues) ────────────────────
+
+export function generateFallbackQuickWins(issues: Issue[]): QuickWin[] {
+  const valid = issues.filter((i) => i.id !== "scan-error");
+  const easy = valid.filter((i) => i.difficulty === "easy");
+  const source = easy.length >= 3
+    ? easy
+    : [...valid].sort((a, b) => a.impact - b.impact);
+  return source.slice(0, 3).map((issue) => ({
+    title: issue.title,
+    description: issue.description,
+    estimatedTime: issue.difficulty === "easy" ? "~15 min" : issue.difficulty === "hard" ? "~half a day" : "~1 hour",
+    needsDeveloper: issue.difficulty === "hard",
+    expectedImpact: issue.whyItMatters ?? "Fixing this will improve your overall site score.",
+  }));
+}
+
+// ── Fallback website personality (template-based) ─────────────────────
+
+export function generateFallbackWebsitePersonality(scores: ScanScores): string {
+  const weakest = getWeakestCategory(scores);
+  if (scores.overall >= 80) {
+    return "The site comes across as professional and trustworthy, with a clear structure that makes it easy for visitors to find what they need. First-time visitors are likely to feel confident taking action.";
+  }
+  if (scores.overall >= 60) {
+    return `The site has a solid foundation but ${weakest} issues may cause some visitors to hesitate. Addressing the top issues flagged in this report would noticeably raise the impression it leaves.`;
+  }
+  return `The site's current state is likely creating friction for first-time visitors, particularly around ${weakest}. The quick wins below would make a meaningful difference to how the site is perceived.`;
 }
 
 // ── Design Analysis (Gemini Vision) ──────────────────────────────────
@@ -551,7 +642,7 @@ export async function generateDesignAnalysis(
     }
 
     const model = ai.getGenerativeModel({
-      model: "gemini-2.0-flash",
+      model: "gemini-2.5-flash",
       generationConfig: { responseMimeType: "application/json" },
     });
 

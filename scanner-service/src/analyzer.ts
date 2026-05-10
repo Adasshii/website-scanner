@@ -362,7 +362,63 @@ export function analyzeIssues(
     });
   }
 
-  if (!data.hasStructuredData) {
+  // Schema.org checks — granular when schemaTypes is available, boolean fallback for old data
+  if (data.schemaTypes !== undefined) {
+    const schemaTypes = data.schemaTypes;
+    const schemaInvalidCount = data.schemaInvalidCount ?? 0;
+
+    if (schemaInvalidCount > 0) {
+      issues.push({
+        id: "seo-schema-invalid-json",
+        category: "seo",
+        severity: "major",
+        title: "Invalid structured data (JSON-LD parse error)",
+        description: `${schemaInvalidCount} JSON-LD block(s) contain invalid JSON. Search engines will ignore this markup entirely.`,
+        recommendation: "Validate your JSON-LD using Google's Rich Results Test and fix any syntax errors.",
+        impact: 8,
+      });
+    }
+
+    if (schemaTypes.length === 0 && schemaInvalidCount === 0) {
+      issues.push({
+        id: "seo-schema-missing",
+        category: "seo",
+        severity: "minor",
+        title: "No structured data found",
+        description: "No JSON-LD or Schema.org markup detected. Structured data helps search engines understand your content and can unlock rich results in Google.",
+        recommendation: "Add JSON-LD structured data for your business type (LocalBusiness, Organization, etc.) using schema.org.",
+        impact: 4,
+      });
+    } else if (schemaTypes.length > 0) {
+      const orgTypes = ["Organization", "LocalBusiness", "Person", "Corporation", "NGO", "MedicalOrganization", "EducationalOrganization"];
+      const pageTypes = ["WebPage", "WebSite", "Article", "BlogPosting", "NewsArticle", "AboutPage", "ContactPage", "FAQPage", "ItemPage", "ProfilePage"];
+
+      if (!schemaTypes.some((t) => orgTypes.includes(t))) {
+        issues.push({
+          id: "seo-schema-no-org",
+          category: "seo",
+          severity: "minor",
+          title: "No Organization schema found",
+          description: `Structured data detected (${schemaTypes.slice(0, 3).join(", ")}) but no Organization or LocalBusiness type. Google uses this to understand who owns the site.`,
+          recommendation: "Add an Organization or LocalBusiness schema block with your name, URL, logo, and contact details.",
+          impact: 4,
+        });
+      }
+
+      if (!schemaTypes.some((t) => pageTypes.includes(t))) {
+        issues.push({
+          id: "seo-schema-no-webpage",
+          category: "seo",
+          severity: "info",
+          title: "No WebPage or WebSite schema found",
+          description: "No WebPage or WebSite schema type detected. This markup helps search engines understand your site structure.",
+          recommendation: "Add a WebSite schema with name and URL, and a WebPage schema for key landing pages.",
+          impact: 2,
+        });
+      }
+    }
+  } else if (!data.hasStructuredData) {
+    // Legacy fallback for scans before schema detection was added
     issues.push({
       id: "seo-no-structured-data",
       category: "seo",

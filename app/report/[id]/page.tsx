@@ -19,6 +19,7 @@ interface ScanData {
   cost_estimate: CostEstimate | null;
   quick_wins: QuickWin[] | null;
   website_personality: string | null;
+  visitor_experience: string | null;
   screenshots: Record<string, ScreenshotInfo> | null;
   homepage_screenshot_url: string | null;
 }
@@ -100,7 +101,6 @@ export default async function ReportPage({
       <Header />
       <main className="flex-1">
         <FullReport
-          scanId={scanData.id}
           domain={scanData.domain}
           url={scanData.url}
           scores={scanData.scores}
@@ -112,6 +112,7 @@ export default async function ReportPage({
           costEstimate={scanData.cost_estimate}
           quickWins={scanData.quick_wins}
           websitePersonality={scanData.website_personality}
+          visitorExperience={scanData.visitor_experience}
           screenshots={scanData.screenshots}
           screenshotUrl={scanData.homepage_screenshot_url ?? null}
         />

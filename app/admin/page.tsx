@@ -190,7 +190,7 @@ export default function AdminPage() {
             />
             <StatCard
               label="Avg score"
-              value={stats.averageScore ?? "—"}
+              value={stats.averageScore ?? "-"}
               sub={stats.averageScoreThisWeek ? `${stats.averageScoreThisWeek} this week` : undefined}
             />
           </div>
@@ -302,8 +302,30 @@ function TabButton({
 }
 
 function ScansTable({ rows, secret, onDelete }: { rows: ScanRow[]; secret: string; onDelete: () => void }) {
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkDeleting, setBulkDeleting] = useState(false);
+
   if (rows.length === 0) {
     return <div className="p-12 text-center text-gray-400">No scans yet.</div>;
+  }
+
+  const allSelected = rows.length > 0 && rows.every((r) => selectedIds.has(r.id));
+
+  function toggleAll() {
+    if (allSelected) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(rows.map((r) => r.id)));
+    }
+  }
+
+  function toggleOne(id: string) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
   }
 
   async function handleDelete(id: string, domain: string) {
@@ -317,90 +339,166 @@ function ScansTable({ rows, secret, onDelete }: { rows: ScanRow[]; secret: strin
     else alert("Failed to delete scan.");
   }
 
+  async function handleBulkDelete() {
+    const count = selectedIds.size;
+    if (!confirm(`Delete ${count} selected scan${count !== 1 ? "s" : ""}? This also removes associated leads and email events.`)) return;
+    setBulkDeleting(true);
+    try {
+      const ids = Array.from(selectedIds);
+      const results = await Promise.allSettled(
+        ids.map((id) =>
+          fetch("/api/admin/delete", {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "x-admin-secret": secret },
+            body: JSON.stringify({ type: "scan", id }),
+          }).then((res) => {
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            return id;
+          })
+        )
+      );
+      const failed: string[] = [];
+      let firstError = "";
+      results.forEach((r, i) => {
+        if (r.status === "rejected") {
+          failed.push(ids[i]);
+          if (!firstError) firstError = String(r.reason?.message ?? r.reason);
+        }
+      });
+      setSelectedIds(new Set(failed));
+      if (failed.length > 0) {
+        alert(`${failed.length} of ${ids.length} deletes failed. First error: ${firstError}`);
+      }
+      onDelete();
+    } finally {
+      setBulkDeleting(false);
+    }
+  }
+
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full text-sm">
-        <thead>
-          <tr className="border-b border-gray-100 text-left text-gray-400 text-xs uppercase tracking-wider">
-            <th className="px-4 py-3">Domain</th>
-            <th className="px-4 py-3">Score</th>
-            <th className="px-4 py-3">Status</th>
-            <th className="px-4 py-3">Type</th>
-            <th className="px-4 py-3">Email</th>
-            <th className="px-4 py-3">Date</th>
-            <th className="px-4 py-3">Report</th>
-            <th className="px-4 py-3"></th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((scan) => (
-            <tr
-              key={scan.id}
-              className="border-b border-gray-50 hover:bg-gray-50/50"
-            >
-              <td className="px-4 py-3">
-                <a
-                  href={`https://${scan.domain}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-adashi-blue hover:underline font-medium"
-                >
-                  {scan.domain}
-                </a>
-              </td>
-              <td className="px-4 py-3">
-                {scan.scores ? (
-                  <span
-                    className={`font-bold ${
-                      scan.scores.overall >= 80
-                        ? "text-green-600"
-                        : scan.scores.overall >= 50
-                        ? "text-yellow-600"
-                        : "text-red-600"
-                    }`}
-                  >
-                    {scan.scores.overall}
-                  </span>
-                ) : (
-                  <span className="text-gray-300">—</span>
-                )}
-              </td>
-              <td className="px-4 py-3">
-                <StatusBadge status={scan.status} />
-              </td>
-              <td className="px-4 py-3 text-gray-500">{scan.type}</td>
-              <td className="px-4 py-3 text-gray-500 truncate max-w-[180px]">
-                {scan.email || <span className="text-gray-300">—</span>}
-              </td>
-              <td className="px-4 py-3 text-gray-400 whitespace-nowrap">
-                {formatShortDate(scan.created_at)}
-              </td>
-              <td className="px-4 py-3">
-                {scan.status === "completed" || scan.status === "quick_done" ? (
+    <div>
+      {selectedIds.size > 0 && (
+        <div className="px-4 py-3 bg-red-50 border-b border-red-100 flex items-center gap-3">
+          <span className="text-sm text-red-700 font-medium">
+            {selectedIds.size} selected
+          </span>
+          <button
+            onClick={handleBulkDelete}
+            disabled={bulkDeleting}
+            className="text-sm bg-red-600 hover:bg-red-700 text-white px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50"
+          >
+            {bulkDeleting ? "Deleting..." : `Delete ${selectedIds.size} selected`}
+          </button>
+          <button
+            onClick={() => setSelectedIds(new Set())}
+            className="text-sm text-red-500 hover:text-red-700"
+          >
+            Clear
+          </button>
+        </div>
+      )}
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-gray-100 text-left text-gray-400 text-xs uppercase tracking-wider">
+              <th className="px-4 py-3 w-8">
+                <input
+                  type="checkbox"
+                  checked={allSelected}
+                  onChange={toggleAll}
+                  className="rounded"
+                />
+              </th>
+              <th className="px-4 py-3">Domain</th>
+              <th className="px-4 py-3">Score</th>
+              <th className="px-4 py-3">Status</th>
+              <th className="px-4 py-3">Type</th>
+              <th className="px-4 py-3">Email</th>
+              <th className="px-4 py-3">Date</th>
+              <th className="px-4 py-3">Report</th>
+              <th className="px-4 py-3"></th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((scan) => (
+              <tr
+                key={scan.id}
+                className={`border-b border-gray-50 hover:bg-gray-50/50 ${selectedIds.has(scan.id) ? "bg-red-50/40" : ""}`}
+              >
+                <td className="px-4 py-3">
+                  <input
+                    type="checkbox"
+                    checked={selectedIds.has(scan.id)}
+                    onChange={() => toggleOne(scan.id)}
+                    className="rounded"
+                  />
+                </td>
+                <td className="px-4 py-3">
                   <a
-                    href={`/report/${scan.id}`}
+                    href={`https://${scan.domain}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-adashi-blue hover:underline text-xs font-medium"
+                    className="text-adashi-blue hover:underline font-medium"
                   >
-                    View report
+                    {scan.domain}
                   </a>
-                ) : (
-                  <span className="text-gray-300 text-xs">—</span>
-                )}
-              </td>
-              <td className="px-4 py-3">
-                <button
-                  onClick={() => handleDelete(scan.id, scan.domain)}
-                  className="text-red-400 hover:text-red-600 transition-colors text-xs"
-                >
-                  Delete
-                </button>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+                </td>
+                <td className="px-4 py-3">
+                  {scan.scores ? (
+                    <span
+                      className={`font-bold ${
+                        scan.scores.overall >= 80
+                          ? "text-green-600"
+                          : scan.scores.overall >= 50
+                          ? "text-yellow-600"
+                          : "text-red-600"
+                      }`}
+                    >
+                      {scan.scores.overall}
+                    </span>
+                  ) : (
+                    <span className="text-gray-300">-</span>
+                  )}
+                </td>
+                <td className="px-4 py-3">
+                  <StatusBadge status={scan.status} />
+                </td>
+                <td className="px-4 py-3 text-gray-500">
+                  {scan.email ? "Full scan" : "Quick scan"}
+                </td>
+                <td className="px-4 py-3 text-gray-500 truncate max-w-[180px]">
+                  {scan.email || <span className="text-gray-300">-</span>}
+                </td>
+                <td className="px-4 py-3 text-gray-400 whitespace-nowrap">
+                  {formatShortDate(scan.created_at)}
+                </td>
+                <td className="px-4 py-3">
+                  {scan.status === "completed" || scan.status === "quick_done" ? (
+                    <a
+                      href={scan.status === "completed" ? `/report/${scan.id}` : `/scan/${scan.id}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-adashi-blue hover:underline text-xs font-medium"
+                    >
+                      View report
+                    </a>
+                  ) : (
+                    <span className="text-gray-300 text-xs">-</span>
+                  )}
+                </td>
+                <td className="px-4 py-3">
+                  <button
+                    onClick={() => handleDelete(scan.id, scan.domain)}
+                    className="text-red-400 hover:text-red-600 transition-colors text-xs"
+                  >
+                    Delete
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
@@ -416,8 +514,30 @@ function LeadsTable({
   router: ReturnType<typeof useRouter>;
   onDelete: () => void;
 }) {
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkDeleting, setBulkDeleting] = useState(false);
+
   if (rows.length === 0) {
     return <div className="p-12 text-center text-gray-400">No leads yet.</div>;
+  }
+
+  const allSelected = rows.length > 0 && rows.every((r) => selectedIds.has(r.id));
+
+  function toggleAll() {
+    if (allSelected) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(rows.map((r) => r.id)));
+    }
+  }
+
+  function toggleOne(id: string) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
   }
 
   async function handleDelete(e: React.MouseEvent, id: string, email: string) {
@@ -432,75 +552,149 @@ function LeadsTable({
     else alert("Failed to delete lead.");
   }
 
+  async function handleBulkDelete() {
+    const count = selectedIds.size;
+    if (!confirm(`Delete ${count} selected lead${count !== 1 ? "s" : ""}?`)) return;
+    setBulkDeleting(true);
+    try {
+      const ids = Array.from(selectedIds);
+      const results = await Promise.allSettled(
+        ids.map((id) =>
+          fetch("/api/admin/delete", {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "x-admin-secret": secret },
+            body: JSON.stringify({ type: "lead", id }),
+          }).then((res) => {
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            return id;
+          })
+        )
+      );
+      const failed: string[] = [];
+      let firstError = "";
+      results.forEach((r, i) => {
+        if (r.status === "rejected") {
+          failed.push(ids[i]);
+          if (!firstError) firstError = String(r.reason?.message ?? r.reason);
+        }
+      });
+      setSelectedIds(new Set(failed));
+      if (failed.length > 0) {
+        alert(`${failed.length} of ${ids.length} deletes failed. First error: ${firstError}`);
+      }
+      onDelete();
+    } finally {
+      setBulkDeleting(false);
+    }
+  }
+
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full text-sm">
-        <thead>
-          <tr className="border-b border-gray-100 text-left text-gray-400 text-xs uppercase tracking-wider">
-            <th className="px-4 py-3">Email</th>
-            <th className="px-4 py-3">Domain</th>
-            <th className="px-4 py-3">Score</th>
-            <th className="px-4 py-3">Email Status</th>
-            <th className="px-4 py-3">Date</th>
-            <th className="px-4 py-3"></th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((lead) => (
-            <tr
-              key={lead.id}
-              className="border-b border-gray-50 hover:bg-blue-50/50 cursor-pointer transition-colors"
-              onClick={() => router.push(`/admin/lead/${lead.id}?key=${secret}`)}
-            >
-              <td className="px-4 py-3 font-medium text-adashi-gulf">
-                {lead.email}
-              </td>
-              <td className="px-4 py-3">
-                <a
-                  href={`https://${lead.domain}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-adashi-blue hover:underline"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  {lead.domain}
-                </a>
-              </td>
-              <td className="px-4 py-3">
-                {lead.score !== null && lead.score !== undefined ? (
-                  <span
-                    className={`font-bold ${
-                      lead.score >= 80
-                        ? "text-green-600"
-                        : lead.score >= 50
-                        ? "text-yellow-600"
-                        : "text-red-600"
-                    }`}
-                  >
-                    {lead.score}
-                  </span>
-                ) : (
-                  <span className="text-gray-300">—</span>
-                )}
-              </td>
-              <td className="px-4 py-3">
-                <EmailStatusGroup emailStatuses={lead.emailStatuses} />
-              </td>
-              <td className="px-4 py-3 text-gray-400 whitespace-nowrap">
-                {formatShortDate(lead.created_at)}
-              </td>
-              <td className="px-4 py-3">
-                <button
-                  onClick={(e) => handleDelete(e, lead.id, lead.email)}
-                  className="text-red-400 hover:text-red-600 transition-colors text-xs"
-                >
-                  Delete
-                </button>
-              </td>
+    <div>
+      {selectedIds.size > 0 && (
+        <div className="px-4 py-3 bg-red-50 border-b border-red-100 flex items-center gap-3">
+          <span className="text-sm text-red-700 font-medium">
+            {selectedIds.size} selected
+          </span>
+          <button
+            onClick={handleBulkDelete}
+            disabled={bulkDeleting}
+            className="text-sm bg-red-600 hover:bg-red-700 text-white px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50"
+          >
+            {bulkDeleting ? "Deleting..." : `Delete ${selectedIds.size} selected`}
+          </button>
+          <button
+            onClick={() => setSelectedIds(new Set())}
+            className="text-sm text-red-500 hover:text-red-700"
+          >
+            Clear
+          </button>
+        </div>
+      )}
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-gray-100 text-left text-gray-400 text-xs uppercase tracking-wider">
+              <th className="px-4 py-3 w-8">
+                <input
+                  type="checkbox"
+                  checked={allSelected}
+                  onChange={toggleAll}
+                  className="rounded"
+                />
+              </th>
+              <th className="px-4 py-3">Email</th>
+              <th className="px-4 py-3">Domain</th>
+              <th className="px-4 py-3">Score</th>
+              <th className="px-4 py-3">Email Status</th>
+              <th className="px-4 py-3">Date</th>
+              <th className="px-4 py-3"></th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {rows.map((lead) => (
+              <tr
+                key={lead.id}
+                className={`border-b border-gray-50 hover:bg-blue-50/50 cursor-pointer transition-colors ${selectedIds.has(lead.id) ? "bg-red-50/40" : ""}`}
+                onClick={() => router.push(`/admin/lead/${lead.id}?key=${secret}`)}
+              >
+                <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                  <input
+                    type="checkbox"
+                    checked={selectedIds.has(lead.id)}
+                    onChange={() => toggleOne(lead.id)}
+                    className="rounded"
+                  />
+                </td>
+                <td className="px-4 py-3 font-medium text-adashi-gulf">
+                  {lead.email}
+                </td>
+                <td className="px-4 py-3">
+                  <a
+                    href={`https://${lead.domain}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-adashi-blue hover:underline"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    {lead.domain}
+                  </a>
+                </td>
+                <td className="px-4 py-3">
+                  {lead.score !== null && lead.score !== undefined ? (
+                    <span
+                      className={`font-bold ${
+                        lead.score >= 80
+                          ? "text-green-600"
+                          : lead.score >= 50
+                          ? "text-yellow-600"
+                          : "text-red-600"
+                      }`}
+                    >
+                      {lead.score}
+                    </span>
+                  ) : (
+                    <span className="text-gray-300">-</span>
+                  )}
+                </td>
+                <td className="px-4 py-3">
+                  <EmailStatusGroup emailStatuses={lead.emailStatuses} />
+                </td>
+                <td className="px-4 py-3 text-gray-400 whitespace-nowrap">
+                  {formatShortDate(lead.created_at)}
+                </td>
+                <td className="px-4 py-3">
+                  <button
+                    onClick={(e) => handleDelete(e, lead.id, lead.email)}
+                    className="text-red-400 hover:text-red-600 transition-colors text-xs"
+                  >
+                    Delete
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }

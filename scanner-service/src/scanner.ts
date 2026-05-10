@@ -110,6 +110,72 @@ async function checkInternalLinks(
   return { brokenLinks, redirectChains };
 }
 
+/**
+ * Attempt to dismiss cookie/consent banners before taking a screenshot.
+ * Tries common accept button selectors first; falls back to CSS hiding.
+ */
+async function dismissCookieBanner(page: Page): Promise<void> {
+  const acceptSelectors = [
+    // OneTrust
+    "#onetrust-accept-btn-handler",
+    ".onetrust-accept-btn-handler",
+    // Cookiebot
+    "#CybotCookiebotDialogBodyButtonAccept",
+    "#CybotCookiebotDialogBodyLevelButtonLevelOptinAllowAll",
+    // Complianz (common on Dutch WordPress sites)
+    ".cmplz-btn.cmplz-accept",
+    ".cmplz-accept",
+    // Cookie Notice / Cookie Law Info
+    ".cn-accept-cookie",
+    "#cookie-law-info-bar .cookie_action_close_header",
+    // Generic patterns
+    "[data-accept-cookies]",
+    "[data-cookie-consent-accept]",
+    "button[class*='accept-all']",
+    "button[class*='acceptAll']",
+    "button[class*='accept_all']",
+    // Text-based (Dutch + English)
+    "button:has-text('Accepteer alles')",
+    "button:has-text('Alles accepteren')",
+    "button:has-text('Akkoord')",
+    "button:has-text('Accept all')",
+    "button:has-text('Accept All')",
+    "button:has-text('Allow all')",
+    "button:has-text('I accept')",
+    "button:has-text('Agree')",
+  ];
+
+  for (const selector of acceptSelectors) {
+    try {
+      const el = await page.$(selector);
+      if (el) {
+        await el.click();
+        await page.waitForTimeout(600);
+        return;
+      }
+    } catch { /* try next */ }
+  }
+
+  // Fallback: hide common consent overlay containers via CSS injection
+  try {
+    await page.addStyleTag({
+      content: `
+        #onetrust-banner-sdk, .onetrust-pc-dark-filter,
+        #CybotCookiebotDialog, #CybotCookiebotDialogBodyUnderlay,
+        .cmplz-cookiebanner, .cmplz-overlay,
+        .cc-window, .cc-overlay,
+        [id*="cookie-banner"], [class*="cookie-banner"],
+        [id*="cookiebanner"], [class*="cookiebanner"],
+        [id*="consent-banner"], [class*="consent-banner"],
+        [id*="cookie-notice"], [class*="cookie-notice"],
+        [id*="gdpr-banner"], [class*="gdpr-banner"]
+        { display: none !important; }
+        body { overflow: auto !important; }
+      `,
+    });
+  } catch { /* ignore */ }
+}
+
 /** Get or launch a shared browser instance */
 export async function getBrowser(): Promise<Browser> {
   if (!browser || !browser.isConnected()) {
@@ -228,7 +294,8 @@ export async function scanPage(
     const issues = analyzeIssues(axeResults, data);
     console.log(`  [scanner] Found ${issues.length} issues`);
 
-    // Step 5: Capture screenshots
+    // Step 5: Dismiss cookie banners, then capture screenshots
+    await dismissCookieBanner(page);
     let screenshotBuffer: Buffer | null = null;
     let designScreenshotBuffer: Buffer | null = null;
     let overlays: IssueOverlay[] = [];
