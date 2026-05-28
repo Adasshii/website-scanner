@@ -57,6 +57,8 @@ export default function AdminPage() {
   const [totalPages, setTotalPages] = useState(1);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [keepaliveLoading, setKeepaliveLoading] = useState(false);
+  const [keepaliveStatus, setKeepaliveStatus] = useState<"idle" | "ok" | "error">("idle");
 
   // Restore secret from sessionStorage
   useEffect(() => {
@@ -120,6 +122,22 @@ export default function AdminPage() {
     setPage(1);
   }
 
+  async function handleKeepalive() {
+    setKeepaliveLoading(true);
+    setKeepaliveStatus("idle");
+    try {
+      const res = await fetch("/api/admin/trigger-keepalive", {
+        method: "POST",
+        headers: { "x-admin-secret": secret },
+      });
+      setKeepaliveStatus(res.ok ? "ok" : "error");
+    } catch {
+      setKeepaliveStatus("error");
+    } finally {
+      setKeepaliveLoading(false);
+    }
+  }
+
   if (!authenticated) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
@@ -158,16 +176,33 @@ export default function AdminPage() {
       {/* Header */}
       <div className="bg-adashi-gulf text-white px-6 py-4 flex items-center justify-between">
         <h1 className="font-display text-xl">Adashi Admin</h1>
-        <button
-          onClick={() => {
-            setAuthenticated(false);
-            setSecret("");
-            sessionStorage.removeItem("admin_secret");
-          }}
-          className="text-sm text-adashi-pastel hover:text-white transition-colors"
-        >
-          Sign out
-        </button>
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleKeepalive}
+              disabled={keepaliveLoading}
+              className="text-sm text-adashi-pastel hover:text-white transition-colors disabled:opacity-50"
+            >
+              {keepaliveLoading ? "Pinging..." : "Ping DB"}
+            </button>
+            {keepaliveStatus === "ok" && (
+              <span className="text-xs text-green-400">DB OK</span>
+            )}
+            {keepaliveStatus === "error" && (
+              <span className="text-xs text-red-400">Failed</span>
+            )}
+          </div>
+          <button
+            onClick={() => {
+              setAuthenticated(false);
+              setSecret("");
+              sessionStorage.removeItem("admin_secret");
+            }}
+            className="text-sm text-adashi-pastel hover:text-white transition-colors"
+          >
+            Sign out
+          </button>
+        </div>
       </div>
 
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8">
