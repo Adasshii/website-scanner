@@ -37,7 +37,20 @@ export default async function ScanPage({
     .eq("id", id)
     .single();
 
-  if (error || !scan) {
+  if (error) {
+    console.error(`Scan page: DB error for id=${id}:`, error.message, error.code);
+    return (
+      <div className="min-h-screen flex flex-col">
+        <Header />
+        <main className="flex-1 flex items-center justify-center">
+          <p className="text-gray-500">Could not load scan report (DB error: {error.code}).</p>
+        </main>
+        <Footer />
+      </div>
+    );
+  }
+
+  if (!scan) {
     notFound();
   }
 

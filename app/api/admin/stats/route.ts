@@ -9,7 +9,17 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const supabase = createServerClient();
+  let supabase: ReturnType<typeof createServerClient>;
+  try {
+    supabase = createServerClient();
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    console.error("Admin stats: failed to create Supabase client:", msg);
+    return NextResponse.json({ error: "Database client error", detail: msg }, { status: 500 });
+  }
+
+  try {
+
   const url = new URL(request.url);
   const page = parseInt(url.searchParams.get("page") || "1", 10);
   const tab = url.searchParams.get("tab") || "scans";
@@ -142,4 +152,10 @@ export async function GET(request: NextRequest) {
     page,
     totalPages: Math.ceil(totalRows / limit),
   });
+
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    console.error("Admin stats error:", msg);
+    return NextResponse.json({ error: "Failed to fetch stats", detail: msg }, { status: 500 });
+  }
 }

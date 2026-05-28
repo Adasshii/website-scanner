@@ -82,7 +82,8 @@ export default function AdminPage() {
             setAuthenticated(false);
             setError("Invalid admin secret.");
           } else {
-            setError("Failed to fetch data.");
+            const body = await res.json().catch(() => ({}));
+            setError(`Failed to fetch data${body.detail ? `: ${body.detail}` : ""}.`);
           }
           setLoading(false);
           return;
