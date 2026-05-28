@@ -219,6 +219,7 @@ export async function scanPage(
   options: ScanPageOptions
 ): Promise<ScanPageResultWithScreenshot> {
   const { url, timeoutMs = 30_000 } = options;
+  let effectiveUrl = url;
   const b = await getBrowser();
   const context = await b.newContext({
     userAgent:
@@ -245,6 +246,36 @@ export async function scanPage(
     // Wait briefly for JS to settle, but don't wait for all network requests
     await page.waitForTimeout(2000);
 
+    // Detect cross-domain redirect; auto-retry with www. if bare domain was submitted
+    const finalUrl = page.url();
+    const inputHost = new URL(effectiveUrl).hostname.replace(/^www\./, "");
+    const finalHost = new URL(finalUrl).hostname.replace(/^www\./, "");
+    if (finalHost !== inputHost) {
+      const inputHostname = new URL(effectiveUrl).hostname;
+      if (!inputHostname.startsWith("www.")) {
+        const wwwUrl = effectiveUrl.replace(/^(https?:\/\/)/, "$1www.");
+        console.log(`  [scanner] Cross-domain redirect detected, retrying with www: ${wwwUrl}`);
+        const wwwResponse = await page.goto(wwwUrl, { waitUntil: "domcontentloaded", timeout: timeoutMs });
+        statusCode = wwwResponse?.status() ?? 0;
+        await page.waitForTimeout(2000);
+        const wwwFinalHost = new URL(page.url()).hostname.replace(/^www\./, "");
+        if (wwwFinalHost !== inputHost) {
+          throw new Error(
+            `This domain (including www.${inputHost}) redirects to a different website. ` +
+            `The site may not be live yet or may be pointing to a hosting provider page. ` +
+            `Check your DNS settings and try again.`
+          );
+        }
+        effectiveUrl = wwwUrl;
+      } else {
+        throw new Error(
+          `This domain redirected to ${new URL(finalUrl).hostname}. ` +
+          `The site may not be live yet or may be pointing to a hosting provider page. ` +
+          `Check your DNS settings and try again.`
+        );
+      }
+    }
+
     const loadTimeMs = Date.now() - startTime;
 
     // Step 2: Run axe-core accessibility audit (30s cap — can stall on complex pages)
@@ -266,13 +297,13 @@ export async function scanPage(
 
     // Step 3: Extract page data
     console.log(`  [scanner] Extracting page data...`);
-    const data = await extractPageData(page, url);
+    const data = await extractPageData(page, effectiveUrl);
     data.responseHeaders = responseHeaders;
     console.log(`  [scanner] Extracted: ${data.wordCount} words, ${data.images.length} images, ${data.links.length} links`);
 
     // Step 4a: External URL checks (Phase 3)
     console.log(`  [scanner] Checking robots.txt, sitemap, and internal links...`);
-    const pageOrigin = new URL(url).origin;
+    const pageOrigin = new URL(effectiveUrl).origin;
     const [siteFiles, linkCheck] = await Promise.all([
       checkSiteFiles(url),
       checkInternalLinks(data.links, pageOrigin),
@@ -286,7 +317,7 @@ export async function scanPage(
     // Step 4c: Core Web Vitals via Lighthouse (Phase 4) — sequential to avoid two Chrome instances at once
     // Timeout enforced inside runLighthouse so Chrome is always killed even on timeout
     console.log(`  [scanner] Running Lighthouse CWV audit...`);
-    const cwv = await runLighthouse(url);
+    const cwv = await runLighthouse(effectiveUrl);
     data.coreWebVitals = cwv ?? undefined;
     console.log(`  [scanner] Lighthouse done: LCP=${cwv?.lcp ?? "n/a"}ms, CLS=${cwv?.cls ?? "n/a"}, TBT=${cwv?.tbt ?? "n/a"}ms`);
 
@@ -316,7 +347,7 @@ export async function scanPage(
 
     return {
       result: {
-        url,
+        url: effectiveUrl,
         statusCode,
         loadTimeMs,
         data,
