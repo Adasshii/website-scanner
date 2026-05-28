@@ -47,7 +47,6 @@ export function ScanResults({
   designAnalysisPending,
   costEstimate,
   quickWins,
-  websitePersonality,
   visitorExperience,
   screenshotUrl,
 }: ScanResultsProps) {
@@ -87,8 +86,7 @@ export function ScanResults({
   const quickWinCount = quickWins?.length ?? 3;
   const firstQuickWin = quickWins?.[0] ?? null;
   const firstEasyIssue = sortedIssues.find((i) => i.difficulty === "easy" && i.severity !== "critical");
-  const personalityText = websitePersonality ??
-    "Unlock your report to see how visitors perceive your site.";
+
 
   const grade = scores.overall >= 80 ? "Good" : scores.overall >= 60 ? "Needs improvement" : "Poor";
   const gradeBadgeClass = scores.overall >= 80
