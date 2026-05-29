@@ -315,16 +315,14 @@ export function ScanResults({
               {showTeaser && costEstimate && (
                 <section data-section="revenue-impact" className="bg-white rounded-2xl shadow-card p-6 sm:p-8 mb-6">
                   <p className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-4">Revenue impact</p>
-                  <div className="flex items-end gap-4 mb-2">
-                    <span className="font-display text-3xl sm:text-4xl font-bold text-red-500 leading-none">
-                      {costEstimate.totalLostPercent}%
-                    </span>
-                    <span className="text-gray-500 text-sm pb-2 leading-snug">
-                      of potential<br />customers lost
-                    </span>
-                  </div>
-                  <p className="text-sm text-gray-400 mb-6">
-                    Estimated based on your performance, SEO, and accessibility scores.
+                  <p className="text-sm text-gray-700 leading-relaxed mb-4">
+                    Google research shows{" "}
+                    <span className="font-semibold text-gray-900">53% of mobile users abandon pages that take longer than 3 seconds to load</span>,
+                    and each additional second reduces conversions by up to 7% (Akamai).
+                    The issues below reflect what we found in your scan.
+                  </p>
+                  <p className="text-xs text-gray-400 mb-6">
+                    Impact estimates are based on the specific issues found in your scan, informed by Google and Akamai research.
                   </p>
                   {/* First factor: fully visible */}
                   {costEstimate.factors.length > 0 && (

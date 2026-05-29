@@ -64,5 +64,7 @@ export function scorePage(
 }
 
 function clamp(value: number): number {
-  return Math.max(0, Math.min(100, Math.round(value)));
+  // Floor at 5 so no real site ever shows a literal 0 — a zero reads as a
+  // system error rather than a meaningful score and undermines credibility.
+  return Math.max(5, Math.min(100, Math.round(value)));
 }
