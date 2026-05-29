@@ -88,15 +88,25 @@ export function ScanResults({
   const firstEasyIssue = sortedIssues.find((i) => i.difficulty === "easy" && i.severity !== "critical");
 
 
-  const grade = scores.overall >= 80 ? "Good" : scores.overall >= 60 ? "Needs improvement" : "Poor";
-  const gradeBadgeClass = scores.overall >= 80
+  const grade = scores.overall >= 95
+    ? "Excellent"
+    : scores.overall >= 85
+      ? "Performing well"
+      : scores.overall >= 70
+        ? "Solid foundation"
+        : scores.overall >= 50
+          ? "Room to grow"
+          : "Needs significant work";
+  const gradeBadgeClass = scores.overall >= 85
     ? "bg-green-100 text-green-700"
-    : scores.overall >= 60
-      ? "bg-orange-100 text-orange-700"
-      : "bg-red-100 text-red-700";
+    : scores.overall >= 70
+      ? "bg-blue-100 text-blue-700"
+      : scores.overall >= 50
+        ? "bg-orange-100 text-orange-700"
+        : "bg-red-100 text-red-700";
 
   const categories = [
-    { label: "Usability", score: scores.accessibility },
+    { label: "Accessibility", score: scores.accessibility },
     { label: "Content", score: scores.content },
     { label: "SEO", score: scores.seo },
     { label: "Performance", score: scores.performance },
@@ -225,6 +235,11 @@ export function ScanResults({
             </div>
           </div>
 
+          {/* Adashi context */}
+          <p className="text-xs text-gray-400 leading-relaxed mb-6">
+            Adashi builds performance and automation systems for growing businesses. This audit identifies the issues that cost you visitors, conversions, and credibility — and shows what&apos;s worth fixing first.
+          </p>
+
           {/* Scan failure notice */}
           {scanFailed && (
             <div className="bg-orange-50 border border-orange-200 rounded-2xl p-5 mb-8 flex gap-3">
@@ -309,7 +324,7 @@ export function ScanResults({
                     </span>
                   </div>
                   <p className="text-sm text-gray-400 mb-6">
-                    Estimated based on your performance, SEO, and usability scores.
+                    Estimated based on your performance, SEO, and accessibility scores.
                   </p>
                   {/* First factor: fully visible */}
                   {costEstimate.factors.length > 0 && (
@@ -455,7 +470,7 @@ export function ScanResults({
           <div data-section="cta" className="bg-adashi-gulf text-white rounded-2xl p-6 sm:p-8 text-center mb-8">
             <h2 className="font-display text-xl sm:text-2xl mb-2">Want help fixing these issues?</h2>
             <p className="text-adashi-pastel mb-4">
-              Book a free strategy call with Adashi and we&apos;ll walk you through the fixes.
+              Book a free 15-minute walkthrough with Adashi and we&apos;ll show you exactly what to fix first.
             </p>
             <a
               href="https://adashi.io/contact"
@@ -463,7 +478,7 @@ export function ScanResults({
               rel="noopener noreferrer"
               className="inline-block bg-adashi-blue hover:bg-adashi-science text-white font-semibold px-6 py-3 rounded-xl transition-colors"
             >
-              Book a free call
+              Get a free 15-min walkthrough
             </a>
           </div>
 

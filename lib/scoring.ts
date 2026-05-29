@@ -54,14 +54,16 @@ export function buildSummary(pages: PageResult[]): ScanSummary {
   const scores = aggregateScores(pages);
   let verdict: string;
 
-  if (scores.overall >= 90) {
-    verdict = "Great job! Your website is well-built and performs strongly across all categories.";
+  if (scores.overall >= 95) {
+    verdict = "Excellent work — your website performs strongly across all categories.";
+  } else if (scores.overall >= 85) {
+    verdict = "Your website is performing well. A few targeted fixes could push it further.";
   } else if (scores.overall >= 70) {
-    verdict = `Your website is in decent shape, but there's room to improve. Focus on the top issues below.`;
+    verdict = "You have a solid foundation. The issues below are worth addressing to improve conversions and reach.";
   } else if (scores.overall >= 50) {
-    verdict = `Your website has several areas for improvement. Addressing the ${criticalIssues > 0 ? "critical" : "major"} issues would make a real difference.`;
+    verdict = `There's clear room to grow. Addressing the ${criticalIssues > 0 ? "critical" : "major"} issues would make a real difference to visitors and search rankings.`;
   } else {
-    verdict = "Your website has significant issues that are likely costing you visitors and search rankings. The good news: most fixes are straightforward.";
+    verdict = "Your website has significant issues that are likely costing you visitors and credibility. The good news: most fixes are straightforward.";
   }
 
   return {

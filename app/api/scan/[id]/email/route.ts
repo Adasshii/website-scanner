@@ -11,7 +11,7 @@ export async function POST(
   try {
     const { id } = await params;
     const body = await request.json();
-    const { email, consent } = body;
+    const { email, consent, company_size } = body;
 
     if (!email || typeof email !== "string") {
       return NextResponse.json({ error: "Email is required." }, { status: 400 });
@@ -69,6 +69,7 @@ export async function POST(
       domain: scan.domain,
       gdpr_consent: true,
       consent_timestamp: new Date().toISOString(),
+      ...(company_size ? { company_size } : {}),
     });
 
     if (leadError) {

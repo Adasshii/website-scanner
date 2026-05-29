@@ -16,16 +16,16 @@ const dmSerif = DM_Serif_Display({
 });
 
 export const metadata: Metadata = {
-  title: "Free Website Scanner — Adashi",
+  title: "Website Performance & Conversion Audit — Adashi",
   description:
-    "Scan your website for accessibility issues, SEO problems, and content quality. Get a free, detailed report with actionable recommendations.",
+    "Get a free audit of your website's performance, accessibility, SEO, and conversion potential. Detailed report with actionable recommendations.",
   metadataBase: new URL("https://scan.adashi.io"),
   openGraph: {
-    title: "Free Website Scanner — Adashi",
+    title: "Website Performance & Conversion Audit — Adashi",
     description:
-      "Scan your website for accessibility issues, SEO problems, and content quality.",
+      "Get a free audit of your website's performance, accessibility, SEO, and conversion potential.",
     url: "https://scan.adashi.io",
-    siteName: "Adashi Website Scanner",
+    siteName: "Adashi Website Performance & Conversion Audit",
     type: "website",
   },
 };

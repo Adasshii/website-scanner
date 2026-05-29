@@ -32,15 +32,18 @@ function scoreTextColor(score: number): string {
 }
 
 function gradeBadgeClass(score: number): string {
-  if (score >= 80) return "bg-green-100 text-green-700";
-  if (score >= 60) return "bg-orange-100 text-orange-700";
+  if (score >= 85) return "bg-green-100 text-green-700";
+  if (score >= 70) return "bg-blue-100 text-blue-700";
+  if (score >= 50) return "bg-orange-100 text-orange-700";
   return "bg-red-100 text-red-700";
 }
 
 function grade(score: number): string {
-  if (score >= 80) return "Good";
-  if (score >= 60) return "Needs improvement";
-  return "Poor";
+  if (score >= 95) return "Excellent";
+  if (score >= 85) return "Performing well";
+  if (score >= 70) return "Solid foundation";
+  if (score >= 50) return "Room to grow";
+  return "Needs significant work";
 }
 
 // ── Visitor Experience Section ────────────────────────────────────────
@@ -108,6 +111,11 @@ export function BusinessReport({
         </div>
       </div>
 
+      {/* Adashi context */}
+      <p className="text-xs text-gray-400 leading-relaxed mb-4">
+        Adashi builds performance and automation systems for growing businesses. This audit identifies the issues that cost you visitors, conversions, and credibility — and shows what&apos;s worth fixing first.
+      </p>
+
       {/* Screenshot hero */}
       {screenshotUrl && (
         <section data-section="screenshot-hero" className="bg-white rounded-2xl shadow-card overflow-hidden mb-6">
@@ -158,13 +166,23 @@ export function BusinessReport({
         </section>
       )}
 
+      {/* Social proof */}
+      <div data-section="social-proof" className="flex items-center justify-center gap-2 py-3 mb-4 text-center">
+        <svg className="w-4 h-4 text-adashi-blue flex-shrink-0" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+        </svg>
+        <p className="text-sm text-gray-500">
+          Adashi has helped <span className="font-semibold text-adashi-gulf">40+ businesses</span> fix exactly these issues.
+        </p>
+      </div>
+
       {/* CTA */}
       <div data-section="cta" className="bg-adashi-gulf text-white rounded-2xl p-6 sm:p-8 text-center">
         <h2 className="font-display text-xl sm:text-2xl mb-2">
           Want help fixing these issues?
         </h2>
         <p className="text-adashi-pastel mb-4">
-          Book a free strategy call with Adashi and we&apos;ll walk you through the fixes.
+          Book a free 15-minute walkthrough with Adashi and we&apos;ll show you exactly what to fix first.
         </p>
         <a
           href="https://adashi.io/contact"
@@ -172,7 +190,7 @@ export function BusinessReport({
           rel="noopener noreferrer"
           className="inline-block bg-adashi-blue hover:bg-adashi-science text-white font-semibold px-6 py-3 rounded-xl transition-colors"
         >
-          Book a free call
+          Get a free 15-min walkthrough
         </a>
       </div>
     </div>

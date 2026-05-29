@@ -23,9 +23,10 @@ export function CostEstimateSection({ costEstimate }: CostEstimateProps) {
       </h2>
 
       <p className="text-amber-800 text-base sm:text-lg leading-relaxed mb-5">
-        Based on the issues we found, your website may be losing an estimated{" "}
-        <span className="font-bold text-amber-900">{rangeText} of potential visitors</span>{" "}
-        due to accessibility barriers, slow performance, and unclear messaging.
+        Based on the issues we found, your site has meaningful performance and accessibility gaps.
+        Google research shows <span className="font-bold text-amber-900">53% of mobile users abandon pages that take longer than 3 seconds to load</span>,
+        and each additional second reduces conversions by up to 7% (Akamai). The factors below
+        reflect what we found in your scan.
       </p>
 
       {/* Factor breakdown */}
@@ -56,7 +57,7 @@ export function CostEstimateSection({ costEstimate }: CostEstimateProps) {
       </div>
 
       <p className="text-amber-600 text-xs">
-        This is an estimate based on industry benchmarks.
+        Impact estimates are based on the specific issues found in your scan, informed by Google and Akamai research on page speed and conversion rates.
       </p>
     </div>
   );

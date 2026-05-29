@@ -76,16 +76,26 @@ export function FullReport({
 
   const isMultiPage = pages.length > 1;
 
-  const gradeBadgeClass = scores.overall >= 80
+  const gradeBadgeClass = scores.overall >= 85
     ? "bg-green-100 text-green-700"
-    : scores.overall >= 60
-      ? "bg-orange-100 text-orange-700"
-      : "bg-red-100 text-red-700";
+    : scores.overall >= 70
+      ? "bg-blue-100 text-blue-700"
+      : scores.overall >= 50
+        ? "bg-orange-100 text-orange-700"
+        : "bg-red-100 text-red-700";
 
-  const grade = scores.overall >= 80 ? "Good" : scores.overall >= 60 ? "Needs improvement" : "Poor";
+  const grade = scores.overall >= 95
+    ? "Excellent"
+    : scores.overall >= 85
+      ? "Performing well"
+      : scores.overall >= 70
+        ? "Solid foundation"
+        : scores.overall >= 50
+          ? "Room to grow"
+          : "Needs significant work";
 
   const categories = [
-    { label: "Usability", score: scores.accessibility },
+    { label: "Accessibility", score: scores.accessibility },
     { label: "Content", score: scores.content },
     { label: "SEO", score: scores.seo },
     { label: "Performance", score: scores.performance },

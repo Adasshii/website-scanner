@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { IssueCard } from "@/components/scan/issue-card";
 import { BrowserFrameScreenshot } from "@/components/report/browser-frame-screenshot";
 import type {
@@ -66,7 +66,7 @@ const severityOrder: Record<IssueSeverity, number> = {
 };
 
 const categoryMeta: Record<IssueCategory, { label: string; scoreKey: keyof ScanScores }> = {
-  accessibility: { label: "Usability", scoreKey: "accessibility" },
+  accessibility: { label: "Accessibility", scoreKey: "accessibility" },
   content: { label: "Content", scoreKey: "content" },
   seo: { label: "SEO", scoreKey: "seo" },
   performance: { label: "Performance", scoreKey: "performance" },
@@ -164,7 +164,15 @@ export function TechnicalReport({
   pages,
   screenshots,
 }: TechnicalReportProps) {
+  const [copied, setCopied] = useState(false);
   const isMultiPage = pages.length > 1;
+
+  const handleShare = useCallback(() => {
+    navigator.clipboard.writeText(window.location.href).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  }, []);
   const grouped = groupIssuesByCategory(pages);
 
   const allIssues = pages.flatMap((p) => p.issues || []);
@@ -390,6 +398,34 @@ export function TechnicalReport({
           </CollapsibleSection>
         </section>
       )}
+
+      {/* Share CTA */}
+      <div data-section="technical-share" className="flex flex-col sm:flex-row items-center gap-3 mt-2 mb-4">
+        <button
+          onClick={handleShare}
+          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border-2 border-adashi-blue text-adashi-blue font-semibold text-sm hover:bg-adashi-blue/5 transition-colors"
+        >
+          {copied ? (
+            <>
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+              </svg>
+              Copied!
+            </>
+          ) : (
+            <>
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M10.172 13.828a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.102 1.101" />
+              </svg>
+              Share this report
+            </>
+          )}
+        </button>
+        <span className="text-xs text-gray-400">
+          Share with your team or decision-makers — the link works for anyone.
+        </span>
+      </div>
     </div>
   );
 }

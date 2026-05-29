@@ -14,7 +14,7 @@ const difficultyStyles: Record<string, string> = {
 };
 
 const categoryLabels: Record<string, string> = {
-  accessibility: "Usability",
+  accessibility: "Accessibility",
   content: "Content",
   seo: "SEO",
   performance: "Performance",

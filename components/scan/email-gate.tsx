@@ -13,6 +13,7 @@ interface EmailGateProps {
 
 export function EmailGate({ scanId, onFullScanComplete }: EmailGateProps) {
   const [email, setEmail] = useState("");
+  const [companySize, setCompanySize] = useState("");
   const [consent, setConsent] = useState(false);
   const [error, setError] = useState("");
   const [status, setStatus] = useState<GateStatus>("idle");
@@ -70,7 +71,7 @@ export function EmailGate({ scanId, onFullScanComplete }: EmailGateProps) {
       const res = await fetch(`/api/scan/${scanId}/email`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, consent }),
+        body: JSON.stringify({ email, consent, company_size: companySize || undefined }),
       });
 
       const data = await res.json();
@@ -122,11 +123,11 @@ export function EmailGate({ scanId, onFullScanComplete }: EmailGateProps) {
           </svg>
         </div>
         <h3 className="font-display text-xl text-adashi-gulf mb-2">
-          Full scan running in the background
+          Deep scan in progress
         </h3>
         <p className="text-gray-500 text-sm">
-          We&apos;re scanning multiple pages on your site. You can close this page — we&apos;ll
-          email you as soon as your full report is ready.
+          We&apos;re analysing every page of your site — this catches issues the quick scan misses.
+          Your full report will be in your inbox shortly.
         </p>
       </div>
     );
@@ -167,6 +168,26 @@ export function EmailGate({ scanId, onFullScanComplete }: EmailGateProps) {
           >
             {status === "submitting" ? "Sending..." : "Get full report"}
           </Button>
+        </div>
+
+        <div className="mb-4">
+          <label htmlFor="company-size" className="block text-sm text-gray-500 mb-1.5">
+            How many people work at your company? <span className="text-gray-400">(optional)</span>
+          </label>
+          <select
+            id="company-size"
+            value={companySize}
+            onChange={(e) => setCompanySize(e.target.value)}
+            disabled={status === "submitting"}
+            className="w-full px-4 py-2.5 rounded-xl border-2 border-gray-200 focus:border-adashi-blue text-base bg-white text-gray-700 outline-none transition-colors"
+          >
+            <option value="">Select&hellip;</option>
+            <option value="just-me">Just me</option>
+            <option value="2-10">2–10</option>
+            <option value="11-50">11–50</option>
+            <option value="51-200">51–200</option>
+            <option value="200+">200+</option>
+          </select>
         </div>
 
         <label className="flex items-start gap-3 cursor-pointer">
