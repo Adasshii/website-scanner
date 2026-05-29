@@ -7,14 +7,9 @@ interface CostEstimateProps {
 }
 
 export function CostEstimateSection({ costEstimate }: CostEstimateProps) {
-  const { totalLostPercent, factors } = costEstimate;
+  const { factors } = costEstimate;
 
   if (!factors || factors.length === 0) return null;
-
-  // Show as a range (±5%)
-  const low = Math.max(totalLostPercent - 5, 0);
-  const high = Math.min(totalLostPercent + 5, 60);
-  const rangeText = low === 0 ? `up to ${high}%` : `${low}–${high}%`;
 
   return (
     <div className="bg-gradient-to-br from-amber-50 to-orange-50 border border-amber-200 rounded-2xl p-6 sm:p-8 mb-8">
