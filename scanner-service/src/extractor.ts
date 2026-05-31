@@ -221,6 +221,59 @@ export async function extractPageData(
     // Page size (rough: serialized HTML length)
     const pageSize = new Blob([doc.documentElement.outerHTML]).size;
 
+    // ── Usability / UX & Conversion signals ──────────────────────────
+
+    // Navigation: a <nav> or role="navigation" landmark
+    const hasNav = !!doc.querySelector('nav, [role="navigation"]');
+
+    // Form friction: count fillable fields in the form that has the most.
+    // Excludes hidden/submit/button/reset/image inputs, which aren't user-filled.
+    const fillableSelector =
+      'input:not([type="hidden"]):not([type="submit"]):not([type="button"]):not([type="reset"]):not([type="image"]), select, textarea';
+    let formFieldCount = 0;
+    doc.querySelectorAll("form").forEach((form) => {
+      const count = form.querySelectorAll(fillableSelector).length;
+      if (count > formFieldCount) formFieldCount = count;
+    });
+
+    // Contact info: a tel:/mailto: link, or an email/phone pattern in visible text.
+    const hasContactLink = !!doc.querySelector('a[href^="tel:"], a[href^="mailto:"]');
+    const visibleText = doc.body?.innerText || "";
+    const emailPattern = /[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}/i;
+    // Phone: 7+ digits with common separators/extensions, optionally a leading +
+    const phonePattern = /(\+?\d[\d\s().-]{6,}\d)/;
+    const hasContactText = emailPattern.test(visibleText) || phonePattern.test(visibleText);
+    const hasContactInfo = hasContactLink || hasContactText;
+
+    // Cookie banner: known consent platforms, or a banner-ish element whose text
+    // mentions cookies. Presence only — whether it blocks content is a later pass.
+    const knownCmpSelectors = [
+      "#onetrust-banner-sdk",
+      "#onetrust-consent-sdk",
+      "#CybotCookiebotDialog",
+      "#cookiebanner",
+      "#cookie-banner",
+      "#cookie-notice",
+      "#cookie-consent",
+      ".cookie-banner",
+      ".cookie-consent",
+      ".cookie-notice",
+      ".cc-window", // Cookie Consent by Osano / cookieconsent
+      "#usercentrics-root",
+      "#cmpbox", // Consentmanager
+      '[aria-label*="cookie" i]',
+      '[id*="cookie" i][class*="consent" i]',
+    ];
+    let hasCookieBanner = !!doc.querySelector(knownCmpSelectors.join(","));
+    if (!hasCookieBanner) {
+      const cookieTextPattern = /(we use cookies|this (?:website|site) uses cookies|accept (?:all )?cookies|cookie policy|manage cookies|your privacy choices)/i;
+      // Look only at plausible banner containers to avoid matching body copy / privacy pages.
+      const candidates = Array.from(
+        doc.querySelectorAll('div[class*="cookie" i], div[id*="cookie" i], aside, [role="dialog"], [role="alertdialog"]')
+      );
+      hasCookieBanner = candidates.some((el) => cookieTextPattern.test((el as HTMLElement).innerText || ""));
+    }
+
     return {
       title,
       description,
@@ -247,6 +300,10 @@ export async function extractPageData(
       tablesWithoutHeaders,
       emptyButtons,
       renderBlockingScripts,
+      hasNav,
+      formFieldCount,
+      hasContactInfo,
+      hasCookieBanner,
       pageSize,
     };
   }, baseUrl.origin);

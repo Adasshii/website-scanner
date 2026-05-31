@@ -19,7 +19,7 @@ const categoryLabels: Record<string, string> = {
   seo: "SEO",
   performance: "Performance",
   security: "Security",
-  design: "Design",
+  design: "UX & Conversion",
 };
 
 function stripUrls(text: string): string {

@@ -71,7 +71,7 @@ const categoryMeta: Record<IssueCategory, { label: string; scoreKey: keyof ScanS
   seo: { label: "SEO", scoreKey: "seo" },
   performance: { label: "Performance", scoreKey: "performance" },
   security: { label: "Security", scoreKey: "security" },
-  design: { label: "Design", scoreKey: "design" },
+  design: { label: "UX & Conversion", scoreKey: "design" },
 };
 
 function groupIssuesByCategory(pages: PageResult[]) {

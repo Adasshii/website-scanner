@@ -815,37 +815,86 @@ export function analyzeIssues(
     });
   }
 
-  // Navigation: page should have a <nav> element
-  // We detect this from links — if there are 3+ internal links that aren't in the body text,
-  // we assume a nav exists. Use a simple heuristic: check data.hasSkipLink as a proxy,
-  // but since we don't have direct nav detection in PageData, we skip this check if
-  // links count is very low (suggesting a simple page).
-  // NOTE: PageData doesn't expose a hasNav field. We approximate: if the page has fewer than
-  // 4 internal links total, it's likely a very simple page and we skip the nav check.
-  // A full implementation would require a hasNav extractor field.
-  // For now we cannot reliably detect <nav> absence from PageData fields, so we skip this check.
-  // (design-no-nav is registered in issue-difficulty.ts but not fired here without extractor support.)
+  // Navigation: page should have a <nav> (or role="navigation") landmark.
+  // Guard against false positives on minimal one-page sites: only flag when the
+  // page has enough internal links (4+) to genuinely warrant navigation.
+  const internalLinkCount = data.links.filter((l) => l.isInternal).length;
+  if (!data.hasNav && internalLinkCount >= 4) {
+    issues.push({
+      id: "design-no-nav",
+      category: "design",
+      severity: "major",
+      title: "No navigation landmark found",
+      description: "The page has no <nav> element. Visitors and assistive technology can't find a clear way to move around the site.",
+      recommendation: "Wrap your primary menu in a <nav> element so visitors can navigate and screen readers can jump straight to it.",
+      impact: 8,
+    });
+  }
 
-  // Contact in footer: last 30% of links should have email/phone/contact patterns
-  const allLinks = data.links;
-  if (allLinks.length >= 5) {
-    const footerStart = Math.floor(allLinks.length * 0.7);
-    const footerLinks = allLinks.slice(footerStart);
-    const contactPattern = /contact|mailto:|tel:|phone|\d{3}[-.\s]?\d{3}/i;
-    const hasContactInFooter = footerLinks.some(
-      (l) => contactPattern.test(l.href) || contactPattern.test(l.text)
-    );
-    if (!hasContactInFooter) {
-      issues.push({
-        id: "design-no-contact-footer",
-        category: "design",
-        severity: "minor",
-        title: "No contact info in footer area",
-        description: "No email, phone number, or contact link was found in the lower portion of the page.",
-        recommendation: "Add contact details or a link to your contact page in the footer so visitors can easily reach you.",
-        impact: 5,
-      });
+  // Form friction: a main form with more than 5 fillable fields measurably lowers
+  // completion rates. Only fires when a sizeable form is present.
+  if (data.formFieldCount > 5) {
+    issues.push({
+      id: "design-form-friction",
+      category: "design",
+      severity: "minor",
+      title: "Main form has too many fields",
+      description: `Your largest form has ${data.formFieldCount} fields. Every extra field is a reason for a visitor to abandon it.`,
+      recommendation: "Cut the form to the essentials (5 fields or fewer). Collect anything else after the first contact.",
+      impact: 5,
+    });
+  }
+
+  // Contact info: a phone number or email should be reachable somewhere on the page.
+  // If there's none at all, that's the bigger problem and supersedes the footer check.
+  if (!data.hasContactInfo) {
+    issues.push({
+      id: "design-no-contact-info",
+      category: "design",
+      severity: "major",
+      title: "No phone number or email on the page",
+      description: "No email address or phone number was found anywhere on the page. Visitors ready to act have no direct way to reach you.",
+      recommendation: "Add a visible email or phone number — ideally near the top and in the footer — so visitors can contact you immediately.",
+      impact: 8,
+    });
+  } else {
+    // Contact exists somewhere — check it's also reachable from the footer area.
+    const allLinks = data.links;
+    if (allLinks.length >= 5) {
+      const footerStart = Math.floor(allLinks.length * 0.7);
+      const footerLinks = allLinks.slice(footerStart);
+      const contactPattern = /contact|mailto:|tel:|phone|\d{3}[-.\s]?\d{3}/i;
+      const hasContactInFooter = footerLinks.some(
+        (l) => contactPattern.test(l.href) || contactPattern.test(l.text)
+      );
+      if (!hasContactInFooter) {
+        issues.push({
+          id: "design-no-contact-footer",
+          category: "design",
+          severity: "minor",
+          title: "No contact info in footer area",
+          description: "No email, phone number, or contact link was found in the lower portion of the page.",
+          recommendation: "Add contact details or a link to your contact page in the footer so visitors can easily reach you.",
+          impact: 5,
+        });
+      }
     }
+  }
+
+  // Cookie banner: presence only, surfaced as an informational note with no score
+  // impact. Detecting whether it actually blocks content needs layout analysis,
+  // which is a later pass — until then, penalising a (often legally required) banner
+  // would misfire, so this stays at impact 0.
+  if (data.hasCookieBanner) {
+    issues.push({
+      id: "design-cookie-banner",
+      category: "design",
+      severity: "info",
+      title: "Cookie banner present",
+      description: "A cookie-consent banner was detected. If it covers the page on load, it adds friction before visitors can engage.",
+      recommendation: "Make sure the banner is dismissable in one tap and doesn't hide your headline or main call-to-action on first view.",
+      impact: 0,
+    });
   }
 
   // ── Readability check (Flesch Reading Ease) ──────────────────────

@@ -86,6 +86,14 @@ export interface PageData {
   tablesWithoutHeaders: number;
   emptyButtons: number;
   renderBlockingScripts: number;
+  /** Whether the page has a <nav> or [role="navigation"] element */
+  hasNav: boolean;
+  /** Number of user-fillable fields in the largest form on the page (0 if no form) */
+  formFieldCount: number;
+  /** Whether a phone number or email is present anywhere on the page (tel:/mailto: link or text pattern) */
+  hasContactInfo: boolean;
+  /** Whether a cookie-consent banner is present (known CMP or common banner text) */
+  hasCookieBanner: boolean;
   /** HTTP response headers from the main document request */
   responseHeaders: Record<string, string>;
   /** Page size in bytes */

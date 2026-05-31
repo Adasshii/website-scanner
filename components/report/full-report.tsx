@@ -100,7 +100,7 @@ export function FullReport({
     { label: "SEO", score: scores.seo },
     { label: "Performance", score: scores.performance },
     { label: "Security", score: scores.security ?? 0 },
-    { label: "Design", score: scores.design ?? 0 },
+    { label: "UX & Conversion", score: scores.design ?? 0 },
   ];
 
   function handleCopyLink() {
