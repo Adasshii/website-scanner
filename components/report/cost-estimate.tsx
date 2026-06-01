@@ -19,7 +19,7 @@ export function CostEstimateSection({ costEstimate }: CostEstimateProps) {
         What this is costing you
       </h2>
 
-      {/* Lost-enquiries headline — concrete, no traffic data required */}
+      {/* Lost-enquiries headline: concrete, no traffic data required */}
       <div className="flex items-baseline gap-3 mb-2">
         <span className="font-display text-4xl sm:text-5xl font-bold text-amber-900 leading-none">
           ~{perHundred}%

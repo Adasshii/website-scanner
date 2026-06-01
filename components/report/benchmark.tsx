@@ -9,8 +9,8 @@ interface BenchmarkProps {
 /**
  * Static benchmark bands.
  *
- * These are fixed, general reference points — a typical small-business site and
- * a well-built one — shown against the visitor's own scores. They are NOT
+ * These are fixed, general reference points (a typical small-business site and
+ * a well-built one) shown against the visitor's own scores. They are NOT
  * sector-specific. They give a business owner an instant "am I ahead or behind"
  * read without needing any extra input or real sector data.
  *

@@ -117,7 +117,7 @@ export function BusinessReport({
 
       {/* Adashi context */}
       <p className="text-xs text-gray-400 leading-relaxed mb-4">
-        Adashi builds performance and automation systems for growing businesses. This audit identifies the issues that cost you visitors, conversions, and credibility — and shows what&apos;s worth fixing first.
+        Adashi builds performance and automation systems for growing businesses. This audit identifies the issues that cost you visitors, conversions, and credibility, and shows what&apos;s worth fixing first.
       </p>
 
       {/* Screenshot hero */}

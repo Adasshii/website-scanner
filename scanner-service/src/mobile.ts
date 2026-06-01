@@ -11,7 +11,7 @@ import { getIssueDifficulty } from "./issue-difficulty";
  *   - tap targets too small to hit reliably with a thumb
  *   - body text too small to read without pinch-zooming
  *
- * This is deliberately NOT a full second scan — no axe, no Lighthouse, no
+ * This is deliberately NOT a full second scan: no axe, no Lighthouse, no
  * screenshots. It adds a few seconds, not a doubling of scan cost. Any failure
  * returns an empty list so the mobile pass can never break the main scan.
  *
@@ -48,14 +48,14 @@ export async function checkMobileUsability(
 
       const viewportWidth = window.innerWidth || 390;
 
-      // 1. Horizontal overflow — content wider than the screen.
+      // 1. Horizontal overflow: content wider than the screen.
       const docWidth = Math.max(
         document.documentElement.scrollWidth,
         document.body ? document.body.scrollWidth : 0
       );
       result.overflowPx = Math.max(0, docWidth - viewportWidth);
 
-      // 2. Tap targets — count clearly-too-small interactive controls.
+      // 2. Tap targets: count clearly-too-small interactive controls.
       // Restrict to button-like controls (not inline text links) to keep this
       // conservative and avoid flagging ordinary in-paragraph links.
       const controls = Array.from(
@@ -70,7 +70,7 @@ export async function checkMobileUsability(
         return rect.width < 40 || rect.height < 40;
       }).length;
 
-      // 3. Base font size — body computed font size.
+      // 3. Base font size: body computed font size.
       if (document.body) {
         const fs = parseFloat(window.getComputedStyle(document.body).fontSize);
         if (!Number.isNaN(fs) && fs > 0) result.baseFontPx = fs;

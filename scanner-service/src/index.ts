@@ -33,6 +33,23 @@ function withTimeout<T>(promise: Promise<T>, ms: number, fallback: T): Promise<T
   return Promise.race([promise.finally(() => clearTimeout(timer)), timeout]);
 }
 
+/**
+ * Drop AI-vision design issues that just restate a cookie-banner problem our own
+ * HTML checks already flagged. The DOM checks (design-cookie-banner-blocking /
+ * design-cookie-banner) are precise about whether the banner blocks content, so
+ * when one of those is present we suppress any vision sentence about the cookie
+ * banner to avoid showing the owner three cards for the same problem.
+ */
+function dedupeCookieAiIssues(aiIssues: Issue[], existingIssues: Issue[]): Issue[] {
+  const hasHtmlCookieIssue = existingIssues.some(
+    (iss) => iss.id === "design-cookie-banner-blocking" || iss.id === "design-cookie-banner"
+  );
+  if (!hasHtmlCookieIssue) return aiIssues;
+  return aiIssues.filter(
+    (iss) => !/cookie/i.test(`${iss.title} ${iss.description}`)
+  );
+}
+
 // Supabase client for async scan DB updates
 function getSupabase() {
   const url = process.env.SUPABASE_URL;
@@ -160,7 +177,7 @@ async function runDesignAnalysisBackground(
           i === 0
             ? {
                 ...page,
-                issues: [...page.issues, ...aiDesignIssues],
+                issues: [...page.issues, ...dedupeCookieAiIssues(aiDesignIssues, page.issues)],
                 scores: { ...page.scores, design: designScore, overall },
               }
             : page
@@ -484,7 +501,7 @@ app.post("/api/scan/full-async", async (req, res) => {
 
       // Merge AI issues into first page only
       const mergedIssues = i === 0
-        ? [...page.issues, ...aiDesignIssues]
+        ? [...page.issues, ...dedupeCookieAiIssues(aiDesignIssues, page.issues)]
         : page.issues;
 
       const overall = Math.round(
