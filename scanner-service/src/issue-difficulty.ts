@@ -74,6 +74,9 @@ const difficulty: Record<string, Issue["difficulty"]> = {
   "design-form-friction": "easy",
   "design-no-contact-info": "easy",
   "design-cookie-banner": "medium",
+  "design-cta-below-fold": "easy",
+  "design-no-trust-signals": "medium",
+  "design-cookie-banner-blocking": "medium",
 
   // New content checks
   "content-low-readability": "medium",

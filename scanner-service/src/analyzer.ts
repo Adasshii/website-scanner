@@ -781,10 +781,9 @@ export function analyzeIssues(
 
   // ── Design checks (HTML-based) ───────────────────────────────────
 
-  // CTA detection: any <a> or <button> with action-oriented text
-  const ctaPatterns = /get started|contact|book|try|sign up|schedule|quote|free|demo/i;
-  const hasActionCta = data.links.some((l) => ctaPatterns.test(l.text));
-  if (!hasActionCta) {
+  // CTA detection: an action-oriented link or button. The extractor checks both
+  // links and buttons and records whether one sits above the fold.
+  if (!data.hasCta) {
     issues.push({
       id: "design-no-cta",
       category: "design",
@@ -793,6 +792,17 @@ export function analyzeIssues(
       description: "No button or link with action-oriented text was found. Visitors don't know what step to take next.",
       recommendation: "Add at least one prominent call-to-action (e.g. 'Get started', 'Book a call', 'Contact us') above the fold.",
       impact: 10,
+    });
+  } else if (!data.hasCtaAboveFold) {
+    // A CTA exists, but a visitor has to scroll to reach it.
+    issues.push({
+      id: "design-cta-below-fold",
+      category: "design",
+      severity: "minor",
+      title: "No call-to-action above the fold",
+      description: "Your call-to-action only appears after scrolling. Many visitors decide whether to act before they ever scroll.",
+      recommendation: "Place a primary call-to-action in the first screen of the page, near your headline.",
+      impact: 6,
     });
   }
 
@@ -881,18 +891,41 @@ export function analyzeIssues(
     }
   }
 
-  // Cookie banner: presence only, surfaced as an informational note with no score
-  // impact. Detecting whether it actually blocks content needs layout analysis,
-  // which is a later pass — until then, penalising a (often legally required) banner
-  // would misfire, so this stays at impact 0.
-  if (data.hasCookieBanner) {
+  // Cookie banner. A banner that overlaps the fold as a fixed/sticky overlay
+  // genuinely blocks engagement, so that case is scored. A banner that's merely
+  // present (and often legally required) stays an impact-0 note.
+  if (data.hasCookieBanner && data.cookieBannerBlocksFold) {
+    issues.push({
+      id: "design-cookie-banner-blocking",
+      category: "design",
+      severity: "minor",
+      title: "Cookie banner covers the page",
+      description: "A cookie-consent banner overlaps the top of the page on load, sitting between visitors and your content before they can engage.",
+      recommendation: "Keep consent compliant but less intrusive — a slim bar or corner notice that doesn't cover your headline or main call-to-action.",
+      impact: 6,
+    });
+  } else if (data.hasCookieBanner) {
     issues.push({
       id: "design-cookie-banner",
       category: "design",
       severity: "info",
       title: "Cookie banner present",
-      description: "A cookie-consent banner was detected. If it covers the page on load, it adds friction before visitors can engage.",
+      description: "A cookie-consent banner was detected. It doesn't appear to cover the page on load, but it's worth a check.",
       recommendation: "Make sure the banner is dismissable in one tap and doesn't hide your headline or main call-to-action on first view.",
+      impact: 0,
+    });
+  }
+
+  // Trust signals: testimonials, reviews, client logos, or Review/Rating schema.
+  // Detection is heuristic, so this is surfaced as an impact-0 note and never scored.
+  if (!data.hasTrustSignals) {
+    issues.push({
+      id: "design-no-trust-signals",
+      category: "design",
+      severity: "info",
+      title: "No trust signals detected",
+      description: "No testimonials, review counts, or client logos were found. Visitors who don't know you have little reason to trust you yet.",
+      recommendation: "Add social proof near your call-to-action — a customer quote, a star rating, or a row of recognisable client logos.",
       impact: 0,
     });
   }

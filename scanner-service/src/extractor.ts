@@ -245,8 +245,42 @@ export async function extractPageData(
     const hasContactText = emailPattern.test(visibleText) || phonePattern.test(visibleText);
     const hasContactInfo = hasContactLink || hasContactText;
 
+    // Fold line — the scanner renders at a fixed viewport, so innerHeight is the fold.
+    const foldY = window.innerHeight || 720;
+    const viewportArea = (window.innerWidth || 1280) * foldY;
+
+    // Call-to-action: an action-oriented link or button. Mirrors the analyzer's
+    // CTA vocabulary, but also looks at <button> and checks on-screen position.
+    const ctaPattern = /get started|contact|book|try|sign up|schedule|quote|free|demo/i;
+    const ctaCandidates = Array.from(
+      doc.querySelectorAll('a, button, [role="button"], input[type="submit"]')
+    ).filter((el) => {
+      const text = (el.textContent || (el as HTMLInputElement).value || "").trim();
+      return ctaPattern.test(text);
+    });
+    const hasCta = ctaCandidates.length > 0;
+    const hasCtaAboveFold = ctaCandidates.some((el) => {
+      const rect = el.getBoundingClientRect();
+      return rect.width > 0 && rect.height > 0 && rect.top >= 0 && rect.top < foldY;
+    });
+
+    // Trust signals: testimonials, reviews/ratings, client logos, or Review/Rating
+    // schema. Heuristic — surfaced informationally, never scored, so false misses
+    // and false hits don't move the number.
+    const trustSelector =
+      '[class*="testimonial" i],[id*="testimonial" i],[class*="review" i],[id*="review" i],[class*="trust" i],[class*="logos" i],[class*="rating" i],[class*="client" i][class*="logo" i]';
+    let hasTrustSignals = !!doc.querySelector(trustSelector);
+    if (!hasTrustSignals) {
+      const trustTextPattern =
+        /(testimonial|what our (?:clients|customers) say|trusted by|our clients|as (?:seen|featured) in|\d+\+?\s*(?:reviews|ratings|customers|clients)|rated\s*\d(?:\.\d)?|\d(?:\.\d)?\s*(?:\/|out of)\s*5|★{3,})/i;
+      hasTrustSignals = trustTextPattern.test(visibleText);
+    }
+    if (!hasTrustSignals) {
+      hasTrustSignals = schemaTypes.some((t) => /^(Review|AggregateRating|Rating)$/i.test(t));
+    }
+
     // Cookie banner: known consent platforms, or a banner-ish element whose text
-    // mentions cookies. Presence only — whether it blocks content is a later pass.
+    // mentions cookies. Keep the element so we can tell whether it blocks the fold.
     const knownCmpSelectors = [
       "#onetrust-banner-sdk",
       "#onetrust-consent-sdk",
@@ -264,14 +298,25 @@ export async function extractPageData(
       '[aria-label*="cookie" i]',
       '[id*="cookie" i][class*="consent" i]',
     ];
-    let hasCookieBanner = !!doc.querySelector(knownCmpSelectors.join(","));
-    if (!hasCookieBanner) {
+    let cookieBannerEl: Element | null = doc.querySelector(knownCmpSelectors.join(","));
+    if (!cookieBannerEl) {
       const cookieTextPattern = /(we use cookies|this (?:website|site) uses cookies|accept (?:all )?cookies|cookie policy|manage cookies|your privacy choices)/i;
       // Look only at plausible banner containers to avoid matching body copy / privacy pages.
       const candidates = Array.from(
         doc.querySelectorAll('div[class*="cookie" i], div[id*="cookie" i], aside, [role="dialog"], [role="alertdialog"]')
       );
-      hasCookieBanner = candidates.some((el) => cookieTextPattern.test((el as HTMLElement).innerText || ""));
+      cookieBannerEl = candidates.find((el) => cookieTextPattern.test((el as HTMLElement).innerText || "")) || null;
+    }
+    const hasCookieBanner = !!cookieBannerEl;
+    let cookieBannerBlocksFold = false;
+    if (cookieBannerEl) {
+      const cs = window.getComputedStyle(cookieBannerEl);
+      const rect = cookieBannerEl.getBoundingClientRect();
+      const visible = rect.width > 0 && rect.height > 0 && cs.visibility !== "hidden" && cs.display !== "none";
+      const intersectsFold = rect.top < foldY && rect.bottom > 0;
+      const isOverlay = cs.position === "fixed" || cs.position === "sticky";
+      const coversLots = rect.width * rect.height > viewportArea * 0.15;
+      cookieBannerBlocksFold = visible && intersectsFold && (isOverlay || coversLots);
     }
 
     return {
@@ -303,7 +348,11 @@ export async function extractPageData(
       hasNav,
       formFieldCount,
       hasContactInfo,
+      hasCta,
+      hasCtaAboveFold,
+      hasTrustSignals,
       hasCookieBanner,
+      cookieBannerBlocksFold,
       pageSize,
     };
   }, baseUrl.origin);

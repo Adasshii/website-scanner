@@ -92,8 +92,16 @@ export interface PageData {
   formFieldCount: number;
   /** Whether a phone number or email is present anywhere on the page (tel:/mailto: link or text pattern) */
   hasContactInfo: boolean;
+  /** Whether an action-oriented CTA (link or button) exists anywhere on the page */
+  hasCta: boolean;
+  /** Whether an action-oriented CTA is visible above the fold (top < viewport height) */
+  hasCtaAboveFold: boolean;
+  /** Whether any trust signal was detected (testimonials, reviews/ratings, client logos, Review/Rating schema) */
+  hasTrustSignals: boolean;
   /** Whether a cookie-consent banner is present (known CMP or common banner text) */
   hasCookieBanner: boolean;
+  /** Whether the detected cookie banner overlaps the fold as a fixed/sticky overlay */
+  cookieBannerBlocksFold: boolean;
   /** HTTP response headers from the main document request */
   responseHeaders: Record<string, string>;
   /** Page size in bytes */
