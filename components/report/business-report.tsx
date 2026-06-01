@@ -1,5 +1,6 @@
 "use client";
 
+import { BenchmarkSection } from "@/components/report/benchmark";
 import { CostEstimateSection } from "@/components/report/cost-estimate";
 import { QuickWinsSection } from "@/components/report/quick-wins";
 import { WebsitePersonalitySection } from "@/components/report/website-personality";
@@ -110,6 +111,9 @@ export function BusinessReport({
           </div>
         </div>
       </div>
+
+      {/* How you compare */}
+      <BenchmarkSection scores={scores} />
 
       {/* Adashi context */}
       <p className="text-xs text-gray-400 leading-relaxed mb-4">

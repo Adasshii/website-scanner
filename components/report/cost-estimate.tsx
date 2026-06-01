@@ -7,21 +7,32 @@ interface CostEstimateProps {
 }
 
 export function CostEstimateSection({ costEstimate }: CostEstimateProps) {
-  const { factors } = costEstimate;
+  const { factors, totalLostPercent } = costEstimate;
 
   if (!factors || factors.length === 0) return null;
 
+  const perHundred = Math.round(totalLostPercent);
+
   return (
     <div className="bg-gradient-to-br from-amber-50 to-orange-50 border border-amber-200 rounded-2xl p-6 sm:p-8 mb-8">
-      <h2 className="font-display text-lg sm:text-xl text-amber-900 mb-3">
+      <h2 className="font-display text-lg sm:text-xl text-amber-900 mb-4">
         What this is costing you
       </h2>
 
+      {/* Lost-enquiries headline — concrete, no traffic data required */}
+      <div className="flex items-baseline gap-3 mb-2">
+        <span className="font-display text-4xl sm:text-5xl font-bold text-amber-900 leading-none">
+          ~{perHundred}%
+        </span>
+        <span className="text-amber-800 text-sm sm:text-base leading-snug">
+          of potential enquiries are likely slipping away because of the issues below.
+        </span>
+      </div>
+
       <p className="text-amber-800 text-base sm:text-lg leading-relaxed mb-5">
-        Based on the issues we found, your site has meaningful performance and accessibility gaps.
-        Google research shows <span className="font-bold text-amber-900">53% of mobile users abandon pages that take longer than 3 seconds to load</span>,
-        and each additional second reduces conversions by up to 7% (Akamai). The factors below
-        reflect what we found in your scan.
+        Put another way: for every 100 visitors who reach your site, around {perHundred} leave
+        without calling, emailing, or buying. Google found 53% of mobile visitors give up on pages
+        that take over 3 seconds to load, and each extra second can cut conversions by up to 7% (Akamai).
       </p>
 
       {/* Factor breakdown */}

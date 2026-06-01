@@ -6,6 +6,7 @@ import { buildOverlayData } from "./screenshots";
 import type { PageResult, ScanScores, Issue, IssueOverlay } from "../../types/scanner";
 import { scorePage } from "./scoring";
 import { runLighthouse } from "./lighthouse";
+import { checkMobileUsability } from "./mobile";
 
 let browser: Browser | null = null;
 
@@ -324,6 +325,13 @@ export async function scanPage(
     // Step 4d: Analyze issues
     const issues = analyzeIssues(axeResults, data);
     console.log(`  [scanner] Found ${issues.length} issues`);
+
+    // Step 4e: Lightweight mobile usability pass (own phone-viewport context).
+    // Never allowed to fail the scan — returns [] on any error.
+    console.log(`  [scanner] Running mobile usability pass...`);
+    const mobileIssues = await checkMobileUsability(b, effectiveUrl);
+    if (mobileIssues.length > 0) issues.push(...mobileIssues);
+    console.log(`  [scanner] Mobile pass: ${mobileIssues.length} issue(s)`);
 
     // Step 5: Dismiss cookie banners, then capture screenshots
     await dismissCookieBanner(page);
