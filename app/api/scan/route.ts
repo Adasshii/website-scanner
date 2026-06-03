@@ -4,6 +4,7 @@ import { validateUrlSafe, UrlValidationError } from "@/lib/url-validation.server
 import { extractDomain } from "@/lib/url-validation";
 import { ScannerClient } from "@/lib/scanner-client";
 import { createServerClient } from "@/lib/supabase";
+import { defaultLocale, isLocale, LOCALE_COOKIE } from "@/i18n/config";
 import type { ScanRow } from "@/types/scanner";
 
 export const runtime = "nodejs";
@@ -41,6 +42,10 @@ export async function POST(request: NextRequest) {
     }
 
     const domain = extractDomain(url);
+
+    // Read visitor locale from cookie (set by language toggle)
+    const cookieLocale = request.cookies.get(LOCALE_COOKIE)?.value;
+    const locale = isLocale(cookieLocale) ? cookieLocale : defaultLocale;
 
     // Hash the IP for rate limiting (never store raw IP — GDPR)
     const forwarded = request.headers.get("x-forwarded-for");
@@ -129,6 +134,7 @@ export async function POST(request: NextRequest) {
       design_ai_analysis: null,
       design_ai_analyzed_at: null,
       homepage_screenshot_url: null,
+      locale,
     } satisfies Omit<ScanRow, "created_at">);
 
     if (insertError) {
@@ -141,7 +147,7 @@ export async function POST(request: NextRequest) {
 
     // Call the scanner service — pass scanId so scanner can update design score async
     const scanner = new ScannerClient();
-    const result = await scanner.quickScan(url, scanId);
+    const result = await scanner.quickScan(url, scanId, locale);
 
     // Update the scan row with results
     const completedAt = new Date().toISOString();

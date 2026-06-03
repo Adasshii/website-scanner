@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { getTranslations } from "next-intl/server";
 import { createServerClient } from "@/lib/supabase";
 import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
@@ -29,6 +30,7 @@ export default async function ScanPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
+  const t = await getTranslations("common.errors");
 
   const supabase = createServerClient();
   const { data: scan, error } = await supabase
@@ -43,7 +45,7 @@ export default async function ScanPage({
       <div className="min-h-screen flex flex-col">
         <Header />
         <main className="flex-1 flex items-center justify-center">
-          <p className="text-gray-500">Could not load scan report (DB error: {error.code}).</p>
+          <p className="text-gray-500">{t("dbError", { code: error.code ?? "" })}</p>
         </main>
         <Footer />
       </div>
@@ -62,7 +64,7 @@ export default async function ScanPage({
       <div className="min-h-screen flex flex-col">
         <Header />
         <main className="flex-1 flex items-center justify-center">
-          <p className="text-gray-500">Scan in progress...</p>
+          <p className="text-gray-500">{t("scanInProgress")}</p>
         </main>
         <Footer />
       </div>
@@ -74,7 +76,7 @@ export default async function ScanPage({
       <div className="min-h-screen flex flex-col">
         <Header />
         <main className="flex-1 flex items-center justify-center">
-          <p className="text-gray-500">Scan failed. Please try again.</p>
+          <p className="text-gray-500">{t("scanFailed")}</p>
         </main>
         <Footer />
       </div>

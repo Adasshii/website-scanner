@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { getTranslations } from "next-intl/server";
 import { createServerClient } from "@/lib/supabase";
 import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
@@ -30,6 +31,7 @@ export async function generateMetadata({
   params: Promise<{ id: string }>;
 }): Promise<Metadata> {
   const { id } = await params;
+  const t = await getTranslations("metadata");
   const supabase = createServerClient();
   const { data: scan } = await supabase
     .from("scans")
@@ -38,16 +40,22 @@ export async function generateMetadata({
     .single();
 
   if (!scan?.scores) {
-    return { title: "Website Report | Adashi" };
+    return { title: t("reportFallbackTitle") };
   }
 
   const scores = scan.scores as ScanScores;
   return {
-    title: `${scan.domain} — Score ${scores.overall}/100 | Adashi Website Report`,
-    description: `Website analysis for ${scan.domain}: Accessibility ${scores.accessibility}, SEO ${scores.seo}, Content ${scores.content}, Performance ${scores.performance}`,
+    title: t("reportTitle", { domain: scan.domain, overall: scores.overall }),
+    description: t("reportDescription", {
+      domain: scan.domain,
+      accessibility: scores.accessibility,
+      seo: scores.seo,
+      content: scores.content,
+      performance: scores.performance,
+    }),
     openGraph: {
-      title: `${scan.domain} — Score ${scores.overall}/100`,
-      description: `Free website report by Adashi. See the full accessibility, SEO, and performance analysis.`,
+      title: t("reportOgTitle", { domain: scan.domain, overall: scores.overall }),
+      description: t("reportOgDescription"),
     },
   };
 }
@@ -58,6 +66,7 @@ export default async function ReportPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
+  const t = await getTranslations("common.errors");
 
   const supabase = createServerClient();
   const { data: scan, error } = await supabase
@@ -77,7 +86,7 @@ export default async function ReportPage({
       <div className="min-h-screen flex flex-col">
         <Header />
         <main className="flex-1 flex items-center justify-center">
-          <p className="text-gray-500">Your report is being generated...</p>
+          <p className="text-gray-500">{t("reportInProgress")}</p>
         </main>
         <Footer />
       </div>
@@ -89,7 +98,7 @@ export default async function ReportPage({
       <div className="min-h-screen flex flex-col">
         <Header />
         <main className="flex-1 flex items-center justify-center">
-          <p className="text-gray-500">Report unavailable. The scan may have failed.</p>
+          <p className="text-gray-500">{t("reportUnavailable")}</p>
         </main>
         <Footer />
       </div>

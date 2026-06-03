@@ -1,25 +1,19 @@
 "use client";
 
 import { useState, useEffect } from "react";
-
-const statusMessages = [
-  "Loading your site...",
-  "Running accessibility checks...",
-  "Analyzing content quality...",
-  "Checking SEO basics...",
-  "Measuring performance...",
-  "Generating your report...",
-];
+import { useTranslations } from "next-intl";
 
 export function LoadingState({ url }: { url: string }) {
+  const t = useTranslations("loadingState");
+  const messages = t.raw("messages") as string[];
   const [messageIndex, setMessageIndex] = useState(0);
 
   useEffect(() => {
     const interval = setInterval(() => {
-      setMessageIndex((i) => (i + 1) % statusMessages.length);
+      setMessageIndex((i) => (i + 1) % messages.length);
     }, 2500);
     return () => clearInterval(interval);
-  }, []);
+  }, [messages.length]);
 
   return (
     <div className="flex flex-col items-center justify-center py-20 sm:py-32">
@@ -38,11 +32,9 @@ export function LoadingState({ url }: { url: string }) {
 
       {/* Status message */}
       <p className="text-lg font-medium text-adashi-gulf mb-2 transition-opacity duration-300">
-        {statusMessages[messageIndex]}
+        {messages[messageIndex]}
       </p>
-      <p className="text-sm text-gray-400">
-        Scanning {url}
-      </p>
+      <p className="text-sm text-gray-400">{t("scanning", { url })}</p>
     </div>
   );
 }

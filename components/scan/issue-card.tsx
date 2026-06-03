@@ -1,3 +1,6 @@
+"use client";
+
+import { useTranslations } from "next-intl";
 import type { Issue } from "@/types/scanner";
 
 const severityStyles: Record<string, string> = {
@@ -13,21 +16,25 @@ const difficultyStyles: Record<string, string> = {
   hard: "bg-red-50 text-red-500 border-red-200",
 };
 
-const categoryLabels: Record<string, string> = {
-  accessibility: "Accessibility",
-  content: "Content",
-  seo: "SEO",
-  performance: "Performance",
-  security: "Security",
-  design: "UX & Conversion",
-};
-
 function stripUrls(text: string): string {
   return text.replace(/Learn more:\s*https?:\/\/\S+/gi, "").replace(/https?:\/\/\S+/g, "").trim();
 }
 
 export function IssueCard({ issue }: { issue: Issue }) {
+  const t = useTranslations("issueCard");
+  const tCat = useTranslations("common.category");
+  const tSev = useTranslations("common.severity");
+  const tDiff = useTranslations("common.difficulty");
+  const tCommon = useTranslations("common");
   const isInfo = issue.severity === "info";
+
+  const categoryLabel = (() => {
+    try {
+      return tCat(issue.category);
+    } catch {
+      return issue.category;
+    }
+  })();
 
   return (
     <div className={`bg-white rounded-xl border p-4 sm:p-5 ${isInfo ? "border-gray-100 opacity-80" : "border-gray-200"}`}>
@@ -39,19 +46,17 @@ export function IssueCard({ issue }: { issue: Issue }) {
                 severityStyles[issue.severity] || severityStyles.info
               }`}
             >
-              {issue.severity}
+              {tSev(issue.severity)}
             </span>
-            <span className="text-xs text-gray-400 font-medium">
-              {categoryLabels[issue.category] || issue.category}
-            </span>
+            <span className="text-xs text-gray-400 font-medium">{categoryLabel}</span>
             {issue.impact > 0 && (
               <span className="text-xs font-semibold text-red-500 bg-red-50 px-2 py-0.5 rounded-full border border-red-100">
-                -{issue.impact} pts
+                {t("impactPts", { impact: issue.impact })}
               </span>
             )}
             {issue.difficulty && (
               <span className={`text-xs font-medium px-2 py-0.5 rounded-full border ${difficultyStyles[issue.difficulty]}`}>
-                {issue.difficulty.charAt(0).toUpperCase() + issue.difficulty.slice(1)} fix
+                {tCommon("difficultyFix", { difficulty: tDiff(issue.difficulty) })}
               </span>
             )}
           </div>
@@ -76,7 +81,7 @@ export function IssueCard({ issue }: { issue: Issue }) {
               rel="noopener noreferrer"
               className="inline-block mt-3 text-xs font-medium px-3 py-1 rounded-full border border-adashi-blue text-adashi-blue hover:bg-adashi-blue hover:text-white transition-colors"
             >
-              Learn more
+              {t("learnMore")}
             </a>
           )}
         </div>

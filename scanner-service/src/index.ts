@@ -208,7 +208,7 @@ async function runDesignAnalysisBackground(
 // ── Quick scan: single page ────────────────────────────────────────
 
 app.post("/api/scan/quick", async (req, res) => {
-  const { url, scanId } = req.body as { url: string; scanId?: string };
+  const { url, scanId, locale = "en" } = req.body as { url: string; scanId?: string; locale?: string };
 
   if (!url) {
     res.status(400).json({ error: "url is required" });
@@ -265,9 +265,9 @@ app.post("/api/scan/quick", async (req, res) => {
     // Run the 3 non-design AI calls in parallel
     const AI_CALL_TIMEOUT = 30_000;
     const [analysis, enhancedIssues, whyItMattersMap] = await Promise.all([
-      withTimeout(generateComprehensiveAnalysis(domain, resultWithDesign.scores, summary, [resultWithDesign]), AI_CALL_TIMEOUT, null),
-      withTimeout(enhanceIssueDescriptions(result.issues), AI_CALL_TIMEOUT, result.issues),
-      withTimeout(generateWhyItMatters(domain, result.issues), AI_CALL_TIMEOUT, {}),
+      withTimeout(generateComprehensiveAnalysis(domain, resultWithDesign.scores, summary, [resultWithDesign], locale), AI_CALL_TIMEOUT, null),
+      withTimeout(enhanceIssueDescriptions(result.issues, locale), AI_CALL_TIMEOUT, result.issues),
+      withTimeout(generateWhyItMatters(domain, result.issues, locale), AI_CALL_TIMEOUT, {}),
     ]);
 
     summary.verdict = analysis?.executiveSummary ?? generateFallbackVerdict(resultWithDesign.scores, summary.criticalIssues);
@@ -369,10 +369,11 @@ app.post("/api/scan/full", async (req, res) => {
 // ── Async full scan: fire-and-forget, updates DB directly ─────────
 
 app.post("/api/scan/full-async", async (req, res) => {
-  const { url, scanId, maxPages = 7 } = req.body as {
+  const { url, scanId, maxPages = 7, locale = "en" } = req.body as {
     url: string;
     scanId: string;
     maxPages?: number;
+    locale?: string;
   };
 
   if (!url || !scanId) {
@@ -528,10 +529,10 @@ app.post("/api/scan/full-async", async (req, res) => {
 
     const AI_CALL_TIMEOUT = 45_000; // full scan allows a bit more time per call
     const [analysis, enhancedIssues, salesBrief, whyItMattersMap] = await Promise.all([
-      withTimeout(generateComprehensiveAnalysis(domain, scores, summary, resultsWithDesign), AI_CALL_TIMEOUT, null),
-      withTimeout(enhanceIssueDescriptions(allIssues), AI_CALL_TIMEOUT, allIssues),
+      withTimeout(generateComprehensiveAnalysis(domain, scores, summary, resultsWithDesign, locale), AI_CALL_TIMEOUT, null),
+      withTimeout(enhanceIssueDescriptions(allIssues, locale), AI_CALL_TIMEOUT, allIssues),
       withTimeout(generateSalesBrief(domain, scores, summary, resultsWithDesign), AI_CALL_TIMEOUT, null),
-      withTimeout(generateWhyItMatters(domain, allIssues), AI_CALL_TIMEOUT, {}),
+      withTimeout(generateWhyItMatters(domain, allIssues, locale), AI_CALL_TIMEOUT, {}),
     ]);
 
     summary.verdict = analysis?.executiveSummary ?? generateFallbackVerdict(scores, summary.criticalIssues);

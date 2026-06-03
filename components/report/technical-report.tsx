@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
+import { useTranslations } from "next-intl";
 import { IssueCard } from "@/components/scan/issue-card";
 import { BrowserFrameScreenshot } from "@/components/report/browser-frame-screenshot";
 import type {
@@ -12,8 +13,6 @@ import type {
   ScreenshotInfo,
 } from "@/types/scanner";
 
-// ── Types ─────────────────────────────────────────────────────────────
-
 interface TechnicalReportProps {
   scores: ScanScores;
   pages: PageResult[];
@@ -24,8 +23,6 @@ interface GroupedIssue {
   issue: Issue;
   pageCount: number;
 }
-
-// ── Helpers ───────────────────────────────────────────────────────────
 
 function scoreColor(score: number) {
   if (score >= 80) return "text-green-600";
@@ -65,13 +62,15 @@ const severityOrder: Record<IssueSeverity, number> = {
   info: 3,
 };
 
-const categoryMeta: Record<IssueCategory, { label: string; scoreKey: keyof ScanScores }> = {
-  accessibility: { label: "Accessibility", scoreKey: "accessibility" },
-  content: { label: "Content", scoreKey: "content" },
-  seo: { label: "SEO", scoreKey: "seo" },
-  performance: { label: "Performance", scoreKey: "performance" },
-  security: { label: "Security", scoreKey: "security" },
-  design: { label: "UX & Conversion", scoreKey: "design" },
+const CATEGORY_KEYS: IssueCategory[] = ["accessibility", "content", "seo", "performance", "security", "design"];
+
+const SCORE_KEY: Record<IssueCategory, keyof ScanScores> = {
+  accessibility: "accessibility",
+  content: "content",
+  seo: "seo",
+  performance: "performance",
+  security: "security",
+  design: "design",
 };
 
 function groupIssuesByCategory(pages: PageResult[]) {
@@ -117,8 +116,6 @@ function groupIssuesByCategory(pages: PageResult[]) {
   return groups;
 }
 
-// ── Collapsible Section ───────────────────────────────────────────────
-
 function CollapsibleSection({
   title,
   badge,
@@ -157,13 +154,14 @@ function CollapsibleSection({
   );
 }
 
-// ── Main component ────────────────────────────────────────────────────
-
 export function TechnicalReport({
   scores,
   pages,
   screenshots,
 }: TechnicalReportProps) {
+  const t = useTranslations("technicalReport");
+  const tIssue = useTranslations("issueCard");
+  const tCat = useTranslations("common.category");
   const [copied, setCopied] = useState(false);
   const isMultiPage = pages.length > 1;
 
@@ -184,6 +182,16 @@ export function TechnicalReport({
   });
 
   const sortedPages = [...pages].sort((a, b) => a.scores.overall - b.scores.overall);
+
+  function issueCountLabel(count: number) {
+    return count === 1 ? t("issueCountSingular", { count }) : t("issueCount", { count });
+  }
+  function elementCountLabel(count: number) {
+    return count === 1 ? t("elementCountSingular", { count }) : t("elementCount", { count });
+  }
+  function lowerPriorityLabel(count: number) {
+    return count === 1 ? t("lowerPrioritySingular", { count }) : t("lowerPriority", { count });
+  }
 
   return (
     <div>
@@ -206,30 +214,26 @@ export function TechnicalReport({
 
       {/* Issues by category */}
       <section data-section="issues-by-category" className="mb-8">
-        <h2 className="font-semibold text-adashi-gulf text-lg mb-4">Issues by Category</h2>
+        <h2 className="font-semibold text-adashi-gulf text-lg mb-4">{t("issuesByCategory")}</h2>
         <div className="space-y-3">
-          {(Object.keys(categoryMeta) as IssueCategory[]).map((cat) => {
+          {CATEGORY_KEYS.map((cat) => {
             const items = grouped[cat];
             if (items.length === 0) return null;
-            const catScore = scores[categoryMeta[cat].scoreKey] ?? 100;
+            const catScore = scores[SCORE_KEY[cat]] ?? 100;
 
             return (
               <CollapsibleSection
                 key={cat}
                 defaultOpen={items.some((g) => g.issue.severity === "critical" || g.issue.severity === "major")}
                 title={
-                  <span className="font-semibold text-adashi-gulf">
-                    {categoryMeta[cat].label}
-                  </span>
+                  <span className="font-semibold text-adashi-gulf">{tCat(cat)}</span>
                 }
                 badge={
                   <div className="flex items-center gap-2">
                     <span className={`text-sm font-bold ${scoreColor(catScore)}`}>
                       {catScore}
                     </span>
-                    <span className="text-xs text-gray-400">
-                      {items.length} issue{items.length !== 1 ? "s" : ""}
-                    </span>
+                    <span className="text-xs text-gray-400">{issueCountLabel(items.length)}</span>
                   </div>
                 }
               >
@@ -246,7 +250,7 @@ export function TechnicalReport({
                           <IssueCard issue={g.issue} />
                           {isMultiPage && g.pageCount > 1 && (
                             <span className="absolute top-3 right-3 text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">
-                              found on {g.pageCount} pages
+                              {tIssue("foundOnPages", { count: g.pageCount })}
                             </span>
                           )}
                         </div>
@@ -255,9 +259,7 @@ export function TechnicalReport({
                         <CollapsibleSection
                           defaultOpen={false}
                           title={
-                            <span className="text-sm text-gray-500">
-                              {secondary.length} lower-priority issue{secondary.length !== 1 ? "s" : ""}
-                            </span>
+                            <span className="text-sm text-gray-500">{lowerPriorityLabel(secondary.length)}</span>
                           }
                         >
                           <div className="space-y-3 mt-2">
@@ -266,7 +268,7 @@ export function TechnicalReport({
                                 <IssueCard issue={g.issue} />
                                 {isMultiPage && g.pageCount > 1 && (
                                   <span className="absolute top-3 right-3 text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">
-                                    found on {g.pageCount} pages
+                                    {tIssue("foundOnPages", { count: g.pageCount })}
                                   </span>
                                 )}
                               </div>
@@ -286,14 +288,12 @@ export function TechnicalReport({
       {/* Per-page findings (multi-page only) */}
       {isMultiPage && (
         <section data-section="page-analysis" className="mb-8">
-          <h2 className="font-semibold text-adashi-gulf text-lg mb-4">Page-by-Page Analysis</h2>
+          <h2 className="font-semibold text-adashi-gulf text-lg mb-4">{t("pageByPage")}</h2>
           <div className="space-y-3">
             {sortedPages.map((page, i) => {
               const pageUrl = new URL(page.url);
               const displayPath = pageUrl.pathname === "/" ? pageUrl.hostname : `${pageUrl.hostname}${pageUrl.pathname}`;
 
-              // For pages after the first, skip the header zone (top 200px in page coords)
-              // and focus on where the unique body-level issues are.
               const HEADER_ZONE = 200;
               const pageOverlays = screenshots?.[page.url]?.overlays ?? [];
               const bodyOverlays = i === 0
@@ -335,11 +335,11 @@ export function TechnicalReport({
                     )}
 
                     <div className="flex flex-wrap gap-4 text-sm">
-                      {(Object.keys(categoryMeta) as IssueCategory[]).filter((cat) => page.scores[categoryMeta[cat].scoreKey] !== undefined).map((cat) => {
-                        const s = page.scores[categoryMeta[cat].scoreKey] ?? 100;
+                      {CATEGORY_KEYS.filter((cat) => page.scores[SCORE_KEY[cat]] !== undefined).map((cat) => {
+                        const s = page.scores[SCORE_KEY[cat]] ?? 100;
                         return (
                           <span key={cat} className="text-gray-500">
-                            {categoryMeta[cat].label}:{" "}
+                            {tCat(cat)}:{" "}
                             <span className={`font-semibold ${scoreColor(s)}`}>{s}</span>
                           </span>
                         );
@@ -359,7 +359,7 @@ export function TechnicalReport({
                           ))}
                       </div>
                     ) : (
-                      <p className="text-sm text-gray-400">No issues found on this page.</p>
+                      <p className="text-sm text-gray-400">{t("noIssuesOnPage")}</p>
                     )}
                   </div>
                 </CollapsibleSection>
@@ -375,12 +375,10 @@ export function TechnicalReport({
           <CollapsibleSection
             defaultOpen={false}
             title={
-              <span className="font-semibold text-adashi-gulf">Affected Elements</span>
+              <span className="font-semibold text-adashi-gulf">{t("affectedElements")}</span>
             }
             badge={
-              <span className="text-xs text-gray-400">
-                {technicalIssues.length} element{technicalIssues.length !== 1 ? "s" : ""}
-              </span>
+              <span className="text-xs text-gray-400">{elementCountLabel(technicalIssues.length)}</span>
             }
           >
             <div className="space-y-4">
@@ -389,7 +387,7 @@ export function TechnicalReport({
                   <h4 className="font-medium text-adashi-gulf text-sm mb-1">{issue.title}</h4>
                   {issue.selector && (
                     <p className="text-xs text-gray-500">
-                      Found on: <span className="font-medium text-gray-700">{selectorToPlainText(issue.selector)}</span>
+                      {t("foundOn")} <span className="font-medium text-gray-700">{selectorToPlainText(issue.selector)}</span>
                     </p>
                   )}
                 </div>
@@ -410,7 +408,7 @@ export function TechnicalReport({
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
               </svg>
-              Copied!
+              {t("copied")}
             </>
           ) : (
             <>
@@ -418,13 +416,11 @@ export function TechnicalReport({
                 <path strokeLinecap="round" strokeLinejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101" />
                 <path strokeLinecap="round" strokeLinejoin="round" d="M10.172 13.828a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.102 1.101" />
               </svg>
-              Share this report
+              {t("share")}
             </>
           )}
         </button>
-        <span className="text-xs text-gray-400">
-          Share with your team or decision-makers — the link works for anyone.
-        </span>
+        <span className="text-xs text-gray-400">{t("shareHint")}</span>
       </div>
     </div>
   );

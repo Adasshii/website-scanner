@@ -2,44 +2,44 @@
 
 import { useEffect, useState, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
 import { LogoIcon } from "@/components/ui/logo";
 
-const STAGES = [
-  { min: 0, label: "Fetching..." },
-  { min: 25, label: "Analyzing accessibility & SEO..." },
-  { min: 55, label: "Measuring performance..." },
-  { min: 80, label: "Building report..." },
+const STAGE_BREAKPOINTS = [
+  { min: 0, key: "fetching" },
+  { min: 25, key: "analyzing" },
+  { min: 55, key: "measuring" },
+  { min: 80, key: "building" },
 ] as const;
-
-function getStageLabel(progress: number): string {
-  for (let i = STAGES.length - 1; i >= 0; i--) {
-    if (progress >= STAGES[i].min) return STAGES[i].label;
-  }
-  return STAGES[0].label;
-}
 
 function StartScanner() {
   const searchParams = useSearchParams();
   const router = useRouter();
+  const t = useTranslations("start");
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState("");
+
+  function getStageLabel(p: number): string {
+    for (let i = STAGE_BREAKPOINTS.length - 1; i >= 0; i--) {
+      if (p >= STAGE_BREAKPOINTS[i].min) return t(`stage.${STAGE_BREAKPOINTS[i].key}`);
+    }
+    return t(`stage.${STAGE_BREAKPOINTS[0].key}`);
+  }
 
   useEffect(() => {
     const url = searchParams.get("url");
 
     if (!url) {
-      setError("No URL provided. Please go back and enter a URL to scan.");
+      setError(t("error.noUrl"));
       return;
     }
 
     try {
       new URL(url.startsWith("http") ? url : `https://${url}`);
     } catch {
-      setError(
-        "The provided URL is invalid. Please check the URL and try again."
-      );
+      setError(t("error.invalidUrl"));
       return;
     }
 
@@ -62,7 +62,7 @@ function StartScanner() {
       .then(async (res) => {
         const data = await res.json();
         if (!res.ok) {
-          throw new Error(data.error || "Something went wrong.");
+          throw new Error(data.error || t("error.generic"));
         }
         return data;
       })
@@ -73,13 +73,11 @@ function StartScanner() {
       })
       .catch((err) => {
         clearInterval(tick);
-        setError(
-          err instanceof Error ? err.message : "Could not connect to the server."
-        );
+        setError(err instanceof Error ? err.message : t("error.connection"));
       });
 
     return () => clearInterval(tick);
-  }, [searchParams, router]);
+  }, [searchParams, router, t]);
 
   if (error) {
     return (
@@ -92,7 +90,7 @@ function StartScanner() {
               href="/"
               className="inline-flex items-center px-6 py-3 bg-adashi-blue text-white rounded-xl font-medium hover:bg-adashi-blue/90 transition-colors"
             >
-              Go back to homepage
+              {t("error.backHome")}
             </a>
           </div>
         </main>
@@ -116,7 +114,7 @@ function StartScanner() {
             </div>
           </div>
           <h1 className="font-display text-2xl sm:text-3xl text-adashi-gulf mb-2">
-            Scanning your website
+            {t("title")}
           </h1>
           <p className="text-gray-500 mb-8">{getStageLabel(progress)}</p>
           <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
@@ -140,11 +138,16 @@ export default function StartPage() {
     <Suspense
       fallback={
         <div className="min-h-screen flex items-center justify-center">
-          <p className="text-gray-500">Loading...</p>
+          <StartFallback />
         </div>
       }
     >
       <StartScanner />
     </Suspense>
   );
+}
+
+function StartFallback() {
+  const t = useTranslations("start");
+  return <p className="text-gray-500">{t("loading")}</p>;
 }

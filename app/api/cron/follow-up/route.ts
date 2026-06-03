@@ -75,10 +75,10 @@ export async function GET(request: NextRequest) {
     let sentCount = 0;
 
     for (const candidate of batch) {
-      // Fetch the scan's quick wins and domain
+      // Fetch the scan's quick wins, domain, and locale
       const { data: scan } = await supabase
         .from("scans")
-        .select("domain, quick_wins")
+        .select("domain, quick_wins, locale")
         .eq("id", candidate.scan_id)
         .single();
 
@@ -89,6 +89,7 @@ export async function GET(request: NextRequest) {
         domain: scan.domain,
         scanId: candidate.scan_id!,
         topQuickWin: scan.quick_wins[0],
+        locale: scan.locale ?? "en",
       });
 
       sentCount++;

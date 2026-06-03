@@ -1,0 +1,316 @@
+{
+  "metadata": {
+    "title": "Website Performance & Conversie Audit — Adashi",
+    "description": "Ontvang een gratis audit van de prestaties, toegankelijkheid, SEO en conversiepotentieel van je website. Gedetailleerd rapport met concrete aanbevelingen.",
+    "ogDescription": "Ontvang een gratis audit van de prestaties, toegankelijkheid, SEO en conversiepotentieel van je website.",
+    "siteName": "Adashi Website Performance & Conversie Audit",
+    "reportTitle": "{domain} — Score {overall}/100 | Adashi Website Rapport",
+    "reportDescription": "Website-analyse voor {domain}: Toegankelijkheid {accessibility}, SEO {seo}, Content {content}, Prestaties {performance}",
+    "reportOgTitle": "{domain} — Score {overall}/100",
+    "reportOgDescription": "Gratis website-rapport van Adashi. Bekijk de volledige analyse van toegankelijkheid, SEO en prestaties.",
+    "reportFallbackTitle": "Website-rapport | Adashi"
+  },
+  "layout": {
+    "header": {
+      "tagline": "Website Performance & Conversie Audit"
+    },
+    "footer": {
+      "rights": "© {year} Adashi. Alle rechten voorbehouden.",
+      "privacy": "Privacybeleid"
+    },
+    "languageToggle": {
+      "ariaLabel": "Taal wijzigen",
+      "en": "EN",
+      "nl": "NL"
+    }
+  },
+  "urlInput": {
+    "label": "Website-URL",
+    "placeholder": "https://voorbeeld.nl",
+    "submit": "Scan mijn site",
+    "invalidUrl": "Ongeldige URL"
+  },
+  "common": {
+    "category": {
+      "accessibility": "Toegankelijkheid",
+      "content": "Content",
+      "seo": "SEO",
+      "performance": "Prestaties",
+      "security": "Beveiliging",
+      "design": "UX & Conversie"
+    },
+    "severity": {
+      "critical": "kritiek",
+      "major": "belangrijk",
+      "minor": "klein",
+      "info": "info"
+    },
+    "difficulty": {
+      "easy": "Makkelijk",
+      "medium": "Gemiddeld",
+      "hard": "Moeilijk"
+    },
+    "difficultyFix": "{difficulty} op te lossen",
+    "grade": {
+      "excellent": "Uitstekend",
+      "performingWell": "Goed presterend",
+      "solidFoundation": "Solide basis",
+      "roomToGrow": "Ruimte voor groei",
+      "needsWork": "Vraagt om serieus werk"
+    },
+    "ctaBlock": {
+      "heading": "Hulp nodig bij het oplossen?",
+      "subheading": "Boek een gratis kennismaking van 15 minuten met Adashi en we laten je precies zien wat als eerste opgepakt moet worden.",
+      "button": "Plan een gratis kennismaking van 15 min"
+    },
+    "errors": {
+      "scanInProgress": "Scan loopt...",
+      "scanFailed": "Scan mislukt. Probeer het opnieuw.",
+      "dbError": "Scanrapport kon niet worden geladen (DB-fout: {code}).",
+      "reportInProgress": "Je rapport wordt gegenereerd...",
+      "reportUnavailable": "Rapport niet beschikbaar. De scan is mogelijk mislukt."
+    },
+    "locale": {
+      "tag": "nl-NL"
+    }
+  },
+  "home": {
+    "badge": "100% gratis — geen account nodig",
+    "hero": {
+      "title": "Hoe presteert je website",
+      "titleHighlight": "echt",
+      "titleSuffix": "?",
+      "subtitle": "Krijg direct een scan van de toegankelijkheid, SEO, contentkwaliteit en prestaties van je website. Zie wat je tegenhoudt — in duidelijke taal, zonder ontwikkelaarsjargon.",
+      "subnote": "Duurt ongeveer 15 seconden. We scannen je homepage en tonen direct de resultaten."
+    },
+    "features": {
+      "heading": "Wat je ontdekt",
+      "subheading": "Onze scanner controleert de zaken die er voor jouw online aanwezigheid het meest toe doen.",
+      "weightLabel": "{weight} van de score",
+      "accessibility": {
+        "title": "Toegankelijkheid",
+        "description": "Kunnen alle bezoekers je site gebruiken? We controleren screenreader-ondersteuning, kleurcontrast, toetsenbordnavigatie en meer.",
+        "weight": "40%"
+      },
+      "content": {
+        "title": "Contentkwaliteit",
+        "description": "Is je boodschap helder? We analyseren leesbaarheid, kopstructuur en of je calls-to-action daadwerkelijk werken.",
+        "weight": "25%"
+      },
+      "seo": {
+        "title": "SEO-basis",
+        "description": "Kan Google je vinden? We controleren metatags, koppenhiërarchie, afbeeldingsbeschrijvingen en andere rankingfactoren.",
+        "weight": "20%"
+      },
+      "performance": {
+        "title": "Prestaties",
+        "description": "Is je site snel genoeg? Trage pagina's verliezen bezoekers. We meten de laadtijd en signaleren optimalisatiekansen.",
+        "weight": "15%"
+      }
+    },
+    "steps": {
+      "heading": "Hoe het werkt",
+      "step1": {
+        "title": "Voer je URL in",
+        "description": "Plak gewoon het adres van je website. Geen account nodig, geen verplichtingen."
+      },
+      "step2": {
+        "title": "Bekijk je score",
+        "description": "Binnen 15 seconden zie je je totaalscore en belangrijkste knelpunten — uitgelegd in duidelijke taal."
+      },
+      "step3": {
+        "title": "Ontvang het volledige rapport",
+        "description": "Vul je e-mailadres in en ontvang een gedetailleerd rapport met pagina-voor-pagina analyse en concrete oplossingen."
+      }
+    },
+    "bottomCta": {
+      "heading": "Klaar om te zien hoe jouw site scoort?",
+      "subheading": "Het is gratis, duurt 15 seconden en kan problemen aan het licht brengen die je nog nooit had opgemerkt."
+    }
+  },
+  "start": {
+    "title": "We scannen je website",
+    "loading": "Laden...",
+    "stage": {
+      "fetching": "Ophalen...",
+      "analyzing": "Toegankelijkheid & SEO analyseren...",
+      "measuring": "Prestaties meten...",
+      "building": "Rapport opbouwen..."
+    },
+    "error": {
+      "noUrl": "Geen URL opgegeven. Ga terug en voer een URL in om te scannen.",
+      "invalidUrl": "De opgegeven URL is ongeldig. Controleer de URL en probeer het opnieuw.",
+      "generic": "Er is iets misgegaan.",
+      "connection": "Geen verbinding met de server.",
+      "backHome": "Terug naar de homepagina"
+    }
+  },
+  "scanResults": {
+    "title": "Scanresultaten",
+    "scannedOn": "Gescand op {date}",
+    "tab": {
+      "business": "Zakelijk overzicht",
+      "technical": "Technische details"
+    },
+    "issuesFound": "{count} problemen gevonden",
+    "criticalCount": "{count} kritiek",
+    "majorCount": "{count} belangrijk",
+    "adashiContext": "Adashi bouwt prestatie- en automatiseringssystemen voor groeiende bedrijven. Deze audit toont de problemen die je bezoekers, conversies en geloofwaardigheid kosten — en welke als eerste opgelost moeten worden.",
+    "scanFailedNotice": {
+      "heading": "We konden deze website niet volledig scannen",
+      "body": "Onze scanner kon <strong>{domain}</strong> niet laden. Dit gebeurt meestal bij erg zware websites, sites die geautomatiseerde tools blokkeren of pagina's waarvoor een login nodig is. De scores hieronder weerspiegelen wat we wel hebben kunnen meten."
+    },
+    "sidebarCta": {
+      "lead": "Ontgrendel je volledige analyse en alle quick wins",
+      "button": "Bekijk mijn volledige rapport"
+    },
+    "visitorExperience": {
+      "heading": "Hoe bezoekers je site ervaren",
+      "teaserNote": "Volledige analyse ontgrendel je met je rapport"
+    },
+    "revenueImpact": {
+      "label": "Omzetimpact",
+      "intro": "Google-onderzoek toont aan dat <highlight>53% van de mobiele bezoekers pagina's verlaat die meer dan 3 seconden laden</highlight>, en elke extra seconde verlaagt de conversie tot 7% (Akamai). De problemen hieronder weerspiegelen wat we in jouw scan hebben gevonden.",
+      "footnote": "De impactschattingen zijn gebaseerd op de specifieke problemen in jouw scan, onderbouwd door onderzoek van Google en Akamai.",
+      "fullBreakdown": "Volledige uitsplitsing hieronder"
+    },
+    "quickWinsTeaser": {
+      "label": "Quick wins",
+      "headingCount": "{count} concrete oplossingen geïdentificeerd",
+      "noDeveloper": "Geen ontwikkelaar nodig",
+      "stepLocked": "Stap-voor-stap oplossing ontgrendel je met je rapport",
+      "allFixesLocked": "Alle {count} oplossingen met stappen ontgrendel je met je rapport"
+    },
+    "topIssues": {
+      "heading": "Belangrijkste problemen",
+      "showingOf": "({visible} van {total} getoond)"
+    }
+  },
+  "issueCard": {
+    "impactPts": "-{impact} pt",
+    "learnMore": "Meer informatie",
+    "foundOnPages": "gevonden op {count} pagina's"
+  },
+  "blurredSection": {
+    "lockedHeading": "Volledig rapport vergrendeld",
+    "lockedHint": "Vul hierboven je e-mailadres in om te ontgrendelen"
+  },
+  "emailGate": {
+    "completed": {
+      "heading": "Je volledige rapport is klaar!",
+      "body": "We hebben meerdere pagina's gescand en een uitgebreide analyse gegenereerd.",
+      "button": "Bekijk volledig rapport"
+    },
+    "processing": {
+      "heading": "Diepere scan loopt",
+      "body": "We analyseren elke pagina van je site — dit vangt problemen op die de snelle scan mist. Je volledige rapport komt zo in je inbox."
+    },
+    "form": {
+      "heading": "Ontgrendel je volledige rapport",
+      "subheading": "Krijg de volledige kostenanalyse, je quick wins en een complete multi-pagina audit — gratis.",
+      "emailPlaceholder": "jij@bedrijf.nl",
+      "submit": "Volledig rapport ontvangen",
+      "sending": "Versturen...",
+      "companySizeLabel": "Hoeveel mensen werken er bij jouw bedrijf?",
+      "optional": "(optioneel)",
+      "companySize": {
+        "select": "Selecteer…",
+        "justMe": "Alleen ik",
+        "twoToTen": "2–10",
+        "elevenToFifty": "11–50",
+        "fiftyToTwoHundred": "51–200",
+        "twoHundredPlus": "200+"
+      },
+      "consent": "Ik ga ermee akkoord dat ik mijn scanrapport per e-mail ontvang. We respecteren je privacy en sturen geen spam.",
+      "privacyLink": "Privacybeleid"
+    },
+    "errors": {
+      "emptyEmail": "Vul je e-mailadres in.",
+      "noConsent": "Accepteer het privacybeleid om verder te gaan.",
+      "generic": "Er is iets misgegaan.",
+      "connection": "Geen verbinding met de server. Probeer het opnieuw.",
+      "fullScanFailed": "Volledige scan mislukt. Probeer het opnieuw."
+    }
+  },
+  "loadingState": {
+    "messages": [
+      "Je site laden...",
+      "Toegankelijkheidschecks uitvoeren...",
+      "Contentkwaliteit analyseren...",
+      "SEO-basis controleren...",
+      "Prestaties meten...",
+      "Je rapport genereren..."
+    ],
+    "scanning": "Bezig met scannen van {url}"
+  },
+  "report": {
+    "header": {
+      "title": "Website-rapport",
+      "pagesScanned": "{count} pagina's gescand",
+      "copyLink": "Rapportlink kopiëren",
+      "copied": "Link gekopieerd!"
+    },
+    "footerNote": "Rapport gegenereerd door",
+    "footerOn": "op {date}",
+    "footerQuickScan": "(snelle scan — beperkte resultaten)"
+  },
+  "businessReport": {
+    "criticalImmediate": "{count} vragen om directe aandacht",
+    "majorWorthFixing": "{count} snel oppakken",
+    "socialProof": "Adashi heeft <strong>40+ bedrijven</strong> geholpen met exact deze problemen."
+  },
+  "benchmark": {
+    "heading": "Hoe je je verhoudt",
+    "subheading": "Je scores afgezet tegen een typische MKB-site en een goed gebouwde site. Dit zijn algemene referentiepunten, geen cijfers voor jouw specifieke branche.",
+    "category": {
+      "overall": "Totaal",
+      "performance": "Prestaties",
+      "seo": "SEO",
+      "accessibility": "Toegankelijkheid",
+      "content": "Content",
+      "design": "UX & Conversie",
+      "security": "Beveiliging"
+    },
+    "verdict": {
+      "strong": "Sterk",
+      "average": "Gemiddeld",
+      "behind": "Onder gemiddeld"
+    },
+    "legend": {
+      "typical": "Typische site",
+      "wellBuilt": "Goed gebouwde site",
+      "typicalTooltip": "Typisch: {value}",
+      "wellBuiltTooltip": "Goed gebouwd: {value}"
+    }
+  },
+  "costEstimate": {
+    "heading": "Wat dit je kost",
+    "headline": "van potentiële aanvragen glippen waarschijnlijk weg door de onderstaande problemen.",
+    "explanation": "Anders gezegd: voor elke 100 bezoekers die je site bereiken, vertrekken er ongeveer {percent} zonder te bellen, mailen of kopen. Google ontdekte dat 53% van de mobiele bezoekers pagina's verlaat die meer dan 3 seconden laden, en elke extra seconde kan de conversie met tot 7% verlagen (Akamai).",
+    "impactSuffix": "~{percent}% impact",
+    "footnote": "De impactschattingen zijn gebaseerd op de specifieke problemen in jouw scan, onderbouwd door onderzoek van Google en Akamai over laadtijd en conversies."
+  },
+  "quickWins": {
+    "heading": "Jouw 3 belangrijkste quick wins",
+    "subheading": "De oplossingen met de hoogste impact die je nu kunt doorvoeren."
+  },
+  "websitePersonality": {
+    "heading": "Hoe je website overkomt"
+  },
+  "technicalReport": {
+    "issuesByCategory": "Problemen per categorie",
+    "pageByPage": "Pagina-voor-pagina analyse",
+    "affectedElements": "Betrokken elementen",
+    "issueCount": "{count} problemen",
+    "issueCountSingular": "{count} probleem",
+    "elementCount": "{count} elementen",
+    "elementCountSingular": "{count} element",
+    "lowerPriority": "{count} minder urgente problemen",
+    "lowerPrioritySingular": "{count} minder urgent probleem",
+    "noIssuesOnPage": "Geen problemen gevonden op deze pagina.",
+    "foundOn": "Gevonden op:",
+    "share": "Deel dit rapport",
+    "copied": "Gekopieerd!",
+    "shareHint": "Deel het met je team of besluitvormers — de link werkt voor iedereen."
+  }
+}

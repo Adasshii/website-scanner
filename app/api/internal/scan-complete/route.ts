@@ -27,7 +27,7 @@ export async function POST(request: NextRequest) {
     const supabase = createServerClient();
     const { data: scan, error } = await supabase
       .from("scans")
-      .select("id, email, domain, scores, summary, status, sales_brief")
+      .select("id, email, domain, scores, summary, status, sales_brief, locale")
       .eq("id", scanId)
       .single();
 
@@ -39,7 +39,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Scan not ready or no email" }, { status: 400 });
     }
 
-    // Send report-ready email to the user
+    // Send report-ready email to the user (in their original locale)
     await sendReportReadyEmail({
       to: scan.email,
       domain: scan.domain,
@@ -48,6 +48,7 @@ export async function POST(request: NextRequest) {
       totalPages: scan.summary.totalPages,
       totalIssues: scan.summary.totalIssues,
       criticalIssues: scan.summary.criticalIssues,
+      locale: scan.locale ?? "en",
     });
 
     // Send admin notification email

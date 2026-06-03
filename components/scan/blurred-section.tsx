@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import type { Issue } from "@/types/scanner";
 
 const severityBadge: Record<string, string> = {
@@ -14,6 +15,9 @@ interface BlurredSectionProps {
 }
 
 export function BlurredSection({ issues }: BlurredSectionProps) {
+  const t = useTranslations("blurredSection");
+  const tSev = useTranslations("common.severity");
+
   return (
     <div className="relative rounded-2xl overflow-hidden">
       {/* Blurred teaser content */}
@@ -27,7 +31,7 @@ export function BlurredSection({ issues }: BlurredSectionProps) {
                     severityBadge[issue.severity] || severityBadge.info
                   }`}
                 >
-                  {issue.severity}
+                  {tSev(issue.severity)}
                 </span>
               </div>
               <p className="font-medium text-adashi-gulf text-sm">{issue.title}</p>
@@ -48,8 +52,8 @@ export function BlurredSection({ issues }: BlurredSectionProps) {
             />
           </svg>
         </div>
-        <p className="font-display text-lg text-adashi-gulf mb-1">Full report locked</p>
-        <p className="text-sm text-gray-500">Enter your email above to unlock</p>
+        <p className="font-display text-lg text-adashi-gulf mb-1">{t("lockedHeading")}</p>
+        <p className="text-sm text-gray-500">{t("lockedHint")}</p>
       </div>
     </div>
   );

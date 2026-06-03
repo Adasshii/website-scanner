@@ -1,0 +1,316 @@
+{
+  "metadata": {
+    "title": "Website Performance & Conversion Audit — Adashi",
+    "description": "Get a free audit of your website's performance, accessibility, SEO, and conversion potential. Detailed report with actionable recommendations.",
+    "ogDescription": "Get a free audit of your website's performance, accessibility, SEO, and conversion potential.",
+    "siteName": "Adashi Website Performance & Conversion Audit",
+    "reportTitle": "{domain} — Score {overall}/100 | Adashi Website Report",
+    "reportDescription": "Website analysis for {domain}: Accessibility {accessibility}, SEO {seo}, Content {content}, Performance {performance}",
+    "reportOgTitle": "{domain} — Score {overall}/100",
+    "reportOgDescription": "Free website report by Adashi. See the full accessibility, SEO, and performance analysis.",
+    "reportFallbackTitle": "Website Report | Adashi"
+  },
+  "layout": {
+    "header": {
+      "tagline": "Website Performance & Conversion Audit"
+    },
+    "footer": {
+      "rights": "© {year} Adashi. All rights reserved.",
+      "privacy": "Privacy Policy"
+    },
+    "languageToggle": {
+      "ariaLabel": "Change language",
+      "en": "EN",
+      "nl": "NL"
+    }
+  },
+  "urlInput": {
+    "label": "Website URL",
+    "placeholder": "https://example.com",
+    "submit": "Scan my site",
+    "invalidUrl": "Invalid URL"
+  },
+  "common": {
+    "category": {
+      "accessibility": "Accessibility",
+      "content": "Content",
+      "seo": "SEO",
+      "performance": "Performance",
+      "security": "Security",
+      "design": "UX & Conversion"
+    },
+    "severity": {
+      "critical": "critical",
+      "major": "major",
+      "minor": "minor",
+      "info": "info"
+    },
+    "difficulty": {
+      "easy": "Easy",
+      "medium": "Medium",
+      "hard": "Hard"
+    },
+    "difficultyFix": "{difficulty} fix",
+    "grade": {
+      "excellent": "Excellent",
+      "performingWell": "Performing well",
+      "solidFoundation": "Solid foundation",
+      "roomToGrow": "Room to grow",
+      "needsWork": "Needs significant work"
+    },
+    "ctaBlock": {
+      "heading": "Want help fixing these issues?",
+      "subheading": "Book a free 15-minute walkthrough with Adashi and we'll show you exactly what to fix first.",
+      "button": "Get a free 15-min walkthrough"
+    },
+    "errors": {
+      "scanInProgress": "Scan in progress...",
+      "scanFailed": "Scan failed. Please try again.",
+      "dbError": "Could not load scan report (DB error: {code}).",
+      "reportInProgress": "Your report is being generated...",
+      "reportUnavailable": "Report unavailable. The scan may have failed."
+    },
+    "locale": {
+      "tag": "en-US"
+    }
+  },
+  "home": {
+    "badge": "100% free — no signup required",
+    "hero": {
+      "title": "How does your website",
+      "titleHighlight": "really",
+      "titleSuffix": "perform?",
+      "subtitle": "Get an instant scan of your website's accessibility, SEO, content quality, and performance. See what's holding you back — in plain language, not developer jargon.",
+      "subnote": "Takes about 15 seconds. We scan your homepage and show you the results instantly."
+    },
+    "features": {
+      "heading": "What you'll discover",
+      "subheading": "Our scanner checks the things that matter most for your business's online presence.",
+      "weightLabel": "{weight} of score",
+      "accessibility": {
+        "title": "Accessibility",
+        "description": "Can all visitors use your site? We check for screen reader support, color contrast, keyboard navigation, and more.",
+        "weight": "40%"
+      },
+      "content": {
+        "title": "Content Quality",
+        "description": "Is your message clear? We analyze readability, heading structure, and whether your calls-to-action actually work.",
+        "weight": "25%"
+      },
+      "seo": {
+        "title": "SEO Basics",
+        "description": "Can Google find you? We check meta tags, heading hierarchy, image descriptions, and other ranking factors.",
+        "weight": "20%"
+      },
+      "performance": {
+        "title": "Performance",
+        "description": "Is your site fast enough? Slow pages lose visitors. We measure load time and flag optimization opportunities.",
+        "weight": "15%"
+      }
+    },
+    "steps": {
+      "heading": "How it works",
+      "step1": {
+        "title": "Enter your URL",
+        "description": "Just paste your website address. No account needed, no strings attached."
+      },
+      "step2": {
+        "title": "Get your score",
+        "description": "In about 15 seconds, see your overall score and top issues — explained in plain language."
+      },
+      "step3": {
+        "title": "Get the full report",
+        "description": "Enter your email to receive a detailed report with page-by-page analysis and fix recommendations."
+      }
+    },
+    "bottomCta": {
+      "heading": "Ready to see how your site stacks up?",
+      "subheading": "It's free, takes 15 seconds, and could reveal issues you've never noticed."
+    }
+  },
+  "start": {
+    "title": "Scanning your website",
+    "loading": "Loading...",
+    "stage": {
+      "fetching": "Fetching...",
+      "analyzing": "Analyzing accessibility & SEO...",
+      "measuring": "Measuring performance...",
+      "building": "Building report..."
+    },
+    "error": {
+      "noUrl": "No URL provided. Please go back and enter a URL to scan.",
+      "invalidUrl": "The provided URL is invalid. Please check the URL and try again.",
+      "generic": "Something went wrong.",
+      "connection": "Could not connect to the server.",
+      "backHome": "Go back to homepage"
+    }
+  },
+  "scanResults": {
+    "title": "Scan Results",
+    "scannedOn": "Scanned {date}",
+    "tab": {
+      "business": "Business Overview",
+      "technical": "Technical Details"
+    },
+    "issuesFound": "{count} issues found",
+    "criticalCount": "{count} critical",
+    "majorCount": "{count} major",
+    "adashiContext": "Adashi builds performance and automation systems for growing businesses. This audit identifies the issues that cost you visitors, conversions, and credibility — and shows what's worth fixing first.",
+    "scanFailedNotice": {
+      "heading": "We couldn't fully scan this website",
+      "body": "Our scanner wasn't able to load <strong>{domain}</strong>. This usually happens with very heavy websites, sites that block automated tools, or pages that require a login. The scores below reflect what we could measure before the error occurred."
+    },
+    "sidebarCta": {
+      "lead": "Unlock your full breakdown and all quick wins",
+      "button": "Get my full report"
+    },
+    "visitorExperience": {
+      "heading": "How visitors experience your site",
+      "teaserNote": "Full analysis unlocked with your report"
+    },
+    "revenueImpact": {
+      "label": "Revenue impact",
+      "intro": "Google research shows <highlight>53% of mobile users abandon pages that take longer than 3 seconds to load</highlight>, and each additional second reduces conversions by up to 7% (Akamai). The issues below reflect what we found in your scan.",
+      "footnote": "Impact estimates are based on the specific issues found in your scan, informed by Google and Akamai research.",
+      "fullBreakdown": "Full breakdown below"
+    },
+    "quickWinsTeaser": {
+      "label": "Quick wins",
+      "headingCount": "{count} actionable fixes identified",
+      "noDeveloper": "No developer needed",
+      "stepLocked": "Step-by-step fix unlocked with your report",
+      "allFixesLocked": "All {count} fixes with steps unlocked with your report"
+    },
+    "topIssues": {
+      "heading": "Top Issues",
+      "showingOf": "(showing {visible} of {total})"
+    }
+  },
+  "issueCard": {
+    "impactPts": "-{impact} pts",
+    "learnMore": "Learn more",
+    "foundOnPages": "found on {count} pages"
+  },
+  "blurredSection": {
+    "lockedHeading": "Full report locked",
+    "lockedHint": "Enter your email above to unlock"
+  },
+  "emailGate": {
+    "completed": {
+      "heading": "Your full report is ready!",
+      "body": "We've scanned multiple pages and generated a comprehensive analysis.",
+      "button": "View Full Report"
+    },
+    "processing": {
+      "heading": "Deep scan in progress",
+      "body": "We're analysing every page of your site — this catches issues the quick scan misses. Your full report will be in your inbox shortly."
+    },
+    "form": {
+      "heading": "Unlock your full report",
+      "subheading": "Get the full cost breakdown, your quick wins, and a complete multi-page audit — free.",
+      "emailPlaceholder": "you@company.com",
+      "submit": "Get full report",
+      "sending": "Sending...",
+      "companySizeLabel": "How many people work at your company?",
+      "optional": "(optional)",
+      "companySize": {
+        "select": "Select…",
+        "justMe": "Just me",
+        "twoToTen": "2–10",
+        "elevenToFifty": "11–50",
+        "fiftyToTwoHundred": "51–200",
+        "twoHundredPlus": "200+"
+      },
+      "consent": "I agree to receive my scan report by email. We respect your privacy and won't spam you.",
+      "privacyLink": "Privacy policy"
+    },
+    "errors": {
+      "emptyEmail": "Please enter your email address.",
+      "noConsent": "Please accept the privacy policy to continue.",
+      "generic": "Something went wrong.",
+      "connection": "Could not connect to the server. Please try again.",
+      "fullScanFailed": "Full scan failed. Please try again."
+    }
+  },
+  "loadingState": {
+    "messages": [
+      "Loading your site...",
+      "Running accessibility checks...",
+      "Analyzing content quality...",
+      "Checking SEO basics...",
+      "Measuring performance...",
+      "Generating your report..."
+    ],
+    "scanning": "Scanning {url}"
+  },
+  "report": {
+    "header": {
+      "title": "Website Report",
+      "pagesScanned": "{count} pages scanned",
+      "copyLink": "Copy report link",
+      "copied": "Link copied!"
+    },
+    "footerNote": "Report generated by",
+    "footerOn": "on {date}",
+    "footerQuickScan": "(quick scan — limited results)"
+  },
+  "businessReport": {
+    "criticalImmediate": "{count} need immediate attention",
+    "majorWorthFixing": "{count} worth fixing soon",
+    "socialProof": "Adashi has helped <strong>40+ businesses</strong> fix exactly these issues."
+  },
+  "benchmark": {
+    "heading": "How you compare",
+    "subheading": "Your scores against a typical small-business site and a well-built one. These are general reference points, not figures for your specific industry.",
+    "category": {
+      "overall": "Overall",
+      "performance": "Performance",
+      "seo": "SEO",
+      "accessibility": "Accessibility",
+      "content": "Content",
+      "design": "UX & Conversion",
+      "security": "Security"
+    },
+    "verdict": {
+      "strong": "Strong",
+      "average": "Around average",
+      "behind": "Behind typical"
+    },
+    "legend": {
+      "typical": "Typical site",
+      "wellBuilt": "Well-built site",
+      "typicalTooltip": "Typical: {value}",
+      "wellBuiltTooltip": "Well-built: {value}"
+    }
+  },
+  "costEstimate": {
+    "heading": "What this is costing you",
+    "headline": "of potential enquiries are likely slipping away because of the issues below.",
+    "explanation": "Put another way: for every 100 visitors who reach your site, around {percent} leave without calling, emailing, or buying. Google found 53% of mobile visitors give up on pages that take over 3 seconds to load, and each extra second can cut conversions by up to 7% (Akamai).",
+    "impactSuffix": "~{percent}% impact",
+    "footnote": "Impact estimates are based on the specific issues found in your scan, informed by Google and Akamai research on page speed and conversion rates."
+  },
+  "quickWins": {
+    "heading": "Your Top 3 Quick Wins",
+    "subheading": "The highest-impact fixes you can make right now."
+  },
+  "websitePersonality": {
+    "heading": "How your website comes across"
+  },
+  "technicalReport": {
+    "issuesByCategory": "Issues by Category",
+    "pageByPage": "Page-by-Page Analysis",
+    "affectedElements": "Affected Elements",
+    "issueCount": "{count} issues",
+    "issueCountSingular": "{count} issue",
+    "elementCount": "{count} elements",
+    "elementCountSingular": "{count} element",
+    "lowerPriority": "{count} lower-priority issues",
+    "lowerPrioritySingular": "{count} lower-priority issue",
+    "noIssuesOnPage": "No issues found on this page.",
+    "foundOn": "Found on:",
+    "share": "Share this report",
+    "copied": "Copied!",
+    "shareHint": "Share with your team or decision-makers — the link works for anyone."
+  }
+}

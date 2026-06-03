@@ -299,6 +299,8 @@ export interface ScanRow {
   design_ai_analyzed_at: string | null;
   /** Public URL of the scanned homepage screenshot for display */
   homepage_screenshot_url: string | null;
+  /** Visitor's UI locale at scan submission ('en' | 'nl'). Drives AI output language and email language. */
+  locale: string;
 }
 
 export interface LeadRow {
@@ -312,4 +314,6 @@ export interface LeadRow {
   created_at: string;
   /** Set when lead books an appointment via Fillout */
   booked_at: string | null;
+  /** Locale used for emails sent to this lead */
+  locale: string;
 }

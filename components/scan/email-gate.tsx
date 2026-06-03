@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, FormEvent, useEffect, useCallback } from "react";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 
 type GateStatus = "idle" | "submitting" | "processing" | "completed" | "failed";
@@ -12,6 +13,7 @@ interface EmailGateProps {
 }
 
 export function EmailGate({ scanId, onFullScanComplete }: EmailGateProps) {
+  const t = useTranslations("emailGate");
   const [email, setEmail] = useState("");
   const [companySize, setCompanySize] = useState("");
   const [consent, setConsent] = useState(false);
@@ -31,14 +33,14 @@ export function EmailGate({ scanId, onFullScanComplete }: EmailGateProps) {
       }
       if (data.status === "failed") {
         setStatus("failed");
-        setError(data.error_message || "Full scan failed. Please try again.");
+        setError(data.error_message || t("errors.fullScanFailed"));
         return true; // done polling
       }
       return false; // keep polling
     } catch {
       return false;
     }
-  }, [scanId, onFullScanComplete]);
+  }, [scanId, onFullScanComplete, t]);
 
   useEffect(() => {
     if (status !== "processing") return;
@@ -56,12 +58,12 @@ export function EmailGate({ scanId, onFullScanComplete }: EmailGateProps) {
     setError("");
 
     if (!email.trim()) {
-      setError("Please enter your email address.");
+      setError(t("errors.emptyEmail"));
       return;
     }
 
     if (!consent) {
-      setError("Please accept the privacy policy to continue.");
+      setError(t("errors.noConsent"));
       return;
     }
 
@@ -77,14 +79,14 @@ export function EmailGate({ scanId, onFullScanComplete }: EmailGateProps) {
       const data = await res.json();
 
       if (!res.ok) {
-        setError(data.error || "Something went wrong.");
+        setError(data.error || t("errors.generic"));
         setStatus("idle");
         return;
       }
 
       setStatus("processing");
     } catch {
-      setError("Could not connect to the server. Please try again.");
+      setError(t("errors.connection"));
       setStatus("idle");
     }
   }
@@ -97,17 +99,13 @@ export function EmailGate({ scanId, onFullScanComplete }: EmailGateProps) {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
           </svg>
         </div>
-        <h3 className="font-display text-xl text-adashi-gulf mb-2">
-          Your full report is ready!
-        </h3>
-        <p className="text-gray-600 mb-4">
-          We&apos;ve scanned multiple pages and generated a comprehensive analysis.
-        </p>
+        <h3 className="font-display text-xl text-adashi-gulf mb-2">{t("completed.heading")}</h3>
+        <p className="text-gray-600 mb-4">{t("completed.body")}</p>
         <a
           href={`/report/${scanId}`}
           className="inline-block bg-adashi-blue hover:bg-adashi-science text-white font-semibold px-6 py-3 rounded-xl transition-colors"
         >
-          View Full Report
+          {t("completed.button")}
         </a>
       </div>
     );
@@ -122,13 +120,8 @@ export function EmailGate({ scanId, onFullScanComplete }: EmailGateProps) {
             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
           </svg>
         </div>
-        <h3 className="font-display text-xl text-adashi-gulf mb-2">
-          Deep scan in progress
-        </h3>
-        <p className="text-gray-500 text-sm">
-          We&apos;re analysing every page of your site — this catches issues the quick scan misses.
-          Your full report will be in your inbox shortly.
-        </p>
+        <h3 className="font-display text-xl text-adashi-gulf mb-2">{t("processing.heading")}</h3>
+        <p className="text-gray-500 text-sm">{t("processing.body")}</p>
       </div>
     );
   }
@@ -137,11 +130,9 @@ export function EmailGate({ scanId, onFullScanComplete }: EmailGateProps) {
     <div className="bg-white rounded-2xl shadow-card p-6 sm:p-8">
       <div className="text-center mb-6">
         <h3 className="font-display text-xl sm:text-2xl text-adashi-gulf mb-2">
-          Unlock your full report
+          {t("form.heading")}
         </h3>
-        <p className="text-gray-500">
-          Get the full cost breakdown, your quick wins, and a complete multi-page audit — free.
-        </p>
+        <p className="text-gray-500">{t("form.subheading")}</p>
       </div>
 
       <form onSubmit={handleSubmit} className="max-w-md mx-auto">
@@ -153,7 +144,7 @@ export function EmailGate({ scanId, onFullScanComplete }: EmailGateProps) {
               setEmail(e.target.value);
               if (error) setError("");
             }}
-            placeholder="you@company.com"
+            placeholder={t("form.emailPlaceholder")}
             className={`flex-1 px-4 py-3 rounded-xl border-2 text-base bg-white transition-colors outline-none ${
               error
                 ? "border-red-400 focus:border-red-500"
@@ -166,13 +157,14 @@ export function EmailGate({ scanId, onFullScanComplete }: EmailGateProps) {
             type="submit"
             disabled={status === "submitting" || !email.trim() || !consent}
           >
-            {status === "submitting" ? "Sending..." : "Get full report"}
+            {status === "submitting" ? t("form.sending") : t("form.submit")}
           </Button>
         </div>
 
         <div className="mb-4">
           <label htmlFor="company-size" className="block text-sm text-gray-500 mb-1.5">
-            How many people work at your company? <span className="text-gray-400">(optional)</span>
+            {t("form.companySizeLabel")}{" "}
+            <span className="text-gray-400">{t("form.optional")}</span>
           </label>
           <select
             id="company-size"
@@ -181,12 +173,12 @@ export function EmailGate({ scanId, onFullScanComplete }: EmailGateProps) {
             disabled={status === "submitting"}
             className="w-full px-4 py-2.5 rounded-xl border-2 border-gray-200 focus:border-adashi-blue text-base bg-white text-gray-700 outline-none transition-colors"
           >
-            <option value="">Select&hellip;</option>
-            <option value="just-me">Just me</option>
-            <option value="2-10">2–10</option>
-            <option value="11-50">11–50</option>
-            <option value="51-200">51–200</option>
-            <option value="200+">200+</option>
+            <option value="">{t("form.companySize.select")}</option>
+            <option value="just-me">{t("form.companySize.justMe")}</option>
+            <option value="2-10">{t("form.companySize.twoToTen")}</option>
+            <option value="11-50">{t("form.companySize.elevenToFifty")}</option>
+            <option value="51-200">{t("form.companySize.fiftyToTwoHundred")}</option>
+            <option value="200+">{t("form.companySize.twoHundredPlus")}</option>
           </select>
         </div>
 
@@ -202,15 +194,14 @@ export function EmailGate({ scanId, onFullScanComplete }: EmailGateProps) {
             disabled={status === "submitting"}
           />
           <span className="text-sm text-gray-500 leading-relaxed">
-            I agree to receive my scan report by email. We respect your privacy and
-            won&apos;t spam you.{" "}
+            {t("form.consent")}{" "}
             <a
               href="https://adashi.io/privacy"
               target="_blank"
               rel="noopener noreferrer"
               className="text-adashi-blue hover:underline"
             >
-              Privacy policy
+              {t("form.privacyLink")}
             </a>
           </span>
         </label>

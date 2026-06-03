@@ -1,9 +1,39 @@
+import { useTranslations } from "next-intl";
 import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
 import { UrlInput } from "@/components/ui/url-input";
 import { LogoIcon } from "@/components/ui/logo";
 
 export default function Home() {
+  const t = useTranslations("home");
+
+  const features = [
+    {
+      icon: <AccessibilityIcon className="w-6 h-6 text-adashi-blue" />,
+      title: t("features.accessibility.title"),
+      description: t("features.accessibility.description"),
+      weight: t("features.accessibility.weight"),
+    },
+    {
+      icon: <ContentIcon className="w-6 h-6 text-adashi-blue" />,
+      title: t("features.content.title"),
+      description: t("features.content.description"),
+      weight: t("features.content.weight"),
+    },
+    {
+      icon: <SeoIcon className="w-6 h-6 text-adashi-blue" />,
+      title: t("features.seo.title"),
+      description: t("features.seo.description"),
+      weight: t("features.seo.weight"),
+    },
+    {
+      icon: <SpeedIcon className="w-6 h-6 text-adashi-blue" />,
+      title: t("features.performance.title"),
+      description: t("features.performance.description"),
+      weight: t("features.performance.weight"),
+    },
+  ];
+
   return (
     <div className="min-h-screen flex flex-col">
       <Header />
@@ -13,28 +43,24 @@ export default function Home() {
         <div className="mx-auto max-w-5xl px-4 sm:px-6 py-20 sm:py-32 text-center">
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-adashi-blue/5 text-adashi-blue text-sm font-medium mb-8">
             <LogoIcon className="w-4 h-4" />
-            100% free &mdash; no signup required
+            {t("badge")}
           </div>
 
           <h1 className="font-display text-4xl sm:text-5xl lg:text-6xl text-adashi-gulf leading-tight mb-6">
-            How does your website{" "}
-            <span className="gradient-text">really</span> perform?
+            {t("hero.title")}{" "}
+            <span className="gradient-text">{t("hero.titleHighlight")}</span>{" "}
+            {t("hero.titleSuffix")}
           </h1>
 
           <p className="text-lg sm:text-xl text-gray-600 max-w-2xl mx-auto mb-10">
-            Get an instant scan of your website&apos;s accessibility, SEO,
-            content quality, and performance. See what&apos;s holding you back
-            &mdash; in plain language, not developer jargon.
+            {t("hero.subtitle")}
           </p>
 
           <div className="flex justify-center">
             <UrlInput />
           </div>
 
-          <p className="mt-4 text-sm text-gray-400">
-            Takes about 15 seconds. We scan your homepage and show you the
-            results instantly.
-          </p>
+          <p className="mt-4 text-sm text-gray-400">{t("hero.subnote")}</p>
         </div>
       </section>
 
@@ -42,40 +68,23 @@ export default function Home() {
       <section className="py-20 sm:py-28 bg-gray-50/50">
         <div className="mx-auto max-w-5xl px-4 sm:px-6">
           <h2 className="font-display text-3xl sm:text-4xl text-adashi-gulf text-center mb-4">
-            What you&apos;ll discover
+            {t("features.heading")}
           </h2>
           <p className="text-center text-gray-500 max-w-xl mx-auto mb-14">
-            Our scanner checks the things that matter most for your
-            business&apos;s online presence.
+            {t("features.subheading")}
           </p>
 
           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            <FeatureCard
-              icon={
-                <AccessibilityIcon className="w-6 h-6 text-adashi-blue" />
-              }
-              title="Accessibility"
-              description="Can all visitors use your site? We check for screen reader support, color contrast, keyboard navigation, and more."
-              weight="40%"
-            />
-            <FeatureCard
-              icon={<ContentIcon className="w-6 h-6 text-adashi-blue" />}
-              title="Content Quality"
-              description="Is your message clear? We analyze readability, heading structure, and whether your calls-to-action actually work."
-              weight="25%"
-            />
-            <FeatureCard
-              icon={<SeoIcon className="w-6 h-6 text-adashi-blue" />}
-              title="SEO Basics"
-              description="Can Google find you? We check meta tags, heading hierarchy, image descriptions, and other ranking factors."
-              weight="20%"
-            />
-            <FeatureCard
-              icon={<SpeedIcon className="w-6 h-6 text-adashi-blue" />}
-              title="Performance"
-              description="Is your site fast enough? Slow pages lose visitors. We measure load time and flag optimization opportunities."
-              weight="15%"
-            />
+            {features.map((f) => (
+              <FeatureCard
+                key={f.title}
+                icon={f.icon}
+                title={f.title}
+                description={f.description}
+                weight={f.weight}
+                weightLabel={t("features.weightLabel", { weight: f.weight })}
+              />
+            ))}
           </div>
         </div>
       </section>
@@ -84,24 +93,24 @@ export default function Home() {
       <section className="py-20 sm:py-28">
         <div className="mx-auto max-w-5xl px-4 sm:px-6">
           <h2 className="font-display text-3xl sm:text-4xl text-adashi-gulf text-center mb-14">
-            How it works
+            {t("steps.heading")}
           </h2>
 
           <div className="grid sm:grid-cols-3 gap-8 sm:gap-12">
             <Step
               number="1"
-              title="Enter your URL"
-              description="Just paste your website address. No account needed, no strings attached."
+              title={t("steps.step1.title")}
+              description={t("steps.step1.description")}
             />
             <Step
               number="2"
-              title="Get your score"
-              description="In about 15 seconds, see your overall score and top issues — explained in plain language."
+              title={t("steps.step2.title")}
+              description={t("steps.step2.description")}
             />
             <Step
               number="3"
-              title="Get the full report"
-              description="Enter your email to receive a detailed report with page-by-page analysis and fix recommendations."
+              title={t("steps.step3.title")}
+              description={t("steps.step3.description")}
             />
           </div>
         </div>
@@ -111,11 +120,10 @@ export default function Home() {
       <section className="py-16 bg-adashi-gulf text-white text-center noise relative">
         <div className="mx-auto max-w-3xl px-4 sm:px-6">
           <h2 className="font-display text-3xl sm:text-4xl mb-4">
-            Ready to see how your site stacks up?
+            {t("bottomCta.heading")}
           </h2>
           <p className="text-adashi-pastel text-lg mb-8">
-            It&apos;s free, takes 15 seconds, and could reveal issues
-            you&apos;ve never noticed.
+            {t("bottomCta.subheading")}
           </p>
           <div className="flex justify-center">
             <UrlInput />
@@ -132,12 +140,13 @@ function FeatureCard({
   icon,
   title,
   description,
-  weight,
+  weightLabel,
 }: {
   icon: React.ReactNode;
   title: string;
   description: string;
   weight: string;
+  weightLabel: string;
 }) {
   return (
     <div className="bg-white rounded-2xl p-6 shadow-card spring-hover">
@@ -146,7 +155,7 @@ function FeatureCard({
           {icon}
         </div>
         <span className="text-xs font-medium text-gray-400 bg-gray-100 px-2 py-1 rounded-full">
-          {weight} of score
+          {weightLabel}
         </span>
       </div>
       <h3 className="font-semibold text-adashi-gulf mb-2">{title}</h3>

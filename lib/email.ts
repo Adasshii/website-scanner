@@ -15,6 +15,12 @@ function getResend(): Resend | null {
 const FROM_EMAIL = process.env.RESEND_FROM_EMAIL || "scan@adashi.io";
 const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://scan.adashi.io";
 
+type Locale = "en" | "nl";
+
+function normalizeLocale(locale?: string | null): Locale {
+  return locale === "nl" ? "nl" : "en";
+}
+
 // ── Email event tracking ──────────────────────────────────────────────
 
 async function trackEmailEvent(params: {
@@ -37,6 +43,81 @@ async function trackEmailEvent(params: {
   }
 }
 
+// ── Localized strings ────────────────────────────────────────────────
+
+const TEXT = {
+  en: {
+    confirmation: {
+      subject: (domain: string) => `Your website scan for ${domain} is underway`,
+      heading: (domain: string) => `Quick scan complete for ${domain}`,
+      lead: (score: number, color: string) =>
+        `Your quick score is <strong style="color:${color}">${score}/100</strong>. We're now running a full multi-page analysis in the background.`,
+      reassurance: `You don't need to keep any page open. We'll send you another email as soon as your full report is ready.`,
+      cta: "View your report",
+      footerScanned: (domain: string, url: string) =>
+        `You're receiving this because you scanned ${domain} on <a href="${url}" style="color:#006DFF;text-decoration:none;">scan.adashi.io</a>.`,
+      footerQuestions: `Questions? Reply to this email or visit <a href="https://adashi.io" style="color:#006DFF;text-decoration:none;">adashi.io</a>.`,
+    },
+    reportReady: {
+      subject: (domain: string) => `Your full website report for ${domain} is ready`,
+      heading: (domain: string) => `Your full report for ${domain} is ready`,
+      summary: (pages: number, issues: number, criticalLine: string, score: number, color: string) =>
+        `We scanned <strong>${pages} page${pages !== 1 ? "s" : ""}</strong> and found <strong>${issues} issue${issues !== 1 ? "s" : ""}</strong> (${criticalLine}). Your overall score is <strong style="color:${color}">${score}/100</strong>.`,
+      criticalLabel: (n: number) => `${n} critical`,
+      noCritical: "0 critical",
+      statPages: "Pages scanned",
+      statIssues: "Issues found",
+      statScore: "Overall score",
+      cta: "View full report",
+      help: `Need help fixing these issues? <a href="https://adashi.io/contact" style="color:#006DFF;text-decoration:none;font-weight:600;">Book a free strategy call</a> and we'll walk you through it.`,
+    },
+    followUp: {
+      subject: (domain: string) => `Quick follow-up on your website report: ${domain}`,
+      heading: "Did you get a chance to review your report?",
+      intro: (domain: string) =>
+        `We sent you a website report for <strong>${domain}</strong> a few days ago. Here's your #1 quick win:`,
+      cta: "View your report",
+      bookLink: "Book a free strategy call →",
+      help: "If you'd like help implementing the fixes, we're here.",
+    },
+  },
+  nl: {
+    confirmation: {
+      subject: (domain: string) => `Je website-scan voor ${domain} is gestart`,
+      heading: (domain: string) => `Snelle scan voltooid voor ${domain}`,
+      lead: (score: number, color: string) =>
+        `Je snelle score is <strong style="color:${color}">${score}/100</strong>. We draaien nu op de achtergrond een volledige multi-pagina analyse.`,
+      reassurance: `Je hoeft geen pagina open te houden. Zodra je volledige rapport klaar is, ontvang je een nieuwe e-mail.`,
+      cta: "Bekijk je rapport",
+      footerScanned: (domain: string, url: string) =>
+        `Je ontvangt deze e-mail omdat je ${domain} hebt gescand op <a href="${url}" style="color:#006DFF;text-decoration:none;">scan.adashi.io</a>.`,
+      footerQuestions: `Vragen? Beantwoord deze e-mail of bezoek <a href="https://adashi.io" style="color:#006DFF;text-decoration:none;">adashi.io</a>.`,
+    },
+    reportReady: {
+      subject: (domain: string) => `Je volledige website-rapport voor ${domain} is klaar`,
+      heading: (domain: string) => `Je volledige rapport voor ${domain} is klaar`,
+      summary: (pages: number, issues: number, criticalLine: string, score: number, color: string) =>
+        `We hebben <strong>${pages} pagina${pages !== 1 ? "'s" : ""}</strong> gescand en <strong>${issues} ${issues === 1 ? "probleem" : "problemen"}</strong> gevonden (${criticalLine}). Je totaalscore is <strong style="color:${color}">${score}/100</strong>.`,
+      criticalLabel: (n: number) => `${n} kritiek`,
+      noCritical: "0 kritiek",
+      statPages: "Pagina's gescand",
+      statIssues: "Problemen gevonden",
+      statScore: "Totaalscore",
+      cta: "Bekijk volledig rapport",
+      help: `Hulp nodig bij het oplossen? <a href="https://adashi.io/contact" style="color:#006DFF;text-decoration:none;font-weight:600;">Plan een gratis strategiegesprek</a> en we lopen het samen door.`,
+    },
+    followUp: {
+      subject: (domain: string) => `Korte follow-up op je website-rapport: ${domain}`,
+      heading: "Heb je je rapport al kunnen bekijken?",
+      intro: (domain: string) =>
+        `Een paar dagen geleden hebben we je een website-rapport gestuurd voor <strong>${domain}</strong>. Dit is je belangrijkste quick win:`,
+      cta: "Bekijk je rapport",
+      bookLink: "Plan een gratis strategiegesprek →",
+      help: "Als je hulp wilt bij het doorvoeren van de fixes, staan we klaar.",
+    },
+  },
+} as const;
+
 // ── Confirmation email (sent when user submits email) ───────────────
 
 export async function sendConfirmationEmail(params: {
@@ -44,6 +125,7 @@ export async function sendConfirmationEmail(params: {
   domain: string;
   scanId: string;
   quickScore: number;
+  locale?: string;
 }): Promise<string | null> {
   const resend = getResend();
   if (!resend) {
@@ -51,6 +133,7 @@ export async function sendConfirmationEmail(params: {
     return null;
   }
 
+  const locale = normalizeLocale(params.locale);
   const { to, domain, scanId, quickScore } = params;
   const reportUrl = `${BASE_URL}/report/${scanId}`;
 
@@ -60,8 +143,8 @@ export async function sendConfirmationEmail(params: {
   const { data, error } = await resend.emails.send({
     from: `Adashi Scanner <${FROM_EMAIL}>`,
     to,
-    subject: `Your website scan for ${domain} is underway`,
-    html: confirmationTemplate({ domain, reportUrl, quickScore, scoreColor }),
+    subject: TEXT[locale].confirmation.subject(domain),
+    html: confirmationTemplate({ domain, reportUrl, quickScore, scoreColor, locale }),
   });
 
   if (error || !data?.id) {
@@ -76,7 +159,7 @@ export async function sendConfirmationEmail(params: {
     resendEmailId: data.id,
   });
 
-  console.log(`[email] Confirmation sent to ${to} for ${domain}`);
+  console.log(`[email] Confirmation sent to ${to} for ${domain} (${locale})`);
   return data.id;
 }
 
@@ -90,6 +173,7 @@ export async function sendReportReadyEmail(params: {
   totalPages: number;
   totalIssues: number;
   criticalIssues: number;
+  locale?: string;
 }): Promise<string | null> {
   const resend = getResend();
   if (!resend) {
@@ -97,6 +181,7 @@ export async function sendReportReadyEmail(params: {
     return null;
   }
 
+  const locale = normalizeLocale(params.locale);
   const { to, domain, scanId, overallScore, totalPages, totalIssues, criticalIssues } = params;
   const reportUrl = `${BASE_URL}/report/${scanId}`;
 
@@ -106,7 +191,7 @@ export async function sendReportReadyEmail(params: {
   const { data, error } = await resend.emails.send({
     from: `Adashi Scanner <${FROM_EMAIL}>`,
     to,
-    subject: `Your full website report for ${domain} is ready`,
+    subject: TEXT[locale].reportReady.subject(domain),
     html: reportReadyTemplate({
       domain,
       reportUrl,
@@ -115,6 +200,7 @@ export async function sendReportReadyEmail(params: {
       totalPages,
       totalIssues,
       criticalIssues,
+      locale,
     }),
   });
 
@@ -130,7 +216,7 @@ export async function sendReportReadyEmail(params: {
     resendEmailId: data.id,
   });
 
-  console.log(`[email] Report-ready sent to ${to} for ${domain}`);
+  console.log(`[email] Report-ready sent to ${to} for ${domain} (${locale})`);
   return data.id;
 }
 
@@ -141,6 +227,7 @@ export async function sendFollowUpEmail(params: {
   domain: string;
   scanId: string;
   topQuickWin: QuickWin;
+  locale?: string;
 }): Promise<string | null> {
   const resend = getResend();
   if (!resend) {
@@ -148,14 +235,15 @@ export async function sendFollowUpEmail(params: {
     return null;
   }
 
+  const locale = normalizeLocale(params.locale);
   const { to, domain, scanId, topQuickWin } = params;
   const reportUrl = `${BASE_URL}/report/${scanId}`;
 
   const { data, error } = await resend.emails.send({
     from: `Adashi Scanner <${FROM_EMAIL}>`,
     to,
-    subject: `Quick follow-up on your website report: ${domain}`,
-    html: followUpTemplate({ domain, reportUrl, topQuickWin }),
+    subject: TEXT[locale].followUp.subject(domain),
+    html: followUpTemplate({ domain, reportUrl, topQuickWin, locale }),
   });
 
   if (error || !data?.id) {
@@ -170,11 +258,11 @@ export async function sendFollowUpEmail(params: {
     resendEmailId: data.id,
   });
 
-  console.log(`[email] Follow-up sent to ${to} for ${domain}`);
+  console.log(`[email] Follow-up sent to ${to} for ${domain} (${locale})`);
   return data.id;
 }
 
-// ── Admin notification email (sent when full scan completes) ────────
+// ── Admin notification email (always in English) ────────────────────
 
 export async function sendAdminNotificationEmail(params: {
   leadEmail: string;
@@ -235,21 +323,21 @@ function confirmationTemplate(params: {
   reportUrl: string;
   quickScore: number;
   scoreColor: string;
+  locale: Locale;
 }) {
-  const { domain, reportUrl, quickScore, scoreColor } = params;
+  const { domain, reportUrl, quickScore, scoreColor, locale } = params;
+  const T = TEXT[locale].confirmation;
 
   return `<!DOCTYPE html>
-<html lang="en">
+<html lang="${locale}">
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
 <body style="margin:0;padding:0;background:#f8fafc;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
   <div style="max-width:560px;margin:0 auto;padding:40px 20px;">
     <div style="background:#ffffff;border-radius:16px;padding:40px 32px;box-shadow:0 1px 3px rgba(0,0,0,0.08);">
-      <!-- Logo -->
       <div style="text-align:center;margin-bottom:32px;">
         <span style="font-size:24px;font-weight:700;color:#001D4E;">Adashi</span>
       </div>
 
-      <!-- Quick score -->
       <div style="text-align:center;margin-bottom:24px;">
         <div style="display:inline-block;width:80px;height:80px;line-height:80px;border-radius:50%;background:${scoreColor}15;color:${scoreColor};font-size:28px;font-weight:700;">
           ${quickScore}
@@ -257,31 +345,27 @@ function confirmationTemplate(params: {
       </div>
 
       <h1 style="margin:0 0 8px;font-size:22px;color:#001D4E;text-align:center;">
-        Quick scan complete for ${domain}
+        ${T.heading(domain)}
       </h1>
       <p style="margin:0 0 24px;color:#64748b;text-align:center;line-height:1.6;">
-        Your quick score is <strong style="color:${scoreColor}">${quickScore}/100</strong>.
-        We're now running a full multi-page analysis in the background.
+        ${T.lead(quickScore, scoreColor)}
       </p>
 
       <p style="margin:0 0 24px;color:#64748b;text-align:center;line-height:1.6;">
-        You don't need to keep any page open. We'll send you another email as soon as your full report is ready.
+        ${T.reassurance}
       </p>
 
-      <!-- CTA -->
       <div style="text-align:center;margin-bottom:32px;">
         <a href="${reportUrl}" style="display:inline-block;background:#006DFF;color:#ffffff;font-weight:600;text-decoration:none;padding:14px 32px;border-radius:12px;font-size:16px;">
-          View your report
+          ${T.cta}
         </a>
       </div>
 
       <hr style="border:none;border-top:1px solid #e2e8f0;margin:24px 0;">
 
       <p style="margin:0;color:#94a3b8;font-size:12px;text-align:center;line-height:1.5;">
-        You're receiving this because you scanned ${domain} on
-        <a href="${reportUrl}" style="color:#006DFF;text-decoration:none;">scan.adashi.io</a>.
-        <br>Questions? Reply to this email or visit
-        <a href="https://adashi.io" style="color:#006DFF;text-decoration:none;">adashi.io</a>.
+        ${T.footerScanned(domain, reportUrl)}
+        <br>${T.footerQuestions}
       </p>
     </div>
   </div>
@@ -297,26 +381,27 @@ function reportReadyTemplate(params: {
   totalPages: number;
   totalIssues: number;
   criticalIssues: number;
+  locale: Locale;
 }) {
-  const { domain, reportUrl, overallScore, scoreColor, totalPages, totalIssues, criticalIssues } = params;
+  const { domain, reportUrl, overallScore, scoreColor, totalPages, totalIssues, criticalIssues, locale } = params;
+  const T = TEXT[locale].reportReady;
+  const Tc = TEXT[locale].confirmation;
 
   const criticalLine =
     criticalIssues > 0
-      ? `<span style="color:#dc2626;font-weight:600;">${criticalIssues} critical</span>`
-      : `<span style="color:#16a34a;font-weight:600;">0 critical</span>`;
+      ? `<span style="color:#dc2626;font-weight:600;">${T.criticalLabel(criticalIssues)}</span>`
+      : `<span style="color:#16a34a;font-weight:600;">${T.noCritical}</span>`;
 
   return `<!DOCTYPE html>
-<html lang="en">
+<html lang="${locale}">
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
 <body style="margin:0;padding:0;background:#f8fafc;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
   <div style="max-width:560px;margin:0 auto;padding:40px 20px;">
     <div style="background:#ffffff;border-radius:16px;padding:40px 32px;box-shadow:0 1px 3px rgba(0,0,0,0.08);">
-      <!-- Logo -->
       <div style="text-align:center;margin-bottom:32px;">
         <span style="font-size:24px;font-weight:700;color:#001D4E;">Adashi</span>
       </div>
 
-      <!-- Score -->
       <div style="text-align:center;margin-bottom:24px;">
         <div style="display:inline-block;width:80px;height:80px;line-height:80px;border-radius:50%;background:${scoreColor}15;color:${scoreColor};font-size:28px;font-weight:700;">
           ${overallScore}
@@ -324,51 +409,42 @@ function reportReadyTemplate(params: {
       </div>
 
       <h1 style="margin:0 0 8px;font-size:22px;color:#001D4E;text-align:center;">
-        Your full report for ${domain} is ready
+        ${T.heading(domain)}
       </h1>
       <p style="margin:0 0 24px;color:#64748b;text-align:center;line-height:1.6;">
-        We scanned <strong>${totalPages} page${totalPages !== 1 ? "s" : ""}</strong> and found
-        <strong>${totalIssues} issue${totalIssues !== 1 ? "s" : ""}</strong>
-        (${criticalLine}).
-        Your overall score is <strong style="color:${scoreColor}">${overallScore}/100</strong>.
+        ${T.summary(totalPages, totalIssues, criticalLine, overallScore, scoreColor)}
       </p>
 
-      <!-- Stats grid -->
       <div style="display:flex;gap:12px;margin-bottom:24px;">
         <div style="flex:1;background:#f8fafc;border-radius:12px;padding:16px;text-align:center;">
           <div style="font-size:24px;font-weight:700;color:#001D4E;">${totalPages}</div>
-          <div style="font-size:12px;color:#64748b;margin-top:4px;">Pages scanned</div>
+          <div style="font-size:12px;color:#64748b;margin-top:4px;">${T.statPages}</div>
         </div>
         <div style="flex:1;background:#f8fafc;border-radius:12px;padding:16px;text-align:center;">
           <div style="font-size:24px;font-weight:700;color:#001D4E;">${totalIssues}</div>
-          <div style="font-size:12px;color:#64748b;margin-top:4px;">Issues found</div>
+          <div style="font-size:12px;color:#64748b;margin-top:4px;">${T.statIssues}</div>
         </div>
         <div style="flex:1;background:#f8fafc;border-radius:12px;padding:16px;text-align:center;">
           <div style="font-size:24px;font-weight:700;color:${scoreColor};">${overallScore}</div>
-          <div style="font-size:12px;color:#64748b;margin-top:4px;">Overall score</div>
+          <div style="font-size:12px;color:#64748b;margin-top:4px;">${T.statScore}</div>
         </div>
       </div>
 
-      <!-- CTA -->
       <div style="text-align:center;margin-bottom:24px;">
         <a href="${reportUrl}" style="display:inline-block;background:#006DFF;color:#ffffff;font-weight:600;text-decoration:none;padding:14px 32px;border-radius:12px;font-size:16px;">
-          View full report
+          ${T.cta}
         </a>
       </div>
 
       <p style="margin:0 0 24px;color:#64748b;text-align:center;font-size:14px;line-height:1.6;">
-        Need help fixing these issues?
-        <a href="https://adashi.io/contact" style="color:#006DFF;text-decoration:none;font-weight:600;">Book a free strategy call</a>
-        and we'll walk you through it.
+        ${T.help}
       </p>
 
       <hr style="border:none;border-top:1px solid #e2e8f0;margin:24px 0;">
 
       <p style="margin:0;color:#94a3b8;font-size:12px;text-align:center;line-height:1.5;">
-        You're receiving this because you scanned ${domain} on
-        <a href="${reportUrl}" style="color:#006DFF;text-decoration:none;">scan.adashi.io</a>.
-        <br>Questions? Reply to this email or visit
-        <a href="https://adashi.io" style="color:#006DFF;text-decoration:none;">adashi.io</a>.
+        ${Tc.footerScanned(domain, reportUrl)}
+        <br>${Tc.footerQuestions}
       </p>
     </div>
   </div>
@@ -380,11 +456,14 @@ function followUpTemplate(params: {
   domain: string;
   reportUrl: string;
   topQuickWin: QuickWin;
+  locale: Locale;
 }) {
-  const { domain, reportUrl, topQuickWin } = params;
+  const { domain, reportUrl, topQuickWin, locale } = params;
+  const T = TEXT[locale].followUp;
+  const Tc = TEXT[locale].confirmation;
 
   return `<!DOCTYPE html>
-<html lang="en">
+<html lang="${locale}">
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
 <body style="margin:0;padding:0;background:#f8fafc;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
   <div style="max-width:560px;margin:0 auto;padding:40px 20px;">
@@ -394,14 +473,13 @@ function followUpTemplate(params: {
       </div>
 
       <h1 style="margin:0 0 16px;font-size:22px;color:#001D4E;text-align:center;">
-        Did you get a chance to review your report?
+        ${T.heading}
       </h1>
 
       <p style="margin:0 0 24px;color:#64748b;text-align:center;line-height:1.6;">
-        We sent you a website report for <strong>${domain}</strong> a few days ago. Here's your #1 quick win:
+        ${T.intro(domain)}
       </p>
 
-      <!-- Quick win card -->
       <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;padding:20px;margin-bottom:24px;">
         <div style="font-weight:700;color:#166534;margin-bottom:8px;">${topQuickWin.title}</div>
         <div style="color:#15803d;font-size:14px;line-height:1.5;margin-bottom:8px;">${topQuickWin.description}</div>
@@ -412,28 +490,26 @@ function followUpTemplate(params: {
       </div>
 
       <p style="margin:0 0 24px;color:#64748b;text-align:center;line-height:1.6;">
-        If you'd like help implementing the fixes, we're here.
+        ${T.help}
       </p>
 
       <div style="text-align:center;margin-bottom:16px;">
         <a href="${reportUrl}" style="display:inline-block;background:#006DFF;color:#ffffff;font-weight:600;text-decoration:none;padding:14px 32px;border-radius:12px;font-size:16px;">
-          View your report
+          ${T.cta}
         </a>
       </div>
 
       <div style="text-align:center;margin-bottom:24px;">
         <a href="https://adashi.io/contact" style="color:#006DFF;text-decoration:none;font-weight:600;font-size:14px;">
-          Book a free strategy call &rarr;
+          ${T.bookLink}
         </a>
       </div>
 
       <hr style="border:none;border-top:1px solid #e2e8f0;margin:24px 0;">
 
       <p style="margin:0;color:#94a3b8;font-size:12px;text-align:center;line-height:1.5;">
-        You're receiving this because you scanned ${domain} on
-        <a href="${reportUrl}" style="color:#006DFF;text-decoration:none;">scan.adashi.io</a>.
-        <br>Questions? Reply to this email or visit
-        <a href="https://adashi.io" style="color:#006DFF;text-decoration:none;">adashi.io</a>.
+        ${Tc.footerScanned(domain, reportUrl)}
+        <br>${Tc.footerQuestions}
       </p>
     </div>
   </div>
@@ -476,7 +552,6 @@ function adminNotificationTemplate(params: {
         <span style="font-size:14px;color:#64748b;display:block;margin-top:4px;">New Lead Alert</span>
       </div>
 
-      <!-- Lead info -->
       <div style="background:#f8fafc;border-radius:12px;padding:20px;margin-bottom:24px;">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
           <div>
@@ -489,7 +564,6 @@ function adminNotificationTemplate(params: {
         </div>
       </div>
 
-      <!-- Top issues -->
       <div style="margin-bottom:24px;">
         <div style="font-weight:600;color:#001D4E;margin-bottom:8px;">Top Issues</div>
         <ul style="margin:0;padding-left:20px;font-size:14px;">
@@ -497,7 +571,6 @@ function adminNotificationTemplate(params: {
         </ul>
       </div>
 
-      <!-- Sales brief -->
       <div style="margin-bottom:24px;">
         <div style="font-weight:600;color:#001D4E;margin-bottom:8px;">Sales Brief</div>
         <div style="background:#fffbeb;border:1px solid #fde68a;border-radius:12px;padding:16px;">
@@ -505,7 +578,6 @@ function adminNotificationTemplate(params: {
         </div>
       </div>
 
-      <!-- CTAs -->
       <div style="display:flex;gap:12px;margin-bottom:24px;">
         <a href="${reportUrl}" style="flex:1;display:block;background:#006DFF;color:#ffffff;font-weight:600;text-decoration:none;padding:14px 16px;border-radius:12px;font-size:14px;text-align:center;">
           View full report

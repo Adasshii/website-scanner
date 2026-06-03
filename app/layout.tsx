@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import { Inter, DM_Serif_Display } from "next/font/google";
+import { NextIntlClientProvider } from "next-intl";
+import { getLocale, getMessages, getTranslations } from "next-intl/server";
 import "./globals.css";
 
 const inter = Inter({
@@ -15,32 +17,38 @@ const dmSerif = DM_Serif_Display({
   display: "swap",
 });
 
-export const metadata: Metadata = {
-  title: "Website Performance & Conversion Audit — Adashi",
-  description:
-    "Get a free audit of your website's performance, accessibility, SEO, and conversion potential. Detailed report with actionable recommendations.",
-  metadataBase: new URL("https://scan.adashi.io"),
-  openGraph: {
-    title: "Website Performance & Conversion Audit — Adashi",
-    description:
-      "Get a free audit of your website's performance, accessibility, SEO, and conversion potential.",
-    url: "https://scan.adashi.io",
-    siteName: "Adashi Website Performance & Conversion Audit",
-    type: "website",
-  },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("metadata");
+  return {
+    title: t("title"),
+    description: t("description"),
+    metadataBase: new URL("https://scan.adashi.io"),
+    openGraph: {
+      title: t("title"),
+      description: t("ogDescription"),
+      url: "https://scan.adashi.io",
+      siteName: t("siteName"),
+      type: "website",
+    },
+  };
+}
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const locale = await getLocale();
+  const messages = await getMessages();
+
   return (
-    <html lang="en">
+    <html lang={locale}>
       <body
         className={`${inter.variable} ${dmSerif.variable} font-body text-adashi-onyx antialiased`}
       >
-        {children}
+        <NextIntlClientProvider locale={locale} messages={messages}>
+          {children}
+        </NextIntlClientProvider>
       </body>
     </html>
   );

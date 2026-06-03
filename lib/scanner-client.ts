@@ -34,13 +34,18 @@ export class ScannerClient {
   }
 
   /** Run a quick scan (single page). Pass scanId to enable async design analysis. */
-  async quickScan(url: string, scanId?: string): Promise<ScannerResponse> {
-    return this.request("/api/scan/quick", scanId ? { url, scanId } : { url });
+  async quickScan(url: string, scanId?: string, locale?: string): Promise<ScannerResponse> {
+    const body: Record<string, unknown> = { url };
+    if (scanId) body.scanId = scanId;
+    if (locale) body.locale = locale;
+    return this.request("/api/scan/quick", body);
   }
 
   /** Run a full scan (multi-page) */
-  async fullScan(url: string, maxPages = 10): Promise<ScannerResponse> {
-    return this.request("/api/scan/full", { url, maxPages });
+  async fullScan(url: string, maxPages = 10, locale?: string): Promise<ScannerResponse> {
+    const body: Record<string, unknown> = { url, maxPages };
+    if (locale) body.locale = locale;
+    return this.request("/api/scan/full", body);
   }
 
   /** Check if the scanner service is healthy */

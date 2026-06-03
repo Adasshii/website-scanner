@@ -1,17 +1,17 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { BenchmarkSection } from "@/components/report/benchmark";
 import { CostEstimateSection } from "@/components/report/cost-estimate";
 import { QuickWinsSection } from "@/components/report/quick-wins";
 import { WebsitePersonalitySection } from "@/components/report/website-personality";
+import { useGradeLabel } from "@/lib/i18n-helpers";
 import type {
   ScanScores,
   ScanSummary,
   CostEstimate,
   QuickWin,
 } from "@/types/scanner";
-
-// ── Types ─────────────────────────────────────────────────────────────
 
 interface BusinessReportProps {
   domain: string;
@@ -23,8 +23,6 @@ interface BusinessReportProps {
   websitePersonality?: string | null;
   visitorExperience?: string | null;
 }
-
-// ── Helpers ───────────────────────────────────────────────────────────
 
 function scoreTextColor(score: number): string {
   if (score >= 80) return "text-green-600";
@@ -39,17 +37,8 @@ function gradeBadgeClass(score: number): string {
   return "bg-red-100 text-red-700";
 }
 
-function grade(score: number): string {
-  if (score >= 95) return "Excellent";
-  if (score >= 85) return "Performing well";
-  if (score >= 70) return "Solid foundation";
-  if (score >= 50) return "Room to grow";
-  return "Needs significant work";
-}
-
-// ── Visitor Experience Section ────────────────────────────────────────
-
 function VisitorExperienceSection({ text }: { text: string }) {
+  const t = useTranslations("scanResults.visitorExperience");
   const paragraphs = text.split(/\n\n+/).filter(Boolean);
 
   return (
@@ -59,7 +48,7 @@ function VisitorExperienceSection({ text }: { text: string }) {
           <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
           <path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
         </svg>
-        <h2 className="font-semibold text-adashi-gulf text-base">How visitors experience your site</h2>
+        <h2 className="font-semibold text-adashi-gulf text-base">{t("heading")}</h2>
       </div>
       <div className="space-y-4">
         {paragraphs.map((p, i) => (
@@ -69,8 +58,6 @@ function VisitorExperienceSection({ text }: { text: string }) {
     </section>
   );
 }
-
-// ── Main component ────────────────────────────────────────────────────
 
 export function BusinessReport({
   domain,
@@ -82,8 +69,12 @@ export function BusinessReport({
   websitePersonality,
   visitorExperience,
 }: BusinessReportProps) {
+  const t = useTranslations("scanResults");
+  const tBiz = useTranslations("businessReport");
+  const tCta = useTranslations("common.ctaBlock");
+  const gradeLabel = useGradeLabel();
   const badgeClass = gradeBadgeClass(scores.overall);
-  const gradeLabel = grade(scores.overall);
+  const grade = gradeLabel(scores.overall);
 
   return (
     <div>
@@ -97,16 +88,20 @@ export function BusinessReport({
         </div>
         <div className="flex-1 min-w-0">
           <span className={`inline-block text-xs font-semibold px-2 py-0.5 rounded-full mb-1 ${badgeClass}`}>
-            {gradeLabel}
+            {grade}
           </span>
           <p className="text-gray-600 text-sm leading-relaxed mb-1">{summary.verdict}</p>
           <div className="flex flex-wrap gap-2 text-xs text-gray-500">
-            <span>{summary.totalIssues} issues found</span>
+            <span>{t("issuesFound", { count: summary.totalIssues })}</span>
             {summary.criticalIssues > 0 && (
-              <span className="text-red-600 font-medium">{summary.criticalIssues} need immediate attention</span>
+              <span className="text-red-600 font-medium">
+                {tBiz("criticalImmediate", { count: summary.criticalIssues })}
+              </span>
             )}
             {summary.majorIssues > 0 && (
-              <span className="text-orange-600 font-medium">{summary.majorIssues} worth fixing soon</span>
+              <span className="text-orange-600 font-medium">
+                {tBiz("majorWorthFixing", { count: summary.majorIssues })}
+              </span>
             )}
           </div>
         </div>
@@ -116,14 +111,13 @@ export function BusinessReport({
       <BenchmarkSection scores={scores} />
 
       {/* Adashi context */}
-      <p className="text-xs text-gray-400 leading-relaxed mb-4">
-        Adashi builds performance and automation systems for growing businesses. This audit identifies the issues that cost you visitors, conversions, and credibility, and shows what&apos;s worth fixing first.
-      </p>
+      <p className="text-xs text-gray-400 leading-relaxed mb-4">{t("adashiContext")}</p>
 
       {/* Screenshot hero */}
       {screenshotUrl && (
         <section data-section="screenshot-hero" className="bg-white rounded-2xl shadow-card overflow-hidden mb-6">
           <div className="relative">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={screenshotUrl}
               alt={`Screenshot of ${domain}`}
@@ -146,24 +140,20 @@ export function BusinessReport({
         </section>
       )}
 
-      {/* Visitor experience briefing */}
       {visitorExperience && <VisitorExperienceSection text={visitorExperience} />}
 
-      {/* Cost estimate */}
       {costEstimate && (
         <section data-section="revenue-impact">
           <CostEstimateSection costEstimate={costEstimate} />
         </section>
       )}
 
-      {/* Quick wins */}
       {quickWins && quickWins.length > 0 && (
         <section data-section="quick-wins">
           <QuickWinsSection quickWins={quickWins} />
         </section>
       )}
 
-      {/* Website personality */}
       {websitePersonality && (
         <section data-section="website-personality">
           <WebsitePersonalitySection personality={websitePersonality} />
@@ -175,26 +165,25 @@ export function BusinessReport({
         <svg className="w-4 h-4 text-adashi-blue flex-shrink-0" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
           <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
         </svg>
-        <p className="text-sm text-gray-500">
-          Adashi has helped <span className="font-semibold text-adashi-gulf">40+ businesses</span> fix exactly these issues.
-        </p>
+        <p
+          className="text-sm text-gray-500"
+          dangerouslySetInnerHTML={{
+            __html: tBiz.raw("socialProof").toString().replace("<strong>", '<span class="font-semibold text-adashi-gulf">').replace("</strong>", "</span>"),
+          }}
+        />
       </div>
 
       {/* CTA */}
       <div data-section="cta" className="bg-adashi-gulf text-white rounded-2xl p-6 sm:p-8 text-center">
-        <h2 className="font-display text-xl sm:text-2xl mb-2">
-          Want help fixing these issues?
-        </h2>
-        <p className="text-adashi-pastel mb-4">
-          Book a free 15-minute walkthrough with Adashi and we&apos;ll show you exactly what to fix first.
-        </p>
+        <h2 className="font-display text-xl sm:text-2xl mb-2">{tCta("heading")}</h2>
+        <p className="text-adashi-pastel mb-4">{tCta("subheading")}</p>
         <a
           href="https://adashi.io/contact"
           target="_blank"
           rel="noopener noreferrer"
           className="inline-block bg-adashi-blue hover:bg-adashi-science text-white font-semibold px-6 py-3 rounded-xl transition-colors"
         >
-          Get a free 15-min walkthrough
+          {tCta("button")}
         </a>
       </div>
     </div>

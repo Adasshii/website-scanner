@@ -85,7 +85,8 @@ export async function generateComprehensiveAnalysis(
   domain: string,
   scores: ScanScores,
   summary: ScanSummary,
-  pages: PageResult[]
+  pages: PageResult[],
+  locale: string = "en"
 ): Promise<ComprehensiveAnalysis | null> {
   const ai = getClient();
   if (!ai) return null;
@@ -143,8 +144,12 @@ export async function generateComprehensiveAnalysis(
       generationConfig: { responseMimeType: "application/json" },
     });
 
+    const languageDirective = locale === "nl"
+      ? `LANGUAGE: Respond entirely in natural Dutch (Nederlands). Use clear, direct business Dutch — no jargon, no Anglicisms where a Dutch word fits. All field VALUES in the returned JSON must be in Dutch. JSON keys remain English. Do not translate "Adashi" or other brand names. Numbers and percentages keep their numeric form.\n\n`
+      : "";
+
     const result = await model.generateContent(
-      `You are a senior website strategist writing a report for a business owner. The reader is not technical. Analyze the following website and provide a comprehensive analysis.
+      `${languageDirective}You are a senior website strategist writing a report for a business owner. The reader is not technical. Analyze the following website and provide a comprehensive analysis.
 
 Website: ${domain}
 Overall score: ${scores.overall}/100
@@ -400,13 +405,14 @@ export function calculateCostEstimateFallback(
  * Falls back to original descriptions if Gemini is unavailable.
  */
 export async function enhanceIssueDescriptions(
-  issues: Issue[]
+  issues: Issue[],
+  locale: string = "en"
 ): Promise<Issue[]> {
   const ai = getClient();
   if (!ai || issues.length === 0) return issues;
 
-  // Only enhance top issues to stay fast and cheap
-  const toEnhance = issues.slice(0, 15);
+  // Enhance more when translating so the lower-priority bucket isn't half-English
+  const toEnhance = issues.slice(0, locale === "nl" ? 25 : 15);
 
   try {
     const issueList = toEnhance
@@ -421,14 +427,22 @@ export async function enhanceIssueDescriptions(
       generationConfig: { responseMimeType: "application/json" },
     });
 
-    const result = await model.generateContent(
-      `You are rewriting website audit findings for a small business owner who is NOT technical.
+    const languageBlock = locale === "nl"
+      ? `LANGUAGE: Rewrite the title, description, and recommendation in natural business Dutch. No Anglicisms where a Dutch word fits. Do not translate code, HTML tags, CSS selectors, file names, brand names, or quoted attribute values — leave them as-is.\n\n`
+      : "";
 
-For each issue below, rewrite the description and recommendation in plain language. Be specific about what's wrong and what to do. Keep each description to 1 sentence and each recommendation to 1-2 sentences.
+    const fieldsForResponse = locale === "nl"
+      ? `{"index": <number>, "title": "<short Dutch title>", "description": "<plain Dutch description>", "recommendation": "<plain Dutch recommendation>"}`
+      : `{"index": <number>, "description": "<plain language description>", "recommendation": "<plain language recommendation>"}`;
+
+    const result = await model.generateContent(
+      `${languageBlock}You are rewriting website audit findings for a small business owner who is NOT technical.
+
+For each issue below, rewrite the description and recommendation in plain language. Be specific about what's wrong and what to do. Keep each description to 1 sentence and each recommendation to 1-2 sentences.${locale === "nl" ? " Also provide a short Dutch title (max 60 characters)." : ""}
 
 ${issueList}
 
-Respond with ONLY a JSON array. Each element must have: {"index": <number>, "description": "<plain language description>", "recommendation": "<plain language recommendation>"}`
+Respond with ONLY a JSON array. Each element must have: ${fieldsForResponse}`
     );
 
     const text = result.response.text().trim();
@@ -436,6 +450,7 @@ Respond with ONLY a JSON array. Each element must have: {"index": <number>, "des
     // Parse the JSON response
     const enhanced: Array<{
       index: number;
+      title?: string;
       description: string;
       recommendation: string;
     }> = JSON.parse(text);
@@ -447,6 +462,7 @@ Respond with ONLY a JSON array. Each element must have: {"index": <number>, "des
       if (idx >= 0 && idx < updatedIssues.length) {
         updatedIssues[idx] = {
           ...updatedIssues[idx],
+          title: item.title || updatedIssues[idx].title,
           description: item.description || updatedIssues[idx].description,
           recommendation: item.recommendation || updatedIssues[idx].recommendation,
         };
@@ -536,7 +552,8 @@ Keep it under 300 words. Write it as bullet points, not paragraphs. Be direct an
  */
 export async function generateWhyItMatters(
   domain: string,
-  issues: Issue[]
+  issues: Issue[],
+  locale: string = "en"
 ): Promise<Record<string, string>> {
   const ai = getClient();
   if (!ai) return {};
@@ -552,8 +569,12 @@ export async function generateWhyItMatters(
 
     const model = ai.getGenerativeModel({ model: "gemini-2.5-flash" });
 
+    const languageBlock = locale === "nl"
+      ? `LANGUAGE: Write each one-sentence impact in natural business Dutch. No Anglicisms where a Dutch word fits.\n\n`
+      : "";
+
     const result = await model.generateContent(
-      `You are writing plain-English business impact summaries for a website audit report shown to non-technical business owners.
+      `${languageBlock}You are writing plain-English business impact summaries for a website audit report shown to non-technical business owners.
 
 For each issue below, write exactly one sentence explaining WHY it matters to the business — focus on real consequences: lost visitors, lower Google rankings, accessibility barriers, lost revenue, security risk, etc. Reference the domain "${domain}" where it makes the summary more specific and credible. Be direct and concrete. No jargon.
 

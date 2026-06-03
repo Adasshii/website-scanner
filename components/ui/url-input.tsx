@@ -2,6 +2,7 @@
 
 import { useState, FormEvent } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { validateUrlFormat } from "@/lib/url-validation";
 
@@ -9,6 +10,7 @@ export function UrlInput() {
   const [url, setUrl] = useState("");
   const [error, setError] = useState("");
   const router = useRouter();
+  const t = useTranslations("urlInput");
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -17,7 +19,7 @@ export function UrlInput() {
     try {
       validateUrlFormat(url);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Invalid URL");
+      setError(err instanceof Error ? err.message : t("invalidUrl"));
       return;
     }
 
@@ -29,7 +31,7 @@ export function UrlInput() {
       <div className="flex flex-col sm:flex-row gap-3">
         <div className="flex-1 relative">
           <label htmlFor="url-input" className="sr-only">
-            Website URL
+            {t("label")}
           </label>
           <input
             id="url-input"
@@ -39,7 +41,7 @@ export function UrlInput() {
               setUrl(e.target.value);
               if (error) setError("");
             }}
-            placeholder="https://example.com"
+            placeholder={t("placeholder")}
             className={`w-full px-5 py-4 rounded-xl border-2 text-base bg-white text-gray-900 placeholder-gray-400 transition-colors outline-none ${
               error
                 ? "border-red-400 focus:border-red-500"
@@ -55,7 +57,7 @@ export function UrlInput() {
           disabled={!url.trim()}
           className="sm:w-auto w-full whitespace-nowrap animate-cta-pulse"
         >
-          Scan my site
+          {t("submit")}
         </Button>
       </div>
       {error && (

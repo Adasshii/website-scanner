@@ -1,9 +1,11 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useTranslations } from "next-intl";
 import { IssueCard } from "@/components/scan/issue-card";
 import { EmailGate } from "@/components/scan/email-gate";
 import { BlurredSection } from "@/components/scan/blurred-section";
+import { useGradeLabel, useFormatDate } from "@/lib/i18n-helpers";
 import type { ScanScores, ScanSummary, Issue, ScanStatus, CostEstimate, QuickWin } from "@/types/scanner";
 import { useRouter } from "next/navigation";
 
@@ -51,6 +53,11 @@ export function ScanResults({
   screenshotUrl,
 }: ScanResultsProps) {
   const router = useRouter();
+  const t = useTranslations("scanResults");
+  const tCat = useTranslations("common.category");
+  const tCta = useTranslations("common.ctaBlock");
+  const gradeLabel = useGradeLabel();
+  const formatDate = useFormatDate();
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const pollCountRef = useRef(0);
   const [activeTab, setActiveTab] = useState<"business" | "technical">("business");
@@ -87,16 +94,7 @@ export function ScanResults({
   const firstQuickWin = quickWins?.[0] ?? null;
   const firstEasyIssue = sortedIssues.find((i) => i.difficulty === "easy" && i.severity !== "critical");
 
-
-  const grade = scores.overall >= 95
-    ? "Excellent"
-    : scores.overall >= 85
-      ? "Performing well"
-      : scores.overall >= 70
-        ? "Solid foundation"
-        : scores.overall >= 50
-          ? "Room to grow"
-          : "Needs significant work";
+  const grade = gradeLabel(scores.overall);
   const gradeBadgeClass = scores.overall >= 85
     ? "bg-green-100 text-green-700"
     : scores.overall >= 70
@@ -106,12 +104,12 @@ export function ScanResults({
         : "bg-red-100 text-red-700";
 
   const categories = [
-    { label: "Accessibility", score: scores.accessibility },
-    { label: "Content", score: scores.content },
-    { label: "SEO", score: scores.seo },
-    { label: "Performance", score: scores.performance },
-    { label: "Security", score: scores.security ?? 0 },
-    { label: "UX & Conversion", score: scores.design ?? 0, pending: designAnalysisPending },
+    { label: tCat("accessibility"), score: scores.accessibility },
+    { label: tCat("content"), score: scores.content },
+    { label: tCat("seo"), score: scores.seo },
+    { label: tCat("performance"), score: scores.performance },
+    { label: tCat("security"), score: scores.security ?? 0 },
+    { label: tCat("design"), score: scores.design ?? 0, pending: designAnalysisPending },
   ];
 
   return (
@@ -120,12 +118,12 @@ export function ScanResults({
       {/* Header */}
       <header data-section="report-header" className="text-center mb-8">
         <h1 className="font-display text-2xl sm:text-3xl text-adashi-gulf mb-2">
-          Scan Results
+          {t("title")}
         </h1>
         <p className="text-gray-500">
           <a href={`https://${domain}`} target="_blank" rel="noopener noreferrer" className="hover:underline">{domain}</a>
           {" "}&middot;{" "}
-          Scanned {new Date(scannedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+          {t("scannedOn", { date: formatDate(scannedAt) })}
         </p>
       </header>
 
@@ -171,13 +169,13 @@ export function ScanResults({
           {showTeaser && (
             <div data-section="sidebar-cta" className="bg-adashi-gulf rounded-2xl p-5 text-center">
               <p className="text-white text-sm font-medium leading-snug mb-3">
-                Unlock your full breakdown and all quick wins
+                {t("sidebarCta.lead")}
               </p>
               <a
                 href="#email-gate"
                 className="inline-block bg-adashi-blue hover:bg-adashi-science text-white font-semibold text-sm px-4 py-2.5 rounded-xl transition-colors w-full"
               >
-                Get my full report
+                {t("sidebarCta.button")}
               </a>
             </div>
           )}
@@ -196,7 +194,7 @@ export function ScanResults({
                   : "text-gray-500 hover:text-adashi-gulf"
               }`}
             >
-              Business Overview
+              {t("tab.business")}
             </button>
             <button
               onClick={() => setActiveTab("technical")}
@@ -206,7 +204,7 @@ export function ScanResults({
                   : "text-gray-500 hover:text-adashi-gulf"
               }`}
             >
-              Technical Details
+              {t("tab.technical")}
             </button>
           </nav>
 
@@ -224,33 +222,32 @@ export function ScanResults({
               </span>
               <p className="text-gray-600 text-sm leading-relaxed mb-1">{summary.verdict}</p>
               <div className="flex flex-wrap gap-2 text-xs text-gray-500">
-                <span>{summary.totalIssues} issues found</span>
+                <span>{t("issuesFound", { count: summary.totalIssues })}</span>
                 {summary.criticalIssues > 0 && (
-                  <span className="text-red-600 font-medium">{summary.criticalIssues} critical</span>
+                  <span className="text-red-600 font-medium">{t("criticalCount", { count: summary.criticalIssues })}</span>
                 )}
                 {summary.majorIssues > 0 && (
-                  <span className="text-orange-600 font-medium">{summary.majorIssues} major</span>
+                  <span className="text-orange-600 font-medium">{t("majorCount", { count: summary.majorIssues })}</span>
                 )}
               </div>
             </div>
           </div>
 
           {/* Adashi context */}
-          <p className="text-xs text-gray-400 leading-relaxed mb-6">
-            Adashi builds performance and automation systems for growing businesses. This audit identifies the issues that cost you visitors, conversions, and credibility — and shows what&apos;s worth fixing first.
-          </p>
+          <p className="text-xs text-gray-400 leading-relaxed mb-6">{t("adashiContext")}</p>
 
           {/* Scan failure notice */}
           {scanFailed && (
             <div className="bg-orange-50 border border-orange-200 rounded-2xl p-5 mb-8 flex gap-3">
               <span className="text-orange-500 text-xl leading-none">&#9888;</span>
               <div>
-                <p className="font-semibold text-orange-800 mb-1">We couldn&apos;t fully scan this website</p>
-                <p className="text-orange-700 text-sm leading-relaxed">
-                  Our scanner wasn&apos;t able to load <strong>{domain}</strong>. This usually happens with very heavy websites,
-                  sites that block automated tools, or pages that require a login. The scores below reflect what we could measure
-                  before the error occurred.
-                </p>
+                <p className="font-semibold text-orange-800 mb-1">{t("scanFailedNotice.heading")}</p>
+                <p
+                  className="text-orange-700 text-sm leading-relaxed"
+                  dangerouslySetInnerHTML={{
+                    __html: t.raw("scanFailedNotice.body").toString().replace("{domain}", domain),
+                  }}
+                />
               </div>
             </div>
           )}
@@ -262,6 +259,7 @@ export function ScanResults({
               {screenshotUrl && (
                 <div data-section="screenshot-hero" className="bg-white rounded-2xl shadow-card overflow-hidden mb-6">
                   <div className="relative">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
                       src={screenshotUrl}
                       alt={`Screenshot of ${domain}`}
@@ -287,7 +285,7 @@ export function ScanResults({
                       <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                       <path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                     </svg>
-                    <h2 className="font-semibold text-adashi-gulf text-base">How visitors experience your site</h2>
+                    <h2 className="font-semibold text-adashi-gulf text-base">{t("visitorExperience.heading")}</h2>
                   </div>
                   <div className="space-y-4">
                     {showTeaser ? (
@@ -299,7 +297,7 @@ export function ScanResults({
                           <svg className="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                           </svg>
-                          <span>Full analysis unlocked with your report</span>
+                          <span>{t("visitorExperience.teaserNote")}</span>
                         </div>
                       </>
                     ) : (
@@ -314,16 +312,21 @@ export function ScanResults({
               {/* Revenue impact */}
               {showTeaser && costEstimate && (
                 <section data-section="revenue-impact" className="bg-white rounded-2xl shadow-card p-6 sm:p-8 mb-6">
-                  <p className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-4">Revenue impact</p>
-                  <p className="text-sm text-gray-700 leading-relaxed mb-4">
-                    Google research shows{" "}
-                    <span className="font-semibold text-gray-900">53% of mobile users abandon pages that take longer than 3 seconds to load</span>,
-                    and each additional second reduces conversions by up to 7% (Akamai).
-                    The issues below reflect what we found in your scan.
-                  </p>
-                  <p className="text-xs text-gray-400 mb-6">
-                    Impact estimates are based on the specific issues found in your scan, informed by Google and Akamai research.
-                  </p>
+                  <p className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-4">{t("revenueImpact.label")}</p>
+                  <p
+                    className="text-sm text-gray-700 leading-relaxed mb-4"
+                    dangerouslySetInnerHTML={{
+                      __html: t
+                        .raw("revenueImpact.intro")
+                        .toString()
+                        .replace(
+                          "<highlight>",
+                          '<span class="font-semibold text-gray-900">'
+                        )
+                        .replace("</highlight>", "</span>"),
+                    }}
+                  />
+                  <p className="text-xs text-gray-400 mb-6">{t("revenueImpact.footnote")}</p>
                   {/* First factor: fully visible */}
                   {costEstimate.factors.length > 0 && (
                     <div className="mb-4">
@@ -363,7 +366,7 @@ export function ScanResults({
                           <svg className="w-3.5 h-3.5 text-adashi-gulf" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                           </svg>
-                          <span className="text-xs font-medium text-adashi-gulf">Full breakdown below</span>
+                          <span className="text-xs font-medium text-adashi-gulf">{t("revenueImpact.fullBreakdown")}</span>
                         </div>
                       </div>
                     </div>
@@ -381,8 +384,8 @@ export function ScanResults({
                       </svg>
                     </div>
                     <div>
-                      <p className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-1">Quick wins</p>
-                      <h3 className="font-semibold text-adashi-gulf">{quickWinCount} actionable fixes identified</h3>
+                      <p className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-1">{t("quickWinsTeaser.label")}</p>
+                      <h3 className="font-semibold text-adashi-gulf">{t("quickWinsTeaser.headingCount", { count: quickWinCount })}</h3>
                     </div>
                   </div>
 
@@ -395,14 +398,14 @@ export function ScanResults({
                       {firstQuickWin && (
                         <p className="text-xs text-amber-700 mt-1">
                           {firstQuickWin.estimatedTime}
-                          {firstQuickWin.needsDeveloper === false && " · No developer needed"}
+                          {firstQuickWin.needsDeveloper === false && ` · ${t("quickWinsTeaser.noDeveloper")}`}
                         </p>
                       )}
                       <div className="flex items-center gap-1.5 mt-2 text-xs text-amber-600">
                         <svg className="w-3.5 h-3.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                         </svg>
-                        <span>Step-by-step fix unlocked with your report</span>
+                        <span>{t("quickWinsTeaser.stepLocked")}</span>
                       </div>
                     </div>
                   )}
@@ -411,7 +414,7 @@ export function ScanResults({
                     <svg className="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                     </svg>
-                    <span>All {quickWinCount} fixes with steps unlocked with your report</span>
+                    <span>{t("quickWinsTeaser.allFixesLocked", { count: quickWinCount })}</span>
                   </div>
                 </section>
               )}
@@ -433,10 +436,10 @@ export function ScanResults({
               {topIssues.length > 0 && (
                 <div className="mb-6">
                   <h2 className="font-semibold text-adashi-gulf text-lg mb-4">
-                    Top Issues
+                    {t("topIssues.heading")}
                     {showTeaser && (
                       <span className="text-sm font-normal text-gray-400 ml-2">
-                        (showing {topIssues.length} of {sortedIssues.length})
+                        {t("topIssues.showingOf", { visible: topIssues.length, total: sortedIssues.length })}
                       </span>
                     )}
                   </h2>
@@ -466,17 +469,15 @@ export function ScanResults({
 
           {/* CTA: always shown */}
           <div data-section="cta" className="bg-adashi-gulf text-white rounded-2xl p-6 sm:p-8 text-center mb-8">
-            <h2 className="font-display text-xl sm:text-2xl mb-2">Want help fixing these issues?</h2>
-            <p className="text-adashi-pastel mb-4">
-              Book a free 15-minute walkthrough with Adashi and we&apos;ll show you exactly what to fix first.
-            </p>
+            <h2 className="font-display text-xl sm:text-2xl mb-2">{tCta("heading")}</h2>
+            <p className="text-adashi-pastel mb-4">{tCta("subheading")}</p>
             <a
               href="https://adashi.io/contact"
               target="_blank"
               rel="noopener noreferrer"
               className="inline-block bg-adashi-blue hover:bg-adashi-science text-white font-semibold px-6 py-3 rounded-xl transition-colors"
             >
-              Get a free 15-min walkthrough
+              {tCta("button")}
             </a>
           </div>
 

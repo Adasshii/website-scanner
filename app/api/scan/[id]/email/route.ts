@@ -37,7 +37,7 @@ export async function POST(
     // Fetch the scan
     const { data: scan, error: fetchError } = await supabase
       .from("scans")
-      .select("id, url, domain, status, scores")
+      .select("id, url, domain, status, scores, locale")
       .eq("id", id)
       .single();
 
@@ -63,12 +63,14 @@ export async function POST(
       .eq("id", id);
 
     // Create lead with GDPR consent timestamp
+    const leadLocale = scan.locale ?? "en";
     const { error: leadError } = await supabase.from("leads").insert({
       scan_id: id,
       email,
       domain: scan.domain,
       gdpr_consent: true,
       consent_timestamp: new Date().toISOString(),
+      locale: leadLocale,
       ...(company_size ? { company_size } : {}),
     });
 
@@ -82,6 +84,7 @@ export async function POST(
       domain: scan.domain,
       scanId: id,
       quickScore: scan.scores?.overall ?? 0,
+      locale: leadLocale,
     }).catch((err) => console.error("Failed to send confirmation email:", err));
 
     // Trigger async full scan — must be awaited so Vercel doesn't terminate
@@ -102,6 +105,7 @@ export async function POST(
             url: scan.url,
             scanId: id,
             maxPages: 10,
+            locale: leadLocale,
           }),
           signal: AbortSignal.timeout(10_000),
         });
