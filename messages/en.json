@@ -1,13 +1,13 @@
 {
   "metadata": {
-    "title": "Website Performance & Conversion Audit — Adashi",
-    "description": "Get a free audit of your website's performance, accessibility, SEO, and conversion potential. Detailed report with actionable recommendations.",
-    "ogDescription": "Get a free audit of your website's performance, accessibility, SEO, and conversion potential.",
-    "siteName": "Adashi Website Performance & Conversion Audit",
-    "reportTitle": "{domain} — Score {overall}/100 | Adashi Website Report",
-    "reportDescription": "Website analysis for {domain}: Accessibility {accessibility}, SEO {seo}, Content {content}, Performance {performance}",
-    "reportOgTitle": "{domain} — Score {overall}/100",
-    "reportOgDescription": "Free website report by Adashi. See the full accessibility, SEO, and performance analysis.",
+    "title": "Free Website Audit, Performance & Conversion | Adashi",
+    "description": "A free audit of your website's performance, accessibility, SEO, and conversion. Detailed report with concrete fixes you can act on this week.",
+    "ogDescription": "A free audit of your website's performance, accessibility, SEO, and conversion.",
+    "siteName": "Adashi Website Audit",
+    "reportTitle": "{domain}, Score {overall}/100 | Adashi Website Report",
+    "reportDescription": "Website analysis for {domain}: Accessibility {accessibility}, SEO {seo}, Content {content}, Performance {performance}.",
+    "reportOgTitle": "{domain}, Score {overall}/100",
+    "reportOgDescription": "Free website report by Adashi. Full accessibility, SEO, and performance analysis.",
     "reportFallbackTitle": "Website Report | Adashi"
   },
   "layout": {
@@ -56,12 +56,12 @@
       "performingWell": "Performing well",
       "solidFoundation": "Solid foundation",
       "roomToGrow": "Room to grow",
-      "needsWork": "Needs significant work"
+      "needsWork": "Needs serious work"
     },
     "ctaBlock": {
       "heading": "Want help fixing these issues?",
-      "subheading": "Book a free 15-minute walkthrough with Adashi and we'll show you exactly what to fix first.",
-      "button": "Get a free 15-min walkthrough"
+      "subheading": "Book a free 15-minute walkthrough with Adashi. We'll show you what to fix first.",
+      "button": "Book a free 15-min walkthrough"
     },
     "errors": {
       "scanInProgress": "Scan in progress...",
@@ -75,21 +75,21 @@
     }
   },
   "home": {
-    "badge": "100% free — no signup required",
+    "badge": "100% free, no signup required",
     "hero": {
       "title": "How does your website",
       "titleHighlight": "really",
       "titleSuffix": "perform?",
-      "subtitle": "Get an instant scan of your website's accessibility, SEO, content quality, and performance. See what's holding you back — in plain language, not developer jargon.",
+      "subtitle": "An instant scan of your website's accessibility, SEO, content quality, and performance. See what's holding you back, in plain language.",
       "subnote": "Takes about 15 seconds. We scan your homepage and show you the results instantly."
     },
     "features": {
       "heading": "What you'll discover",
-      "subheading": "Our scanner checks the things that matter most for your business's online presence.",
+      "subheading": "We check the things that matter most for your business's online presence.",
       "weightLabel": "{weight} of score",
       "accessibility": {
         "title": "Accessibility",
-        "description": "Can all visitors use your site? We check for screen reader support, color contrast, keyboard navigation, and more.",
+        "description": "Can every visitor use your site? We check screen reader support, color contrast, keyboard navigation, and more.",
         "weight": "40%"
       },
       "content": {
@@ -104,7 +104,7 @@
       },
       "performance": {
         "title": "Performance",
-        "description": "Is your site fast enough? Slow pages lose visitors. We measure load time and flag optimization opportunities.",
+        "description": "Is your site fast enough? Slow pages lose visitors. We measure load time and flag what to fix.",
         "weight": "15%"
       }
     },
@@ -112,11 +112,11 @@
       "heading": "How it works",
       "step1": {
         "title": "Enter your URL",
-        "description": "Just paste your website address. No account needed, no strings attached."
+        "description": "Paste your website address. No account, no strings attached."
       },
       "step2": {
         "title": "Get your score",
-        "description": "In about 15 seconds, see your overall score and top issues — explained in plain language."
+        "description": "In about 15 seconds, see your overall score and top issues in plain language."
       },
       "step3": {
         "title": "Get the full report",
@@ -125,7 +125,7 @@
     },
     "bottomCta": {
       "heading": "Ready to see how your site stacks up?",
-      "subheading": "It's free, takes 15 seconds, and could reveal issues you've never noticed."
+      "subheading": "Free, takes 15 seconds, and likely surfaces issues you've never noticed."
     }
   },
   "start": {
@@ -138,11 +138,11 @@
       "building": "Building report..."
     },
     "error": {
-      "noUrl": "No URL provided. Please go back and enter a URL to scan.",
-      "invalidUrl": "The provided URL is invalid. Please check the URL and try again.",
+      "noUrl": "No URL provided. Go back and enter a URL to scan.",
+      "invalidUrl": "The URL is invalid. Check it and try again.",
       "generic": "Something went wrong.",
       "connection": "Could not connect to the server.",
-      "backHome": "Go back to homepage"
+      "backHome": "Back to homepage"
     }
   },
   "scanResults": {
@@ -155,13 +155,13 @@
     "issuesFound": "{count} issues found",
     "criticalCount": "{count} critical",
     "majorCount": "{count} major",
-    "adashiContext": "Adashi builds performance and automation systems for growing businesses. This audit identifies the issues that cost you visitors, conversions, and credibility — and shows what's worth fixing first.",
+    "adashiContext": "Adashi builds performance and automation systems for growing businesses. This audit names the issues that cost you visitors, conversions, and credibility, and shows what to fix first.",
     "scanFailedNotice": {
       "heading": "We couldn't fully scan this website",
-      "body": "Our scanner wasn't able to load <strong>{domain}</strong>. This usually happens with very heavy websites, sites that block automated tools, or pages that require a login. The scores below reflect what we could measure before the error occurred."
+      "body": "Our scanner couldn't load <strong>{domain}</strong>. This usually happens with very heavy sites, sites that block automated tools, or pages that require a login. The scores below reflect what we could measure before the error."
     },
     "sidebarCta": {
-      "lead": "Unlock your full breakdown and all quick wins",
+      "lead": "Unlock the full breakdown and all quick wins.",
       "button": "Get my full report"
     },
     "visitorExperience": {
@@ -170,13 +170,13 @@
     },
     "revenueImpact": {
       "label": "Revenue impact",
-      "intro": "Google research shows <highlight>53% of mobile users abandon pages that take longer than 3 seconds to load</highlight>, and each additional second reduces conversions by up to 7% (Akamai). The issues below reflect what we found in your scan.",
+      "intro": "Google research shows <highlight>53% of mobile users leave pages that take longer than 3 seconds to load</highlight>, and each extra second cuts conversions by up to 7% (Akamai). The factors below are based on what we found in your scan.",
       "footnote": "Impact estimates are based on the specific issues found in your scan, informed by Google and Akamai research.",
       "fullBreakdown": "Full breakdown below"
     },
     "quickWinsTeaser": {
       "label": "Quick wins",
-      "headingCount": "{count} actionable fixes identified",
+      "headingCount": "{count} concrete fixes identified",
       "noDeveloper": "No developer needed",
       "stepLocked": "Step-by-step fix unlocked with your report",
       "allFixesLocked": "All {count} fixes with steps unlocked with your report"
@@ -204,17 +204,17 @@
   },
   "emailGate": {
     "completed": {
-      "heading": "Your full report is ready!",
-      "body": "We've scanned multiple pages and generated a comprehensive analysis.",
-      "button": "View Full Report"
+      "heading": "Your full report is ready.",
+      "body": "We scanned multiple pages and generated the full analysis.",
+      "button": "View full report"
     },
     "processing": {
       "heading": "Deep scan in progress",
-      "body": "We're analysing every page of your site — this catches issues the quick scan misses. Your full report will be in your inbox shortly."
+      "body": "We're analyzing every page of your site. This catches issues the quick scan misses. Your full report will be in your inbox shortly."
     },
     "form": {
       "heading": "Unlock your full report",
-      "subheading": "Get the full cost breakdown, your quick wins, and a complete multi-page audit — free.",
+      "subheading": "The full cost breakdown, your quick wins, and a complete multi-page audit. Free.",
       "emailPlaceholder": "you@company.com",
       "submit": "Get full report",
       "sending": "Sending...",
@@ -232,11 +232,11 @@
       "privacyLink": "Privacy policy"
     },
     "errors": {
-      "emptyEmail": "Please enter your email address.",
-      "noConsent": "Please accept the privacy policy to continue.",
+      "emptyEmail": "Enter your email address.",
+      "noConsent": "Accept the privacy policy to continue.",
       "generic": "Something went wrong.",
-      "connection": "Could not connect to the server. Please try again.",
-      "fullScanFailed": "Full scan failed. Please try again."
+      "connection": "Could not connect to the server. Try again.",
+      "fullScanFailed": "Full scan failed. Try again."
     }
   },
   "loadingState": {
@@ -246,7 +246,7 @@
       "Analyzing content quality...",
       "Checking SEO basics...",
       "Measuring performance...",
-      "Generating your report..."
+      "Building your report..."
     ],
     "scanning": "Scanning {url}"
   },
@@ -255,11 +255,11 @@
       "title": "Website Report",
       "pagesScanned": "{count} pages scanned",
       "copyLink": "Copy report link",
-      "copied": "Link copied!"
+      "copied": "Link copied"
     },
     "footerNote": "Report generated by",
     "footerOn": "on {date}",
-    "footerQuickScan": "(quick scan — limited results)"
+    "footerQuickScan": "(quick scan, limited results)"
   },
   "businessReport": {
     "criticalImmediate": "{count} need immediate attention",
@@ -268,7 +268,7 @@
   },
   "benchmark": {
     "heading": "How you compare",
-    "subheading": "Your scores against a typical small-business site and a well-built one. These are general reference points, not figures for your specific industry.",
+    "subheading": "Your scores against a typical small-business site and a well-built one. General reference points, not figures for your specific industry.",
     "category": {
       "overall": "Overall",
       "performance": "Performance",
@@ -295,10 +295,10 @@
     "headline": "of potential enquiries are likely slipping away because of the issues below.",
     "explanation": "Put another way: for every 100 visitors who reach your site, around {percent} leave without calling, emailing, or buying. Google found 53% of mobile visitors give up on pages that take over 3 seconds to load, and each extra second can cut conversions by up to 7% (Akamai).",
     "impactSuffix": "~{percent}% impact",
-    "footnote": "Impact estimates are based on the specific issues found in your scan, informed by Google and Akamai research on page speed and conversion rates."
+    "footnote": "Impact estimates are based on the specific issues in your scan, informed by Google and Akamai research on page speed and conversion rates."
   },
   "quickWins": {
-    "heading": "Your Top 3 Quick Wins",
+    "heading": "Your top 3 quick wins",
     "subheading": "The highest-impact fixes you can make right now."
   },
   "websitePersonality": {
@@ -317,7 +317,7 @@
     "noIssuesOnPage": "No issues found on this page.",
     "foundOn": "Found on:",
     "share": "Share this report",
-    "copied": "Copied!",
-    "shareHint": "Share with your team or decision-makers — the link works for anyone."
+    "copied": "Copied",
+    "shareHint": "Share with your team or decision-makers. The link works for anyone."
   }
 }

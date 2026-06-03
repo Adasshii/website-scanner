@@ -1,13 +1,13 @@
 {
   "metadata": {
-    "title": "Website Performance & Conversie Audit — Adashi",
-    "description": "Ontvang een gratis audit van de prestaties, toegankelijkheid, SEO en conversiepotentieel van je website. Gedetailleerd rapport met concrete aanbevelingen.",
-    "ogDescription": "Ontvang een gratis audit van de prestaties, toegankelijkheid, SEO en conversiepotentieel van je website.",
-    "siteName": "Adashi Website Performance & Conversie Audit",
-    "reportTitle": "{domain} — Score {overall}/100 | Adashi Website Rapport",
-    "reportDescription": "Website-analyse voor {domain}: Toegankelijkheid {accessibility}, SEO {seo}, Content {content}, Prestaties {performance}",
-    "reportOgTitle": "{domain} — Score {overall}/100",
-    "reportOgDescription": "Gratis website-rapport van Adashi. Bekijk de volledige analyse van toegankelijkheid, SEO en prestaties.",
+    "title": "Gratis Website Audit, Performance & Conversie | Adashi",
+    "description": "Een gratis audit van de prestaties, toegankelijkheid, SEO en conversie van je website. Gedetailleerd rapport met concrete fixes die je deze week kunt doorvoeren.",
+    "ogDescription": "Een gratis audit van de prestaties, toegankelijkheid, SEO en conversie van je website.",
+    "siteName": "Adashi Website Audit",
+    "reportTitle": "{domain}, Score {overall}/100 | Adashi Website Rapport",
+    "reportDescription": "Website-analyse voor {domain}: Toegankelijkheid {accessibility}, SEO {seo}, Content {content}, Prestaties {performance}.",
+    "reportOgTitle": "{domain}, Score {overall}/100",
+    "reportOgDescription": "Gratis website-rapport van Adashi. Volledige analyse van toegankelijkheid, SEO en prestaties.",
     "reportFallbackTitle": "Website-rapport | Adashi"
   },
   "layout": {
@@ -60,8 +60,8 @@
     },
     "ctaBlock": {
       "heading": "Hulp nodig bij het oplossen?",
-      "subheading": "Boek een gratis kennismaking van 15 minuten met Adashi en we laten je precies zien wat als eerste opgepakt moet worden.",
-      "button": "Plan een gratis kennismaking van 15 min"
+      "subheading": "Boek een gratis kennismaking van 15 minuten met Adashi. We laten zien wat als eerste opgepakt moet worden.",
+      "button": "Boek een gratis kennismaking van 15 min"
     },
     "errors": {
       "scanInProgress": "Scan loopt...",
@@ -75,21 +75,21 @@
     }
   },
   "home": {
-    "badge": "100% gratis — geen account nodig",
+    "badge": "100% gratis, geen account nodig",
     "hero": {
       "title": "Hoe presteert je website",
       "titleHighlight": "echt",
       "titleSuffix": "?",
-      "subtitle": "Krijg direct een scan van de toegankelijkheid, SEO, contentkwaliteit en prestaties van je website. Zie wat je tegenhoudt — in duidelijke taal, zonder ontwikkelaarsjargon.",
-      "subnote": "Duurt ongeveer 15 seconden. We scannen je homepage en tonen direct de resultaten."
+      "subtitle": "Een directe scan van de toegankelijkheid, SEO, contentkwaliteit en prestaties van je website. Zie wat je tegenhoudt, in duidelijke taal.",
+      "subnote": "Duurt ongeveer 15 seconden. We scannen je homepage en laten meteen de resultaten zien."
     },
     "features": {
       "heading": "Wat je ontdekt",
-      "subheading": "Onze scanner controleert de zaken die er voor jouw online aanwezigheid het meest toe doen.",
+      "subheading": "We controleren de zaken die er voor jouw online aanwezigheid het meest toe doen.",
       "weightLabel": "{weight} van de score",
       "accessibility": {
         "title": "Toegankelijkheid",
-        "description": "Kunnen alle bezoekers je site gebruiken? We controleren screenreader-ondersteuning, kleurcontrast, toetsenbordnavigatie en meer.",
+        "description": "Kan elke bezoeker je site gebruiken? We controleren screenreader-ondersteuning, kleurcontrast, toetsenbordnavigatie en meer.",
         "weight": "40%"
       },
       "content": {
@@ -104,7 +104,7 @@
       },
       "performance": {
         "title": "Prestaties",
-        "description": "Is je site snel genoeg? Trage pagina's verliezen bezoekers. We meten de laadtijd en signaleren optimalisatiekansen.",
+        "description": "Is je site snel genoeg? Trage pagina's verliezen bezoekers. We meten de laadtijd en geven aan wat te fixen.",
         "weight": "15%"
       }
     },
@@ -112,11 +112,11 @@
       "heading": "Hoe het werkt",
       "step1": {
         "title": "Voer je URL in",
-        "description": "Plak gewoon het adres van je website. Geen account nodig, geen verplichtingen."
+        "description": "Plak het adres van je website. Geen account, geen verplichtingen."
       },
       "step2": {
         "title": "Bekijk je score",
-        "description": "Binnen 15 seconden zie je je totaalscore en belangrijkste knelpunten — uitgelegd in duidelijke taal."
+        "description": "Binnen 15 seconden zie je je totaalscore en de belangrijkste knelpunten in duidelijke taal."
       },
       "step3": {
         "title": "Ontvang het volledige rapport",
@@ -125,7 +125,7 @@
     },
     "bottomCta": {
       "heading": "Klaar om te zien hoe jouw site scoort?",
-      "subheading": "Het is gratis, duurt 15 seconden en kan problemen aan het licht brengen die je nog nooit had opgemerkt."
+      "subheading": "Gratis, duurt 15 seconden, en brengt vaak problemen aan het licht die je nooit had opgemerkt."
     }
   },
   "start": {
@@ -139,7 +139,7 @@
     },
     "error": {
       "noUrl": "Geen URL opgegeven. Ga terug en voer een URL in om te scannen.",
-      "invalidUrl": "De opgegeven URL is ongeldig. Controleer de URL en probeer het opnieuw.",
+      "invalidUrl": "De URL is ongeldig. Controleer hem en probeer het opnieuw.",
       "generic": "Er is iets misgegaan.",
       "connection": "Geen verbinding met de server.",
       "backHome": "Terug naar de homepagina"
@@ -155,13 +155,13 @@
     "issuesFound": "{count} problemen gevonden",
     "criticalCount": "{count} kritiek",
     "majorCount": "{count} belangrijk",
-    "adashiContext": "Adashi bouwt prestatie- en automatiseringssystemen voor groeiende bedrijven. Deze audit toont de problemen die je bezoekers, conversies en geloofwaardigheid kosten — en welke als eerste opgelost moeten worden.",
+    "adashiContext": "Adashi bouwt prestatie- en automatiseringssystemen voor groeiende bedrijven. Deze audit benoemt de problemen die je bezoekers, conversies en geloofwaardigheid kosten, en laat zien wat als eerste opgelost moet worden.",
     "scanFailedNotice": {
       "heading": "We konden deze website niet volledig scannen",
-      "body": "Onze scanner kon <strong>{domain}</strong> niet laden. Dit gebeurt meestal bij erg zware websites, sites die geautomatiseerde tools blokkeren of pagina's waarvoor een login nodig is. De scores hieronder weerspiegelen wat we wel hebben kunnen meten."
+      "body": "Onze scanner kon <strong>{domain}</strong> niet laden. Dit gebeurt meestal bij zware websites, sites die geautomatiseerde tools blokkeren, of pagina's waarvoor een login nodig is. De scores hieronder weerspiegelen wat we wel hebben kunnen meten."
     },
     "sidebarCta": {
-      "lead": "Ontgrendel je volledige analyse en alle quick wins",
+      "lead": "Ontgrendel de volledige analyse en alle quick wins.",
       "button": "Bekijk mijn volledige rapport"
     },
     "visitorExperience": {
@@ -170,7 +170,7 @@
     },
     "revenueImpact": {
       "label": "Omzetimpact",
-      "intro": "Google-onderzoek toont aan dat <highlight>53% van de mobiele bezoekers pagina's verlaat die meer dan 3 seconden laden</highlight>, en elke extra seconde verlaagt de conversie tot 7% (Akamai). De problemen hieronder weerspiegelen wat we in jouw scan hebben gevonden.",
+      "intro": "Google-onderzoek laat zien dat <highlight>53% van de mobiele bezoekers pagina's verlaat die meer dan 3 seconden laden</highlight>, en elke extra seconde verlaagt de conversie tot 7% (Akamai). De factoren hieronder zijn gebaseerd op wat we in jouw scan hebben gevonden.",
       "footnote": "De impactschattingen zijn gebaseerd op de specifieke problemen in jouw scan, onderbouwd door onderzoek van Google en Akamai.",
       "fullBreakdown": "Volledige uitsplitsing hieronder"
     },
@@ -204,17 +204,17 @@
   },
   "emailGate": {
     "completed": {
-      "heading": "Je volledige rapport is klaar!",
-      "body": "We hebben meerdere pagina's gescand en een uitgebreide analyse gegenereerd.",
+      "heading": "Je volledige rapport is klaar.",
+      "body": "We hebben meerdere pagina's gescand en de volledige analyse gegenereerd.",
       "button": "Bekijk volledig rapport"
     },
     "processing": {
       "heading": "Diepere scan loopt",
-      "body": "We analyseren elke pagina van je site — dit vangt problemen op die de snelle scan mist. Je volledige rapport komt zo in je inbox."
+      "body": "We analyseren elke pagina van je site. Dit vangt problemen op die de snelle scan mist. Je volledige rapport komt zo in je inbox."
     },
     "form": {
       "heading": "Ontgrendel je volledige rapport",
-      "subheading": "Krijg de volledige kostenanalyse, je quick wins en een complete multi-pagina audit — gratis.",
+      "subheading": "De volledige kostenanalyse, je quick wins, en een complete multi-pagina audit. Gratis.",
       "emailPlaceholder": "jij@bedrijf.nl",
       "submit": "Volledig rapport ontvangen",
       "sending": "Versturen...",
@@ -246,7 +246,7 @@
       "Contentkwaliteit analyseren...",
       "SEO-basis controleren...",
       "Prestaties meten...",
-      "Je rapport genereren..."
+      "Je rapport opbouwen..."
     ],
     "scanning": "Bezig met scannen van {url}"
   },
@@ -255,11 +255,11 @@
       "title": "Website-rapport",
       "pagesScanned": "{count} pagina's gescand",
       "copyLink": "Rapportlink kopiëren",
-      "copied": "Link gekopieerd!"
+      "copied": "Link gekopieerd"
     },
     "footerNote": "Rapport gegenereerd door",
     "footerOn": "op {date}",
-    "footerQuickScan": "(snelle scan — beperkte resultaten)"
+    "footerQuickScan": "(snelle scan, beperkte resultaten)"
   },
   "businessReport": {
     "criticalImmediate": "{count} vragen om directe aandacht",
@@ -268,7 +268,7 @@
   },
   "benchmark": {
     "heading": "Hoe je je verhoudt",
-    "subheading": "Je scores afgezet tegen een typische MKB-site en een goed gebouwde site. Dit zijn algemene referentiepunten, geen cijfers voor jouw specifieke branche.",
+    "subheading": "Je scores afgezet tegen een typische MKB-site en een goed gebouwde site. Algemene referentiepunten, geen cijfers voor jouw specifieke branche.",
     "category": {
       "overall": "Totaal",
       "performance": "Prestaties",
@@ -317,7 +317,7 @@
     "noIssuesOnPage": "Geen problemen gevonden op deze pagina.",
     "foundOn": "Gevonden op:",
     "share": "Deel dit rapport",
-    "copied": "Gekopieerd!",
-    "shareHint": "Deel het met je team of besluitvormers — de link werkt voor iedereen."
+    "copied": "Gekopieerd",
+    "shareHint": "Deel het met je team of besluitvormers. De link werkt voor iedereen."
   }
 }

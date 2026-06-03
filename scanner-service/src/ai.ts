@@ -11,6 +11,35 @@ import type {
 
 let genAI: GoogleGenerativeAI | null = null;
 
+// ── Voice directive (Adashi brand voice) ──────────────────────────────
+//
+// Injected at the top of every Gemini prompt that produces user-facing
+// copy. Distilled from Adashi voice-principles.md and writing-rules.md.
+// Update both files in tandem so the brand voice stays coherent.
+
+const VOICE_DIRECTIVE = `VOICE — write like a clear, thoughtful colleague talking to a smart friend. Warm and efficient. Confident, no hedging. Short, declarative sentences as the default; vary length so paragraphs flow. One idea per sentence, one idea per paragraph.
+
+NEVER use em dashes. Use commas, colons, or periods instead.
+
+NEVER use these words or phrases:
+- delve, tapestry, realm, landscape (metaphorical), journey (metaphorical), testament, cornerstone, bedrock, pivotal, underscore (as verb), showcase, meticulous, intricate, enduring, bolster, foster, garner, vibrant, robust, enhance, highlight (meaning emphasize), crucial, transformative, groundbreaking, innovative, cutting-edge, state-of-the-art, seamless, multifaceted, nuanced (without substance), comprehensive (as filler), significant (as filler), substantial (as filler), unprecedented, unparalleled, leverage (as verb)
+- truly, certainly, absolutely, undoubtedly, remarkably, incredibly, particularly, especially, indeed
+- "It is worth noting that", "It is important to note that", "Notably", "Importantly", "In today's fast-paced/digital world", "At the end of the day"
+- "exciting", "powerful", "industry-leading", "world-class", "best-in-class", "game-changing"
+- Filler transitions: Additionally, Furthermore, Moreover, Nevertheless, Consequently, In conclusion, To summarize, Moving forward
+- Vague attribution: "some say", "many believe", "experts suggest". Either name the source or own the claim.
+- Hollow framing: "reflecting the broader trend of", "underscoring the importance of", "a milestone in"
+
+DO:
+- Open with the actual point. No throat-clearing ("Certainly!", "Great question!").
+- Use "is" and "are", not "serves as" / "stands as" / "acts as".
+- Specifics over abstractions: numbers, percentages, named tools, concrete examples.
+- State facts plainly. If you can't attribute it, cut it or own it.
+- End on the point. No "while challenges remain, the future is bright" closers.
+- Reuse the same word when it's the right word. Do not rotate synonyms artificially.
+- Use rhetorical questions sparingly to keep the reader engaged.
+- Share trade-offs honestly when relevant.`;
+
 function getClient(): GoogleGenerativeAI | null {
   if (!process.env.GEMINI_API_KEY) return null;
   if (!genAI) {
@@ -229,7 +258,9 @@ export async function generateComprehensiveAnalysis(
       : "";
 
     const result = await model.generateContent(
-      `${languageDirective}You are a senior website strategist writing a report for a business owner. The reader is not technical. Analyze the following website and provide a comprehensive analysis.
+      `${VOICE_DIRECTIVE}
+
+${languageDirective}You are a senior website strategist writing a report for a business owner. The reader is not technical. Analyze the following website.
 
 Website: ${domain}
 Overall score: ${scores.overall}/100
@@ -247,18 +278,18 @@ ${topIssueList}
 Page details:
 ${pageDataSummary}
 
-Provide your analysis as JSON with these exact fields:
+Return JSON with these fields:
 
 {
-  "executiveSummary": "2-3 sentence summary. Lead with the most important finding. Mention the weakest category. Be direct, specific, encouraging. No jargon or markdown.",
+  "executiveSummary": "2 sentences. Lead with the single most important finding. Name the weakest category. Specific, direct, no hedging. No markdown.",
 
   "costEstimate": {
     "totalLostPercent": <number, estimated percentage of visitors being lost>,
     "factors": [
       {
-        "name": "<factor name>",
+        "name": "<short factor name>",
         "percentImpact": <number>,
-        "explanation": "<1 sentence explaining this factor's impact>"
+        "explanation": "<1 sentence. State the cause and the cost plainly.>"
       }
     ]
   },
@@ -266,30 +297,30 @@ Provide your analysis as JSON with these exact fields:
   "quickWins": [
     {
       "title": "<plain language issue>",
-      "description": "<what to fix and why, 1-2 sentences>",
+      "description": "<what to fix and why, 1-2 sentences. Specific, not generic.>",
       "estimatedTime": "<specific time estimate, e.g. '~10 min', '~1 hour', '~half a day'>",
-      "needsDeveloper": <boolean — copy exact value from effort data above>,
-      "expectedImpact": "<one sentence about expected improvement>"
+      "needsDeveloper": <boolean. Copy exact value from effort data above.>,
+      "expectedImpact": "<one sentence about the concrete improvement (numbers if you have them).>"
     }
   ],
 
-  "websitePersonality": "3-4 sentences describing how the site comes across to a first-time visitor. Cover tone, warmth, professionalism, clarity. Write for a business owner.",
+  "websitePersonality": "3 sentences on how the site comes across to a first-time visitor. Cover tone, professionalism, clarity. Write for a business owner. No filler words.",
 
-  "visitorExperience": "A structured briefing for a business owner covering the full state of their website. Write approximately 300-400 words across 5 paragraphs, separated by \\n\\n. No technical jargon — translate everything into business and visitor terms.\n\nParagraph 1 — First impression and speed: Describe how fast or slow the site loads from a visitor's perspective. Reference the load time and Core Web Vitals in plain terms (e.g. 'visitors wait around X seconds'). Compare to industry benchmarks. Mention layout stability and mobile experience if relevant.\n\nParagraph 2 — Search visibility: Explain how Google sees this site based on the SEO score and top SEO issues. Frame it as: how easy is it for new customers to find you through search? Be specific about what's working and what's limiting reach.\n\nParagraph 3 — Trust and credibility: Cover what a first-time visitor notices subconsciously — security signals, whether the site feels polished and professional, accessibility gaps that affect real users. Frame this as what builds or erodes trust.\n\nParagraph 4 — Business impact: Connect the above to real outcomes. What is this likely costing the business in lost traffic, early exits, missed conversions? Use specific percentages or numbers where the data supports it.\n\nParagraph 5 — Outlook: Give an honest, encouraging assessment of where the site stands overall and what becomes possible if the top issues are addressed."
+  "visitorExperience": "A briefing for a business owner. About 280-360 words, 5 paragraphs separated by \\n\\n. No technical jargon. Each paragraph is 2-4 sentences. Translate everything into business terms.\n\nParagraph 1, First impression and speed: How fast or slow does the site load from a visitor's perspective. Use the load time and Core Web Vitals in plain terms (for example 'visitors wait around X seconds'). Compare to a sensible benchmark. Mention layout stability and mobile if relevant.\n\nParagraph 2, Search visibility: How Google sees this site, based on the SEO score and top SEO issues. Frame it as: how easy is it for new customers to find you through search. Name what is working and what is limiting reach.\n\nParagraph 3, Trust and credibility: What a first-time visitor notices without thinking about it. Security signals, whether the site feels polished, accessibility gaps that affect real users. State what builds or erodes trust.\n\nParagraph 4, Business impact: Tie the above to outcomes. What is this likely costing the business in lost traffic, early exits, missed conversions. Use percentages or numbers when the data supports them.\n\nParagraph 5, Outlook: An honest read on where the site stands and what becomes possible if the top issues are fixed. End on the point, not a generic closing line."
 }
 
-Cost estimate benchmarks — grounded in industry research:
-- Slow page load (avg > 3s): 10-15%. Google/SOASTA: 53% of mobile visitors abandon after 3s; Portent: each extra second reduces conversions ~4.4%.
-- Accessibility (score < 80): up to 20% based on how low the score is. ~26% of adults have a disability; a low score means real users cannot complete tasks on the site.
-- Poor content / readability (content score < 60): 10%. Nielsen Norman: users read ~20% of page text. Buried content drives silent exits.
+Cost estimate benchmarks (industry research):
+- Slow page load (avg > 3s): 10-15%. Google/SOASTA: 53% of mobile visitors abandon after 3s. Portent: each extra second reduces conversions ~4.4%.
+- Accessibility (score < 80): up to 20%, scaled to how low the score is. CDC: ~26% of adults have a disability. A low score means real users cannot complete tasks on the site.
+- Poor readability (content score < 60): 10%. Nielsen Norman: users read ~20% of page text. Buried content drives silent exits.
 - Missing or weak CTAs (content score < 70 or CTA issues found): 8%. HubSpot: 70%+ of SMB sites lack a clear CTA.
-- Poor SEO (seo score < 50): 12%. ~68% of online experiences start with search. Poor SEO means fewer visitors arrive.
+- Poor SEO (seo score < 50): 12%. ~68% of online experiences start with search.
 Present totalLostPercent as the combined impact, capped at 45%.
 
-Quick wins: Select the 3 highest impact-to-effort fixes from the issues above. Each should be a different fix type.
-Effort data pre-computed from the actual scan:
+Quick wins: pick the 3 highest impact-to-effort fixes from the issues above. Each should be a different fix type.
+Effort data from the actual scan:
 ${effortContext}
-Use the estimatedTime hint for each selected issue as-is. Use the needsDeveloper value as-is.
+Use the estimatedTime hint as-is. Use the needsDeveloper value as-is.
 
 Return ONLY valid JSON, no other text.`
     );
@@ -326,26 +357,26 @@ export function generateFallbackVerdict(
   const nl = locale === "nl";
   if (scores.overall >= 90) {
     return nl
-      ? "Goed gedaan! Je website is sterk opgezet en presteert goed in alle categorieën."
-      : "Great job! Your website is well-built and performs strongly across all categories.";
+      ? "Je website is goed gebouwd en presteert sterk in alle categorieën."
+      : "Your website is well-built and performs strongly across all categories.";
   }
   if (scores.overall >= 70) {
     const weakest = getWeakestCategory(scores, locale);
     return nl
-      ? `Je website is in redelijke vorm, maar ${weakest} verdient aandacht om het volledige potentieel te bereiken.`
-      : `Your website is in decent shape, but ${weakest} needs attention to reach its full potential.`;
+      ? `Je website is in redelijke vorm. ${weakest.charAt(0).toUpperCase() + weakest.slice(1)} is de zwakste schakel en kost je het meest.`
+      : `Your website is in decent shape. ${weakest.charAt(0).toUpperCase() + weakest.slice(1)} is the weak link and costs you the most.`;
   }
   if (scores.overall >= 50) {
     const sev = nl
       ? (criticalIssues > 0 ? "kritieke" : "belangrijke")
       : (criticalIssues > 0 ? "critical" : "major");
     return nl
-      ? `Je website heeft meerdere verbeterpunten. Het oplossen van de ${sev} problemen zou een echt verschil maken.`
-      : `Your website has several areas for improvement. Addressing the ${sev} issues would make a real difference.`;
+      ? `Je website heeft meerdere verbeterpunten. De ${sev} problemen oplossen levert de meeste winst op.`
+      : `Your website has several areas to improve. Fixing the ${sev} issues delivers the most return.`;
   }
   return nl
-    ? "Je website heeft serieuze problemen die je waarschijnlijk bezoekers en zoekposities kosten. Het goede nieuws: de meeste fixes zijn niet ingewikkeld."
-    : "Your website has significant issues that are likely costing you visitors and search rankings. The good news: most fixes are straightforward.";
+    ? "Je website heeft serieuze problemen die je bezoekers en zoekposities kosten. De meeste fixes zijn niet ingewikkeld."
+    : "Your website has serious issues that cost you visitors and search rankings. Most fixes are not complicated.";
 }
 
 function getWeakestCategory(scores: ScanScores, locale: string = "en"): string {
@@ -373,77 +404,77 @@ export function generateFallbackVisitorExperience(
   // First impression and speed
   if (scores.performance >= 80) {
     paragraphs.push(nl
-      ? "Bezoekers die op deze site komen, merken dat de pagina snel laadt. Korte laadtijden verlagen het aantal vroege exits en zorgen voor een positieve eerste indruk nog voordat iemand een woord heeft gelezen."
-      : "Visitors arriving at this site will find it loads quickly. Fast load times reduce early exits and create a positive first impression before anyone has read a single word.");
+      ? "De site laadt snel. Dat verlaagt het aantal vroege exits en geeft een goede eerste indruk voordat iemand een woord heeft gelezen."
+      : "The site loads fast. That cuts early exits and creates a good first impression before anyone reads a word.");
   } else if (scores.performance >= 60) {
     paragraphs.push(nl
-      ? "De site laadt in een gemiddeld tempo. Sommige bezoekers — vooral op mobiele verbindingen — ervaren een merkbare wachttijd voordat de pagina bruikbaar wordt. Snellere laadtijden zijn een van de meest renderende verbeteringen."
-      : "The site loads at an average pace. Some visitors — particularly those on mobile connections — may experience a noticeable wait before the page becomes usable. Improving load speed is one of the highest-return fixes available.");
+      ? "De site laadt op een gemiddeld tempo. Bezoekers op mobiele verbindingen ervaren een merkbare wachttijd. Snellere laadtijd is een van de fixes met het hoogste rendement."
+      : "The site loads at an average pace. Visitors on mobile connections wait noticeably before the page is usable. Faster load time is one of the highest-return fixes available.");
   } else {
     paragraphs.push(nl
-      ? "Bezoekers ervaren waarschijnlijk trage laadtijden. Onderzoek laat keer op keer zien dat trage pagina's een aanzienlijk deel van de bezoekers verjagen nog voor ze de inhoud zien. Snelheidsverbeteringen hier hebben direct invloed op hoeveel mensen daadwerkelijk met de site interacteren."
-      : "Visitors are likely experiencing slow load times. Research consistently shows that slow pages drive away a significant share of visitors before they ever see your content. Speed improvements here would have a direct impact on how many people actually engage with the site.");
+      ? "De site laadt traag. Google ontdekte dat 53% van de mobiele bezoekers afhaakt op pagina's die langer dan 3 seconden laden. Snelheidsverbeteringen hebben hier direct invloed op hoeveel mensen daadwerkelijk met de site interacteren."
+      : "The site is slow to load. Google found 53% of mobile visitors abandon pages that take longer than 3 seconds to load. Speed fixes here directly change how many people actually engage with the site.");
   }
 
   // Search visibility
   if (scores.seo >= 80) {
     paragraphs.push(nl
-      ? "Vanuit zoekoptiek staat deze site er goed voor. Google kan de inhoud duidelijk lezen en begrijpen, wat betekent dat nieuwe bezoekers de site eerder via organisch zoekverkeer zullen vinden."
-      : "From a search perspective, this site is in good shape. Google can read and understand the content clearly, which means new visitors are more likely to find it through organic search.");
+      ? "Vanuit zoekoptiek staat de site er goed voor. Google kan de inhoud lezen en begrijpen. Nieuwe bezoekers vinden de site daardoor sneller via organisch verkeer."
+      : "From a search perspective, the site is in good shape. Google can read and understand the content. New visitors find the site faster through organic search.");
   } else if (scores.seo >= 50) {
     paragraphs.push(nl
-      ? "De zichtbaarheid in zoekmachines is matig. Een aantal belangrijke signalen dat Google gebruikt om pagina's te ranken en te indexeren ontbreekt of is onvolledig, wat beperkt hoeveel nieuwe bezoekers de site via zoekopdrachten kunnen ontdekken."
-      : "Search visibility is moderate. Some key signals that Google uses to rank and index pages are missing or incomplete, which limits how many new visitors can discover the site through search.");
+      ? "De vindbaarheid in zoekmachines is gemiddeld. Een aantal signalen dat Google gebruikt om pagina's te ranken ontbreekt of is onvolledig. Dat beperkt hoeveel nieuwe bezoekers de site via zoekopdrachten ontdekken."
+      : "Search visibility is average. Several signals Google uses to rank pages are missing or incomplete. That limits how many new visitors discover the site through search.");
   } else {
     paragraphs.push(nl
-      ? "De site heeft grote gaten in zijn vindbaarheid. Zonder de juiste technische signalen heeft Google moeite om de inhoud te begrijpen en te ranken — een groot deel van de potentiële bezoekers zal de site simpelweg nooit vinden."
-      : "The site has significant gaps in its search visibility. Without the right technical signals in place, Google has difficulty understanding and ranking the content — meaning a large portion of potential visitors will simply never find it.");
+      ? "De site heeft grote gaten in vindbaarheid. Zonder de juiste technische signalen kan Google de inhoud nauwelijks begrijpen of ranken. Een groot deel van de potentiële bezoekers vindt de site nooit."
+      : "The site has large gaps in search visibility. Without the right technical signals, Google can barely understand or rank the content. A large share of potential visitors never finds the site.");
   }
 
   // Trust and credibility
   if (scores.accessibility >= 80 && (scores.security ?? 0) >= 80) {
     paragraphs.push(nl
-      ? "De site komt professioneel en betrouwbaar over. De beveiliging is goed ingericht en de toegankelijkheid is op orde, wat betekent dat bezoekers met een beperking de site zonder drempels kunnen gebruiken."
-      : "The site presents as professional and trustworthy. Security is properly configured and accessibility is handled well, meaning visitors with disabilities can use the site without barriers.");
+      ? "De site komt professioneel en betrouwbaar over. De beveiliging is goed ingericht en de toegankelijkheid is op orde. Bezoekers met een beperking kunnen de site zonder drempels gebruiken."
+      : "The site is professional and trustworthy. Security is set up well and accessibility is in order. Visitors with disabilities can use the site without barriers.");
   } else if (scores.accessibility < 60) {
     paragraphs.push(nl
-      ? `Toegankelijkheid verdient aandacht. Een score van ${scores.accessibility}/100 betekent dat sommige bezoekers — waaronder mensen die een screenreader of toetsenbordnavigatie gebruiken — drempels tegenkomen die hen verhinderen de site volledig te gebruiken.`
-      : `Accessibility is an area that needs attention. A score of ${scores.accessibility}/100 suggests that some visitors — including those using screen readers or relying on keyboard navigation — will encounter barriers that prevent them from fully using the site.`);
+      ? `Toegankelijkheid verdient aandacht. Met een score van ${scores.accessibility}/100 lopen bezoekers die een screenreader of toetsenbordnavigatie gebruiken tegen drempels aan die hen verhinderen de site te gebruiken.`
+      : `Accessibility needs attention. With a score of ${scores.accessibility}/100, visitors who use a screen reader or keyboard navigation run into barriers that prevent them from using the site.`);
   } else {
     paragraphs.push(nl
-      ? "Er zijn een paar vertrouwens- en geloofwaardigheidsgaten die scherpe bezoekers kunnen opvallen. Het oplossen van de beveiligings- en toegankelijkheidsproblemen in dit rapport zou de site verzorgder en professioneler doen aanvoelen."
-      : "There are some trust and credibility gaps that observant visitors may notice. Addressing the security and accessibility issues flagged in this report would make the site feel more polished and professional.");
+      ? "Er zijn een paar vertrouwens- en geloofwaardigheidsgaten die scherpe bezoekers opvallen. De beveiligings- en toegankelijkheidsproblemen in dit rapport oplossen maakt de site verzorgder en professioneler."
+      : "There are trust and credibility gaps that observant visitors will notice. Fixing the security and accessibility issues in this report makes the site feel more polished and professional.");
   }
 
   // Business impact
   const weakestScore = Math.min(scores.accessibility, scores.seo, scores.performance, scores.content);
   if (summary.criticalIssues > 0) {
     paragraphs.push(nl
-      ? `Met ${summary.criticalIssues} kritiek${summary.criticalIssues !== 1 ? "e" : ""} en ${summary.majorIssues} belangrijk${summary.majorIssues !== 1 ? "e" : ""} ${summary.criticalIssues + summary.majorIssues === 1 ? "probleem" : "problemen"} verliest deze site waarschijnlijk een merkbaar deel van bezoekers en conversies. De problemen zijn niet ongebruikelijk voor dit type site, maar vertegenwoordigen wel echte, meetbare gemiste omzet.`
-      : `With ${summary.criticalIssues} critical issue${summary.criticalIssues !== 1 ? "s" : ""} and ${summary.majorIssues} major issue${summary.majorIssues !== 1 ? "s" : ""} identified, this site is likely losing a meaningful share of visitors and conversions. The issues aren't unusual for a site of this type, but they do represent real, measurable business cost.`);
+      ? `Met ${summary.criticalIssues} kritiek${summary.criticalIssues !== 1 ? "e" : ""} en ${summary.majorIssues} belangrijk${summary.majorIssues !== 1 ? "e" : ""} ${summary.criticalIssues + summary.majorIssues === 1 ? "probleem" : "problemen"} verliest de site een merkbaar deel van bezoekers en conversies. De problemen zijn niet ongewoon voor dit type site, maar vertegenwoordigen echte, meetbare gemiste omzet.`
+      : `With ${summary.criticalIssues} critical issue${summary.criticalIssues !== 1 ? "s" : ""} and ${summary.majorIssues} major issue${summary.majorIssues !== 1 ? "s" : ""}, the site is losing a measurable share of visitors and conversions. The issues are not unusual for a site of this type, but they represent real lost revenue.`);
   } else if (weakestScore < 60) {
     paragraphs.push(nl
-      ? "De zwakste plekken van deze site veroorzaken waarschijnlijk frictie die bezoekers en conversies kost — ook al merken bezoekers de oorzaak niet bewust. Het oplossen hiervan verwijdert drempels die tussen de site en betere resultaten staan."
-      : "The weakest areas of this site are likely creating friction that costs visitors and conversions — even if visitors don't consciously notice the cause. Fixing these issues removes barriers that stand between the site and better results.");
+      ? "De zwakste plekken van de site veroorzaken frictie die bezoekers en conversies kost, ook als bezoekers de oorzaak niet bewust opmerken. Deze problemen oplossen haalt drempels weg tussen de site en betere resultaten."
+      : "The weakest areas of the site create friction that costs visitors and conversions, even if visitors don't consciously notice the cause. Fixing these removes barriers between the site and better results.");
   } else {
     paragraphs.push(nl
-      ? "Over het geheel presteert deze site redelijk goed. De gevonden problemen zijn niet kritiek, maar het aanpakken ervan zou de ervaring voor een breder publiek verbeteren en de positie bij zoekmachines versterken."
-      : "Overall this site is performing reasonably well. The issues identified are not critical, but addressing them would improve the experience for a broader range of visitors and strengthen the site's standing with search engines.");
+      ? "Over het geheel presteert de site redelijk. De gevonden problemen zijn niet kritiek, maar oppakken verbetert de ervaring voor een breder publiek en versterkt de positie bij zoekmachines."
+      : "Overall the site performs reasonably. The issues are not critical, but addressing them improves the experience for a wider audience and strengthens search rankings.");
   }
 
   // Outlook
   if (scores.overall >= 80) {
     paragraphs.push(nl
-      ? "Deze site staat er sterk voor. Een gerichte ronde van verbeteringen op de resterende punten zou hem naar uitstekend niveau brengen en een duidelijk voordeel geven ten opzichte van vergelijkbare sites."
-      : "This site is in strong shape. A focused round of improvements targeting the remaining issues would push it into excellent territory and give it a clear edge over most comparable sites.");
+      ? "De site staat er sterk voor. Een gerichte ronde verbeteringen op de resterende punten brengt hem naar uitstekend niveau en geeft een duidelijk voordeel ten opzichte van vergelijkbare sites."
+      : "The site is in strong shape. A focused round of fixes on the remaining points brings it to excellent and gives a clear edge over comparable sites.");
   } else if (scores.overall >= 60) {
     paragraphs.push(nl
-      ? "Deze site heeft een solide basis met duidelijke ruimte om te groeien. Eerst de quick wins aanpakken levert de snelste resultaten, en een grondiger verbetertraject zou de algehele ervaring merkbaar tillen."
-      : "This site has a solid foundation with clear room to grow. Addressing the quick wins first will deliver the fastest results, and a more thorough improvement pass would meaningfully elevate the overall experience.");
+      ? "Solide basis, duidelijke ruimte om te groeien. Eerst de quick wins aanpakken levert de snelste resultaten. Een grondiger verbetertraject tilt de algehele ervaring merkbaar omhoog."
+      : "Solid foundation, clear room to grow. The quick wins deliver the fastest results. A more thorough improvement pass lifts the overall experience noticeably.");
   } else {
     paragraphs.push(nl
-      ? "Er is echt werk te doen, maar het goede nieuws is dat de meeste problemen oplosbaar zijn. De kritieke punten eerst aanpakken levert direct impact op, en elke verbetering bouwt voort op de vorige tot een merkbaar betere ervaring voor bezoekers."
-      : "There is real work to do here, but the good news is that most of the issues are fixable. Prioritising the critical items first will have an immediate impact, and each improvement compounds into a noticeably better experience for visitors.");
+      ? "Er is werk te doen, maar de meeste problemen zijn oplosbaar. Eerst de kritieke punten oppakken levert direct impact op. Elke verbetering bouwt door op de vorige tot een merkbaar betere ervaring voor bezoekers."
+      : "There is work to do, but most issues are fixable. Tackling the critical items first delivers immediate impact. Each fix builds on the last toward a noticeably better experience for visitors.");
   }
 
   return paragraphs.join("\n\n");
@@ -568,9 +599,11 @@ export async function enhanceIssueDescriptions(
       : `{"index": <number>, "description": "<plain language description>", "recommendation": "<plain language recommendation>"}`;
 
     const result = await model.generateContent(
-      `${languageBlock}You are rewriting website audit findings for a small business owner who is NOT technical.
+      `${VOICE_DIRECTIVE}
 
-For each issue below, rewrite the description and recommendation in plain language. Be specific about what's wrong and what to do. Keep each description to 1 sentence and each recommendation to 1-2 sentences.${locale === "nl" ? " Also provide a short Dutch title (max 60 characters)." : ""}
+${languageBlock}You are rewriting website audit findings for a small business owner who is NOT technical.
+
+For each issue below, rewrite the description and recommendation in plain language. Be specific about what is wrong and what to do. Description: 1 sentence. Recommendation: 1-2 sentences. State the action directly, no hedging.${locale === "nl" ? " Also provide a short Dutch title (max 60 characters)." : ""}
 
 ${issueList}
 
@@ -642,7 +675,9 @@ export async function generateSalesBrief(
     const model = ai.getGenerativeModel({ model: "gemini-2.5-flash" });
 
     const result = await model.generateContent(
-      `You are a sales strategist preparing a brief for a web design agency owner before a potential client call. Based on the following website scan results, write a concise sales brief.
+      `${VOICE_DIRECTIVE}
+
+You are a sales strategist preparing a brief for the Adashi agency owner before a potential client call. Based on the scan results below, write a concise brief.
 
 Website: ${domain}
 Overall score: ${scores.overall}/100
@@ -660,12 +695,12 @@ ${topIssueList}
 
 Include:
 - Company name and what they appear to do (infer from website content)
-- Their current website's biggest weaknesses (top 3, in plain language)
-- What services they likely need (website redesign, SEO, accessibility fixes, content rewrite, automation/integration)
-- Suggested talking points for a strategy call (what to lead with, what pain points to reference)
-- Estimated project scope: small fix (1-2 days), medium project (1-2 weeks), or full rebuild (4-8 weeks)
+- The site's top 3 weaknesses, in plain language
+- Services they likely need (website redesign, SEO, accessibility fixes, content rewrite, automation/integration)
+- Talking points for the call: what to lead with, which pain points to reference
+- Project scope estimate: small fix (1-2 days), medium project (1-2 weeks), or full rebuild (4-8 weeks)
 
-Keep it under 300 words. Write it as bullet points, not paragraphs. Be direct and actionable.`
+Under 300 words. Bullet points, not paragraphs. Direct, specific, no padding.`
     );
 
     const text = result.response.text().trim();
@@ -706,9 +741,11 @@ export async function generateWhyItMatters(
       : "";
 
     const result = await model.generateContent(
-      `${languageBlock}You are writing plain-English business impact summaries for a website audit report shown to non-technical business owners.
+      `${VOICE_DIRECTIVE}
 
-For each issue below, write exactly one sentence explaining WHY it matters to the business — focus on real consequences: lost visitors, lower Google rankings, accessibility barriers, lost revenue, security risk, etc. Reference the domain "${domain}" where it makes the summary more specific and credible. Be direct and concrete. No jargon.
+${languageBlock}You are writing plain-language business impact summaries for a website audit report shown to non-technical business owners.
+
+For each issue below, write exactly one sentence explaining WHY it matters to the business. Focus on real consequences: lost visitors, lower Google rankings, accessibility barriers, lost revenue, security risk. Reference the domain "${domain}" where it makes the summary more specific. Direct and concrete. No jargon. No hedging. No padding.
 
 Issues:
 ${issueList}
@@ -749,8 +786,8 @@ export function generateFallbackQuickWins(issues: Issue[], locale: string = "en"
       : (issue.difficulty === "easy" ? "~15 min" : issue.difficulty === "hard" ? "~half a day" : "~1 hour"),
     needsDeveloper: issue.difficulty === "hard",
     expectedImpact: issue.whyItMatters ?? (nl
-      ? "Dit oplossen verbetert je totaalscore."
-      : "Fixing this will improve your overall site score."),
+      ? "Dit oplossen verhoogt je totaalscore."
+      : "Fixing this lifts your overall site score."),
   }));
 }
 
@@ -761,17 +798,17 @@ export function generateFallbackWebsitePersonality(scores: ScanScores, locale: s
   const weakest = getWeakestCategory(scores, locale);
   if (scores.overall >= 80) {
     return nl
-      ? "De site komt professioneel en betrouwbaar over, met een heldere structuur waarin bezoekers makkelijk vinden wat ze zoeken. Eerste bezoekers voelen zich waarschijnlijk vertrouwd genoeg om in actie te komen."
-      : "The site comes across as professional and trustworthy, with a clear structure that makes it easy for visitors to find what they need. First-time visitors are likely to feel confident taking action.";
+      ? "De site is professioneel en betrouwbaar, met een heldere structuur waarin bezoekers vinden wat ze zoeken. Eerste bezoekers voelen zich vertrouwd genoeg om in actie te komen."
+      : "The site is professional and trustworthy, with a clear structure that helps visitors find what they need. First-time visitors feel confident enough to take action.";
   }
   if (scores.overall >= 60) {
     return nl
-      ? `De site heeft een solide basis, maar problemen rond ${weakest} kunnen sommige bezoekers laten twijfelen. Het oplossen van de belangrijkste punten in dit rapport zou de indruk die de site achterlaat merkbaar versterken.`
-      : `The site has a solid foundation but ${weakest} issues may cause some visitors to hesitate. Addressing the top issues flagged in this report would noticeably raise the impression it leaves.`;
+      ? `Solide basis. Problemen rond ${weakest} laten sommige bezoekers twijfelen. De belangrijkste punten in dit rapport oplossen versterkt de indruk die de site achterlaat merkbaar.`
+      : `Solid foundation. ${weakest.charAt(0).toUpperCase() + weakest.slice(1)} issues cause some visitors to hesitate. Fixing the top items in this report noticeably raises the impression the site leaves.`;
   }
   return nl
-    ? `De huidige staat van de site veroorzaakt waarschijnlijk frictie voor eerste bezoekers, vooral rond ${weakest}. De quick wins hieronder zouden een merkbaar verschil maken in hoe de site wordt ervaren.`
-    : `The site's current state is likely creating friction for first-time visitors, particularly around ${weakest}. The quick wins below would make a meaningful difference to how the site is perceived.`;
+    ? `In zijn huidige staat creëert de site frictie voor eerste bezoekers, vooral rond ${weakest}. De quick wins hieronder maken een merkbaar verschil in hoe de site wordt ervaren.`
+    : `In its current state, the site creates friction for first-time visitors, especially around ${weakest}. The quick wins below make a noticeable difference in how the site is experienced.`;
 }
 
 // ── Design Analysis (Gemini Vision) ──────────────────────────────────

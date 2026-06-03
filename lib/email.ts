@@ -48,18 +48,18 @@ async function trackEmailEvent(params: {
 const TEXT = {
   en: {
     confirmation: {
-      subject: (domain: string) => `Your website scan for ${domain} is underway`,
+      subject: (domain: string) => `Your scan of ${domain} is running`,
       heading: (domain: string) => `Quick scan complete for ${domain}`,
       lead: (score: number, color: string) =>
-        `Your quick score is <strong style="color:${color}">${score}/100</strong>. We're now running a full multi-page analysis in the background.`,
-      reassurance: `You don't need to keep any page open. We'll send you another email as soon as your full report is ready.`,
+        `Your quick score is <strong style="color:${color}">${score}/100</strong>. The full multi-page analysis is running in the background.`,
+      reassurance: `You don't need to keep a page open. We'll email you the moment the full report is ready.`,
       cta: "View your report",
       footerScanned: (domain: string, url: string) =>
-        `You're receiving this because you scanned ${domain} on <a href="${url}" style="color:#006DFF;text-decoration:none;">scan.adashi.io</a>.`,
+        `You're getting this because you scanned ${domain} on <a href="${url}" style="color:#006DFF;text-decoration:none;">scan.adashi.io</a>.`,
       footerQuestions: `Questions? Reply to this email or visit <a href="https://adashi.io" style="color:#006DFF;text-decoration:none;">adashi.io</a>.`,
     },
     reportReady: {
-      subject: (domain: string) => `Your full website report for ${domain} is ready`,
+      subject: (domain: string) => `Your full report for ${domain} is ready`,
       heading: (domain: string) => `Your full report for ${domain} is ready`,
       summary: (pages: number, issues: number, criticalLine: string, score: number, color: string) =>
         `We scanned <strong>${pages} page${pages !== 1 ? "s" : ""}</strong> and found <strong>${issues} issue${issues !== 1 ? "s" : ""}</strong> (${criticalLine}). Your overall score is <strong style="color:${color}">${score}/100</strong>.`,
@@ -69,32 +69,32 @@ const TEXT = {
       statIssues: "Issues found",
       statScore: "Overall score",
       cta: "View full report",
-      help: `Need help fixing these issues? <a href="https://adashi.io/contact" style="color:#006DFF;text-decoration:none;font-weight:600;">Book a free strategy call</a> and we'll walk you through it.`,
+      help: `Want help fixing these? <a href="https://adashi.io/contact" style="color:#006DFF;text-decoration:none;font-weight:600;">Book a free 15-min walkthrough</a> and we'll show you what to fix first.`,
     },
     followUp: {
-      subject: (domain: string) => `Quick follow-up on your website report: ${domain}`,
-      heading: "Did you get a chance to review your report?",
+      subject: (domain: string) => `One quick win to start with for ${domain}`,
+      heading: "Reviewed your report yet?",
       intro: (domain: string) =>
         `We sent you a website report for <strong>${domain}</strong> a few days ago. Here's your #1 quick win:`,
       cta: "View your report",
-      bookLink: "Book a free strategy call →",
-      help: "If you'd like help implementing the fixes, we're here.",
+      bookLink: "Book a free 15-min walkthrough →",
+      help: "Want help implementing the fixes? We're here.",
     },
   },
   nl: {
     confirmation: {
-      subject: (domain: string) => `Je website-scan voor ${domain} is gestart`,
+      subject: (domain: string) => `Je scan van ${domain} draait`,
       heading: (domain: string) => `Snelle scan voltooid voor ${domain}`,
       lead: (score: number, color: string) =>
-        `Je snelle score is <strong style="color:${color}">${score}/100</strong>. We draaien nu op de achtergrond een volledige multi-pagina analyse.`,
-      reassurance: `Je hoeft geen pagina open te houden. Zodra je volledige rapport klaar is, ontvang je een nieuwe e-mail.`,
+        `Je snelle score is <strong style="color:${color}">${score}/100</strong>. De volledige multi-pagina analyse draait nu op de achtergrond.`,
+      reassurance: `Je hoeft geen pagina open te houden. Zodra je volledige rapport klaar is, ontvang je een e-mail.`,
       cta: "Bekijk je rapport",
       footerScanned: (domain: string, url: string) =>
         `Je ontvangt deze e-mail omdat je ${domain} hebt gescand op <a href="${url}" style="color:#006DFF;text-decoration:none;">scan.adashi.io</a>.`,
       footerQuestions: `Vragen? Beantwoord deze e-mail of bezoek <a href="https://adashi.io" style="color:#006DFF;text-decoration:none;">adashi.io</a>.`,
     },
     reportReady: {
-      subject: (domain: string) => `Je volledige website-rapport voor ${domain} is klaar`,
+      subject: (domain: string) => `Je volledige rapport voor ${domain} is klaar`,
       heading: (domain: string) => `Je volledige rapport voor ${domain} is klaar`,
       summary: (pages: number, issues: number, criticalLine: string, score: number, color: string) =>
         `We hebben <strong>${pages} pagina${pages !== 1 ? "'s" : ""}</strong> gescand en <strong>${issues} ${issues === 1 ? "probleem" : "problemen"}</strong> gevonden (${criticalLine}). Je totaalscore is <strong style="color:${color}">${score}/100</strong>.`,
@@ -104,16 +104,16 @@ const TEXT = {
       statIssues: "Problemen gevonden",
       statScore: "Totaalscore",
       cta: "Bekijk volledig rapport",
-      help: `Hulp nodig bij het oplossen? <a href="https://adashi.io/contact" style="color:#006DFF;text-decoration:none;font-weight:600;">Plan een gratis strategiegesprek</a> en we lopen het samen door.`,
+      help: `Hulp nodig bij het oplossen? <a href="https://adashi.io/contact" style="color:#006DFF;text-decoration:none;font-weight:600;">Boek een gratis kennismaking van 15 min</a> en we laten zien wat als eerste opgepakt moet worden.`,
     },
     followUp: {
-      subject: (domain: string) => `Korte follow-up op je website-rapport: ${domain}`,
-      heading: "Heb je je rapport al kunnen bekijken?",
+      subject: (domain: string) => `Een quick win om mee te beginnen voor ${domain}`,
+      heading: "Je rapport al doorgenomen?",
       intro: (domain: string) =>
         `Een paar dagen geleden hebben we je een website-rapport gestuurd voor <strong>${domain}</strong>. Dit is je belangrijkste quick win:`,
       cta: "Bekijk je rapport",
-      bookLink: "Plan een gratis strategiegesprek →",
-      help: "Als je hulp wilt bij het doorvoeren van de fixes, staan we klaar.",
+      bookLink: "Boek een gratis kennismaking van 15 min →",
+      help: "Hulp nodig bij het doorvoeren van de fixes? We staan klaar.",
     },
   },
 } as const;
