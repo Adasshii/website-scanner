@@ -240,27 +240,41 @@ Return ONLY valid JSON, no other text.`
 
 export function generateFallbackVerdict(
   scores: ScanScores,
-  criticalIssues: number
+  criticalIssues: number,
+  locale: string = "en"
 ): string {
+  const nl = locale === "nl";
   if (scores.overall >= 90) {
-    return "Great job! Your website is well-built and performs strongly across all categories.";
+    return nl
+      ? "Goed gedaan! Je website is sterk opgezet en presteert goed in alle categorieën."
+      : "Great job! Your website is well-built and performs strongly across all categories.";
   }
   if (scores.overall >= 70) {
-    const weakest = getWeakestCategory(scores);
-    return `Your website is in decent shape, but ${weakest} needs attention to reach its full potential.`;
+    const weakest = getWeakestCategory(scores, locale);
+    return nl
+      ? `Je website is in redelijke vorm, maar ${weakest} verdient aandacht om het volledige potentieel te bereiken.`
+      : `Your website is in decent shape, but ${weakest} needs attention to reach its full potential.`;
   }
   if (scores.overall >= 50) {
-    return `Your website has several areas for improvement. Addressing the ${criticalIssues > 0 ? "critical" : "major"} issues would make a real difference.`;
+    const sev = nl
+      ? (criticalIssues > 0 ? "kritieke" : "belangrijke")
+      : (criticalIssues > 0 ? "critical" : "major");
+    return nl
+      ? `Je website heeft meerdere verbeterpunten. Het oplossen van de ${sev} problemen zou een echt verschil maken.`
+      : `Your website has several areas for improvement. Addressing the ${sev} issues would make a real difference.`;
   }
-  return "Your website has significant issues that are likely costing you visitors and search rankings. The good news: most fixes are straightforward.";
+  return nl
+    ? "Je website heeft serieuze problemen die je waarschijnlijk bezoekers en zoekposities kosten. Het goede nieuws: de meeste fixes zijn niet ingewikkeld."
+    : "Your website has significant issues that are likely costing you visitors and search rankings. The good news: most fixes are straightforward.";
 }
 
-function getWeakestCategory(scores: ScanScores): string {
+function getWeakestCategory(scores: ScanScores, locale: string = "en"): string {
+  const nl = locale === "nl";
   const categories = [
-    { name: "accessibility", score: scores.accessibility },
-    { name: "content quality", score: scores.content },
+    { name: nl ? "toegankelijkheid" : "accessibility", score: scores.accessibility },
+    { name: nl ? "contentkwaliteit" : "content quality", score: scores.content },
     { name: "SEO", score: scores.seo },
-    { name: "performance", score: scores.performance },
+    { name: nl ? "prestaties" : "performance", score: scores.performance },
   ];
   categories.sort((a, b) => a.score - b.score);
   return categories[0].name;
@@ -270,54 +284,86 @@ function getWeakestCategory(scores: ScanScores): string {
 
 export function generateFallbackVisitorExperience(
   scores: ScanScores,
-  summary: ScanSummary
+  summary: ScanSummary,
+  locale: string = "en"
 ): string {
+  const nl = locale === "nl";
   const paragraphs: string[] = [];
 
   // First impression and speed
   if (scores.performance >= 80) {
-    paragraphs.push("Visitors arriving at this site will find it loads quickly. Fast load times reduce early exits and create a positive first impression before anyone has read a single word.");
+    paragraphs.push(nl
+      ? "Bezoekers die op deze site komen, merken dat de pagina snel laadt. Korte laadtijden verlagen het aantal vroege exits en zorgen voor een positieve eerste indruk nog voordat iemand een woord heeft gelezen."
+      : "Visitors arriving at this site will find it loads quickly. Fast load times reduce early exits and create a positive first impression before anyone has read a single word.");
   } else if (scores.performance >= 60) {
-    paragraphs.push("The site loads at an average pace. Some visitors — particularly those on mobile connections — may experience a noticeable wait before the page becomes usable. Improving load speed is one of the highest-return fixes available.");
+    paragraphs.push(nl
+      ? "De site laadt in een gemiddeld tempo. Sommige bezoekers — vooral op mobiele verbindingen — ervaren een merkbare wachttijd voordat de pagina bruikbaar wordt. Snellere laadtijden zijn een van de meest renderende verbeteringen."
+      : "The site loads at an average pace. Some visitors — particularly those on mobile connections — may experience a noticeable wait before the page becomes usable. Improving load speed is one of the highest-return fixes available.");
   } else {
-    paragraphs.push("Visitors are likely experiencing slow load times. Research consistently shows that slow pages drive away a significant share of visitors before they ever see your content. Speed improvements here would have a direct impact on how many people actually engage with the site.");
+    paragraphs.push(nl
+      ? "Bezoekers ervaren waarschijnlijk trage laadtijden. Onderzoek laat keer op keer zien dat trage pagina's een aanzienlijk deel van de bezoekers verjagen nog voor ze de inhoud zien. Snelheidsverbeteringen hier hebben direct invloed op hoeveel mensen daadwerkelijk met de site interacteren."
+      : "Visitors are likely experiencing slow load times. Research consistently shows that slow pages drive away a significant share of visitors before they ever see your content. Speed improvements here would have a direct impact on how many people actually engage with the site.");
   }
 
   // Search visibility
   if (scores.seo >= 80) {
-    paragraphs.push("From a search perspective, this site is in good shape. Google can read and understand the content clearly, which means new visitors are more likely to find it through organic search.");
+    paragraphs.push(nl
+      ? "Vanuit zoekoptiek staat deze site er goed voor. Google kan de inhoud duidelijk lezen en begrijpen, wat betekent dat nieuwe bezoekers de site eerder via organisch zoekverkeer zullen vinden."
+      : "From a search perspective, this site is in good shape. Google can read and understand the content clearly, which means new visitors are more likely to find it through organic search.");
   } else if (scores.seo >= 50) {
-    paragraphs.push("Search visibility is moderate. Some key signals that Google uses to rank and index pages are missing or incomplete, which limits how many new visitors can discover the site through search.");
+    paragraphs.push(nl
+      ? "De zichtbaarheid in zoekmachines is matig. Een aantal belangrijke signalen dat Google gebruikt om pagina's te ranken en te indexeren ontbreekt of is onvolledig, wat beperkt hoeveel nieuwe bezoekers de site via zoekopdrachten kunnen ontdekken."
+      : "Search visibility is moderate. Some key signals that Google uses to rank and index pages are missing or incomplete, which limits how many new visitors can discover the site through search.");
   } else {
-    paragraphs.push("The site has significant gaps in its search visibility. Without the right technical signals in place, Google has difficulty understanding and ranking the content — meaning a large portion of potential visitors will simply never find it.");
+    paragraphs.push(nl
+      ? "De site heeft grote gaten in zijn vindbaarheid. Zonder de juiste technische signalen heeft Google moeite om de inhoud te begrijpen en te ranken — een groot deel van de potentiële bezoekers zal de site simpelweg nooit vinden."
+      : "The site has significant gaps in its search visibility. Without the right technical signals in place, Google has difficulty understanding and ranking the content — meaning a large portion of potential visitors will simply never find it.");
   }
 
   // Trust and credibility
   if (scores.accessibility >= 80 && (scores.security ?? 0) >= 80) {
-    paragraphs.push("The site presents as professional and trustworthy. Security is properly configured and accessibility is handled well, meaning visitors with disabilities can use the site without barriers.");
+    paragraphs.push(nl
+      ? "De site komt professioneel en betrouwbaar over. De beveiliging is goed ingericht en de toegankelijkheid is op orde, wat betekent dat bezoekers met een beperking de site zonder drempels kunnen gebruiken."
+      : "The site presents as professional and trustworthy. Security is properly configured and accessibility is handled well, meaning visitors with disabilities can use the site without barriers.");
   } else if (scores.accessibility < 60) {
-    paragraphs.push(`Accessibility is an area that needs attention. A score of ${scores.accessibility}/100 suggests that some visitors — including those using screen readers or relying on keyboard navigation — will encounter barriers that prevent them from fully using the site.`);
+    paragraphs.push(nl
+      ? `Toegankelijkheid verdient aandacht. Een score van ${scores.accessibility}/100 betekent dat sommige bezoekers — waaronder mensen die een screenreader of toetsenbordnavigatie gebruiken — drempels tegenkomen die hen verhinderen de site volledig te gebruiken.`
+      : `Accessibility is an area that needs attention. A score of ${scores.accessibility}/100 suggests that some visitors — including those using screen readers or relying on keyboard navigation — will encounter barriers that prevent them from fully using the site.`);
   } else {
-    paragraphs.push("There are some trust and credibility gaps that observant visitors may notice. Addressing the security and accessibility issues flagged in this report would make the site feel more polished and professional.");
+    paragraphs.push(nl
+      ? "Er zijn een paar vertrouwens- en geloofwaardigheidsgaten die scherpe bezoekers kunnen opvallen. Het oplossen van de beveiligings- en toegankelijkheidsproblemen in dit rapport zou de site verzorgder en professioneler doen aanvoelen."
+      : "There are some trust and credibility gaps that observant visitors may notice. Addressing the security and accessibility issues flagged in this report would make the site feel more polished and professional.");
   }
 
   // Business impact
   const weakestScore = Math.min(scores.accessibility, scores.seo, scores.performance, scores.content);
   if (summary.criticalIssues > 0) {
-    paragraphs.push(`With ${summary.criticalIssues} critical issue${summary.criticalIssues !== 1 ? "s" : ""} and ${summary.majorIssues} major issue${summary.majorIssues !== 1 ? "s" : ""} identified, this site is likely losing a meaningful share of visitors and conversions. The issues aren't unusual for a site of this type, but they do represent real, measurable business cost.`);
+    paragraphs.push(nl
+      ? `Met ${summary.criticalIssues} kritiek${summary.criticalIssues !== 1 ? "e" : ""} en ${summary.majorIssues} belangrijk${summary.majorIssues !== 1 ? "e" : ""} ${summary.criticalIssues + summary.majorIssues === 1 ? "probleem" : "problemen"} verliest deze site waarschijnlijk een merkbaar deel van bezoekers en conversies. De problemen zijn niet ongebruikelijk voor dit type site, maar vertegenwoordigen wel echte, meetbare gemiste omzet.`
+      : `With ${summary.criticalIssues} critical issue${summary.criticalIssues !== 1 ? "s" : ""} and ${summary.majorIssues} major issue${summary.majorIssues !== 1 ? "s" : ""} identified, this site is likely losing a meaningful share of visitors and conversions. The issues aren't unusual for a site of this type, but they do represent real, measurable business cost.`);
   } else if (weakestScore < 60) {
-    paragraphs.push("The weakest areas of this site are likely creating friction that costs visitors and conversions — even if visitors don't consciously notice the cause. Fixing these issues removes barriers that stand between the site and better results.");
+    paragraphs.push(nl
+      ? "De zwakste plekken van deze site veroorzaken waarschijnlijk frictie die bezoekers en conversies kost — ook al merken bezoekers de oorzaak niet bewust. Het oplossen hiervan verwijdert drempels die tussen de site en betere resultaten staan."
+      : "The weakest areas of this site are likely creating friction that costs visitors and conversions — even if visitors don't consciously notice the cause. Fixing these issues removes barriers that stand between the site and better results.");
   } else {
-    paragraphs.push("Overall this site is performing reasonably well. The issues identified are not critical, but addressing them would improve the experience for a broader range of visitors and strengthen the site's standing with search engines.");
+    paragraphs.push(nl
+      ? "Over het geheel presteert deze site redelijk goed. De gevonden problemen zijn niet kritiek, maar het aanpakken ervan zou de ervaring voor een breder publiek verbeteren en de positie bij zoekmachines versterken."
+      : "Overall this site is performing reasonably well. The issues identified are not critical, but addressing them would improve the experience for a broader range of visitors and strengthen the site's standing with search engines.");
   }
 
   // Outlook
   if (scores.overall >= 80) {
-    paragraphs.push("This site is in strong shape. A focused round of improvements targeting the remaining issues would push it into excellent territory and give it a clear edge over most comparable sites.");
+    paragraphs.push(nl
+      ? "Deze site staat er sterk voor. Een gerichte ronde van verbeteringen op de resterende punten zou hem naar uitstekend niveau brengen en een duidelijk voordeel geven ten opzichte van vergelijkbare sites."
+      : "This site is in strong shape. A focused round of improvements targeting the remaining issues would push it into excellent territory and give it a clear edge over most comparable sites.");
   } else if (scores.overall >= 60) {
-    paragraphs.push("This site has a solid foundation with clear room to grow. Addressing the quick wins first will deliver the fastest results, and a more thorough improvement pass would meaningfully elevate the overall experience.");
+    paragraphs.push(nl
+      ? "Deze site heeft een solide basis met duidelijke ruimte om te groeien. Eerst de quick wins aanpakken levert de snelste resultaten, en een grondiger verbetertraject zou de algehele ervaring merkbaar tillen."
+      : "This site has a solid foundation with clear room to grow. Addressing the quick wins first will deliver the fastest results, and a more thorough improvement pass would meaningfully elevate the overall experience.");
   } else {
-    paragraphs.push("There is real work to do here, but the good news is that most of the issues are fixable. Prioritising the critical items first will have an immediate impact, and each improvement compounds into a noticeably better experience for visitors.");
+    paragraphs.push(nl
+      ? "Er is echt werk te doen, maar het goede nieuws is dat de meeste problemen oplosbaar zijn. De kritieke punten eerst aanpakken levert direct impact op, en elke verbetering bouwt voort op de vorige tot een merkbaar betere ervaring voor bezoekers."
+      : "There is real work to do here, but the good news is that most of the issues are fixable. Prioritising the critical items first will have an immediate impact, and each improvement compounds into a noticeably better experience for visitors.");
   }
 
   return paragraphs.join("\n\n");
@@ -328,65 +374,71 @@ export function generateFallbackVisitorExperience(
 export function calculateCostEstimateFallback(
   scores: ScanScores,
   summary: ScanSummary,
-  avgLoadTimeMs: number
+  avgLoadTimeMs: number,
+  locale: string = "en"
 ): CostEstimate {
+  const nl = locale === "nl";
   const factors: CostFactor[] = [];
   let total = 0;
 
-  // Accessibility impact: derived from score, not just critical issue count.
-  // CDC: ~26% of adults have a disability. A score of 0 means near-total exclusion.
   if (scores.accessibility < 80) {
     const impact = Math.min(Math.round((80 - scores.accessibility) * 0.25), 20);
     if (impact > 0) {
       factors.push({
-        name: "Accessibility barriers",
+        name: nl ? "Toegankelijkheidsdrempels" : "Accessibility barriers",
         percentImpact: impact,
-        explanation: `Accessibility score of ${scores.accessibility}/100 means some visitors cannot fully use your site.`,
+        explanation: nl
+          ? `Een toegankelijkheidsscore van ${scores.accessibility}/100 betekent dat sommige bezoekers je site niet volledig kunnen gebruiken.`
+          : `Accessibility score of ${scores.accessibility}/100 means some visitors cannot fully use your site.`,
       });
       total += impact;
     }
   }
 
-  // Poor readability (content score < 60): 10%
   if (scores.content < 60) {
     factors.push({
-      name: "Content readability",
+      name: nl ? "Leesbaarheid van content" : "Content readability",
       percentImpact: 10,
-      explanation: "Your content may be hard to read or understand, causing visitors to leave.",
+      explanation: nl
+        ? "Je content is mogelijk lastig te lezen of te begrijpen, waardoor bezoekers afhaken."
+        : "Your content may be hard to read or understand, causing visitors to leave.",
     });
     total += 10;
   }
 
-  // Weak CTAs: check if few CTAs across all issues
   const ctaIssues = summary.topIssues.filter(
     (i) => i.title.toLowerCase().includes("cta") || i.title.toLowerCase().includes("call to action")
   );
   if (ctaIssues.length > 0 || scores.content < 70) {
     const impact = 8;
     factors.push({
-      name: "Weak calls-to-action",
+      name: nl ? "Zwakke calls-to-action" : "Weak calls-to-action",
       percentImpact: impact,
-      explanation: "Visitors may not know what step to take next, reducing conversions.",
+      explanation: nl
+        ? "Bezoekers weten mogelijk niet welke stap ze moeten zetten, waardoor conversies dalen."
+        : "Visitors may not know what step to take next, reducing conversions.",
     });
     total += impact;
   }
 
-  // Slow load time (>3 seconds): 12% (Google/SOASTA: 53% of mobile visitors abandon at 3s)
   if (avgLoadTimeMs > 3000) {
     factors.push({
-      name: "Slow page load",
+      name: nl ? "Trage laadtijd" : "Slow page load",
       percentImpact: 12,
-      explanation: "Pages loading over 3 seconds cause many visitors to leave before seeing your content.",
+      explanation: nl
+        ? "Pagina's die langer dan 3 seconden laden, zorgen ervoor dat veel bezoekers vertrekken voor ze je content zien."
+        : "Pages loading over 3 seconds cause many visitors to leave before seeing your content.",
     });
     total += 12;
   }
 
-  // Poor SEO: 12% (68% of online experiences start with search)
   if (scores.seo < 50) {
     factors.push({
-      name: "Poor search visibility",
+      name: nl ? "Lage vindbaarheid in zoekmachines" : "Poor search visibility",
       percentImpact: 12,
-      explanation: "Low SEO score means fewer visitors find your site through search engines.",
+      explanation: nl
+        ? "Een lage SEO-score betekent dat minder bezoekers je site via zoekmachines vinden."
+        : "Low SEO score means fewer visitors find your site through search engines.",
     });
     total += 12;
   }
@@ -602,7 +654,8 @@ Return only the JSON object, no other text.`
 
 // ── Fallback quick wins (derived from scan issues) ────────────────────
 
-export function generateFallbackQuickWins(issues: Issue[]): QuickWin[] {
+export function generateFallbackQuickWins(issues: Issue[], locale: string = "en"): QuickWin[] {
+  const nl = locale === "nl";
   const valid = issues.filter((i) => i.id !== "scan-error");
   const easy = valid.filter((i) => i.difficulty === "easy");
   const source = easy.length >= 3
@@ -611,23 +664,34 @@ export function generateFallbackQuickWins(issues: Issue[]): QuickWin[] {
   return source.slice(0, 3).map((issue) => ({
     title: issue.title,
     description: issue.description,
-    estimatedTime: issue.difficulty === "easy" ? "~15 min" : issue.difficulty === "hard" ? "~half a day" : "~1 hour",
+    estimatedTime: nl
+      ? (issue.difficulty === "easy" ? "~15 min" : issue.difficulty === "hard" ? "~halve dag" : "~1 uur")
+      : (issue.difficulty === "easy" ? "~15 min" : issue.difficulty === "hard" ? "~half a day" : "~1 hour"),
     needsDeveloper: issue.difficulty === "hard",
-    expectedImpact: issue.whyItMatters ?? "Fixing this will improve your overall site score.",
+    expectedImpact: issue.whyItMatters ?? (nl
+      ? "Dit oplossen verbetert je totaalscore."
+      : "Fixing this will improve your overall site score."),
   }));
 }
 
 // ── Fallback website personality (template-based) ─────────────────────
 
-export function generateFallbackWebsitePersonality(scores: ScanScores): string {
-  const weakest = getWeakestCategory(scores);
+export function generateFallbackWebsitePersonality(scores: ScanScores, locale: string = "en"): string {
+  const nl = locale === "nl";
+  const weakest = getWeakestCategory(scores, locale);
   if (scores.overall >= 80) {
-    return "The site comes across as professional and trustworthy, with a clear structure that makes it easy for visitors to find what they need. First-time visitors are likely to feel confident taking action.";
+    return nl
+      ? "De site komt professioneel en betrouwbaar over, met een heldere structuur waarin bezoekers makkelijk vinden wat ze zoeken. Eerste bezoekers voelen zich waarschijnlijk vertrouwd genoeg om in actie te komen."
+      : "The site comes across as professional and trustworthy, with a clear structure that makes it easy for visitors to find what they need. First-time visitors are likely to feel confident taking action.";
   }
   if (scores.overall >= 60) {
-    return `The site has a solid foundation but ${weakest} issues may cause some visitors to hesitate. Addressing the top issues flagged in this report would noticeably raise the impression it leaves.`;
+    return nl
+      ? `De site heeft een solide basis, maar problemen rond ${weakest} kunnen sommige bezoekers laten twijfelen. Het oplossen van de belangrijkste punten in dit rapport zou de indruk die de site achterlaat merkbaar versterken.`
+      : `The site has a solid foundation but ${weakest} issues may cause some visitors to hesitate. Addressing the top issues flagged in this report would noticeably raise the impression it leaves.`;
   }
-  return `The site's current state is likely creating friction for first-time visitors, particularly around ${weakest}. The quick wins below would make a meaningful difference to how the site is perceived.`;
+  return nl
+    ? `De huidige staat van de site veroorzaakt waarschijnlijk frictie voor eerste bezoekers, vooral rond ${weakest}. De quick wins hieronder zouden een merkbaar verschil maken in hoe de site wordt ervaren.`
+    : `The site's current state is likely creating friction for first-time visitors, particularly around ${weakest}. The quick wins below would make a meaningful difference to how the site is perceived.`;
 }
 
 // ── Design Analysis (Gemini Vision) ──────────────────────────────────

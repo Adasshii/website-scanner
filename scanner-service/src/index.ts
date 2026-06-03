@@ -270,7 +270,7 @@ app.post("/api/scan/quick", async (req, res) => {
       withTimeout(generateWhyItMatters(domain, result.issues, locale), AI_CALL_TIMEOUT, {}),
     ]);
 
-    summary.verdict = analysis?.executiveSummary ?? generateFallbackVerdict(resultWithDesign.scores, summary.criticalIssues);
+    summary.verdict = analysis?.executiveSummary ?? generateFallbackVerdict(resultWithDesign.scores, summary.criticalIssues, locale);
     const issuesWithContext = enhancedIssues.map((i) => ({
       ...i,
       whyItMatters: whyItMattersMap[i.id] ?? i.whyItMatters,
@@ -278,10 +278,10 @@ app.post("/api/scan/quick", async (req, res) => {
     const enhancedResult = { ...resultWithDesign, issues: issuesWithContext };
     summary.topIssues = issuesWithContext.slice(0, 10);
 
-    const costEstimate = analysis?.costEstimate ?? calculateCostEstimateFallback(resultWithDesign.scores, summary, resultWithDesign.loadTimeMs);
-    const quickWins = analysis?.quickWins ?? generateFallbackQuickWins(resultWithDesign.issues);
-    const websitePersonality = analysis?.websitePersonality ?? generateFallbackWebsitePersonality(resultWithDesign.scores);
-    const visitorExperience = analysis?.visitorExperience ?? generateFallbackVisitorExperience(resultWithDesign.scores, summary);
+    const costEstimate = analysis?.costEstimate ?? calculateCostEstimateFallback(resultWithDesign.scores, summary, resultWithDesign.loadTimeMs, locale);
+    const quickWins = analysis?.quickWins ?? generateFallbackQuickWins(resultWithDesign.issues, locale);
+    const websitePersonality = analysis?.websitePersonality ?? generateFallbackWebsitePersonality(resultWithDesign.scores, locale);
+    const visitorExperience = analysis?.visitorExperience ?? generateFallbackVisitorExperience(resultWithDesign.scores, summary, locale);
 
     // Design analysis runs asynchronously — scanId required to update DB when done
     const designAnalysisPending = !hasScanError && !!scanId && !!(screenshotUrl || designScreenshotBuffer);
@@ -535,13 +535,13 @@ app.post("/api/scan/full-async", async (req, res) => {
       withTimeout(generateWhyItMatters(domain, allIssues, locale), AI_CALL_TIMEOUT, {}),
     ]);
 
-    summary.verdict = analysis?.executiveSummary ?? generateFallbackVerdict(scores, summary.criticalIssues);
+    summary.verdict = analysis?.executiveSummary ?? generateFallbackVerdict(scores, summary.criticalIssues, locale);
     summary.topIssues = enhancedIssues.slice(0, 10);
 
-    const costEstimate = analysis?.costEstimate ?? calculateCostEstimateFallback(scores, summary, avgLoadTime);
-    const quickWins = analysis?.quickWins ?? generateFallbackQuickWins(allIssues);
-    const websitePersonality = analysis?.websitePersonality ?? generateFallbackWebsitePersonality(scores);
-    const visitorExperience = analysis?.visitorExperience ?? generateFallbackVisitorExperience(scores, summary);
+    const costEstimate = analysis?.costEstimate ?? calculateCostEstimateFallback(scores, summary, avgLoadTime, locale);
+    const quickWins = analysis?.quickWins ?? generateFallbackQuickWins(allIssues, locale);
+    const websitePersonality = analysis?.websitePersonality ?? generateFallbackWebsitePersonality(scores, locale);
+    const visitorExperience = analysis?.visitorExperience ?? generateFallbackVisitorExperience(scores, summary, locale);
 
     // Map enhanced issues (with whyItMatters) back to their pages
     const issueMap = new Map<string, Issue>();

@@ -46,6 +46,7 @@ export async function POST(request: NextRequest) {
     // Read visitor locale from cookie (set by language toggle)
     const cookieLocale = request.cookies.get(LOCALE_COOKIE)?.value;
     const locale = isLocale(cookieLocale) ? cookieLocale : defaultLocale;
+    console.log(`[scan] ${domain} locale=${locale} cookie=${cookieLocale ?? "(none)"}`);
 
     // Hash the IP for rate limiting (never store raw IP — GDPR)
     const forwarded = request.headers.get("x-forwarded-for");
@@ -78,6 +79,7 @@ export async function POST(request: NextRequest) {
       .from("scans")
       .select("id, url, domain, type, status, scores, pages, summary, started_at, completed_at, screenshots, cost_estimate, quick_wins, website_personality, visitor_experience, homepage_screenshot_url")
       .eq("domain", domain)
+      .eq("locale", locale)
       .in("status", ["quick_done", "completed"])
       .gte("created_at", oneHourAgoCache)
       .order("created_at", { ascending: false })
@@ -85,6 +87,7 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (cached && cached.scores) {
+      console.log(`[scan] ${domain} cache hit (${locale}) id=${cached.id}`);
       return NextResponse.json({
         id: cached.id,
         url: cached.url,
