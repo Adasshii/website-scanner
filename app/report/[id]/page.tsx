@@ -1,11 +1,12 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { getTranslations } from "next-intl/server";
+import { getLocale, getTranslations } from "next-intl/server";
 import { createServerClient } from "@/lib/supabase";
 import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
 import { FullReport } from "@/components/report/full-report";
-import type { ScanScores, ScanSummary, PageResult, CostEstimate, QuickWin, ScreenshotInfo } from "@/types/scanner";
+import { pickLocalizedScan } from "@/lib/i18n-helpers";
+import type { ScanScores, ScanSummary, PageResult, CostEstimate, QuickWin, ScreenshotInfo, AiContentAlt, IssuesAlt } from "@/types/scanner";
 
 interface ScanData {
   id: string;
@@ -23,6 +24,9 @@ interface ScanData {
   visitor_experience: string | null;
   screenshots: Record<string, ScreenshotInfo> | null;
   homepage_screenshot_url: string | null;
+  locale: string | null;
+  ai_content_alt: AiContentAlt | null;
+  issues_alt: IssuesAlt | null;
 }
 
 export async function generateMetadata({
@@ -105,6 +109,9 @@ export default async function ReportPage({
     );
   }
 
+  const currentLocale = await getLocale();
+  const localized = pickLocalizedScan(scanData, currentLocale);
+
   return (
     <div className="min-h-screen flex flex-col bg-gray-50/30">
       <Header />
@@ -113,17 +120,19 @@ export default async function ReportPage({
           domain={scanData.domain}
           url={scanData.url}
           scores={scanData.scores}
-          summary={scanData.summary}
-          pages={scanData.pages || []}
+          summary={localized.summary!}
+          pages={localized.pages}
           scannedAt={scanData.created_at}
           completedAt={scanData.completed_at}
           status={scanData.status as "quick_done" | "completed"}
-          costEstimate={scanData.cost_estimate}
-          quickWins={scanData.quick_wins}
-          websitePersonality={scanData.website_personality}
-          visitorExperience={scanData.visitor_experience}
+          costEstimate={localized.cost_estimate}
+          quickWins={localized.quick_wins}
+          websitePersonality={localized.website_personality}
+          visitorExperience={localized.visitor_experience}
           screenshots={scanData.screenshots}
           screenshotUrl={scanData.homepage_screenshot_url ?? null}
+          scanLocale={scanData.locale ?? "en"}
+          needsReScanNotice={localized.needsReScanNotice}
         />
       </main>
       <Footer />

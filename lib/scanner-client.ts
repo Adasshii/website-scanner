@@ -1,4 +1,4 @@
-import type { PageResult, ScanScores, ScanSummary, ScreenshotInfo, CostEstimate, QuickWin } from "@/types/scanner";
+import type { PageResult, ScanScores, ScanSummary, ScreenshotInfo, CostEstimate, QuickWin, AiContentAlt, IssuesAlt } from "@/types/scanner";
 
 /** Response shape from the scanner service */
 export interface ScannerResponse {
@@ -10,6 +10,10 @@ export interface ScannerResponse {
   quickWins?: QuickWin[] | null;
   websitePersonality?: string | null;
   visitorExperience?: string | null;
+  /** Other-language version of the AI content (always populated; persisted into ai_content_alt) */
+  aiContentAlt?: AiContentAlt | null;
+  /** Other-language overrides for per-issue text (persisted into issues_alt) */
+  issuesAlt?: IssuesAlt | null;
   /** True when design AI analysis is running in the background */
   designAnalysisPending?: boolean;
 }

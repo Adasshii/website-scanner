@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { IssueCard } from "@/components/scan/issue-card";
 import { EmailGate } from "@/components/scan/email-gate";
 import { BlurredSection } from "@/components/scan/blurred-section";
+import { LegacyLocaleNotice } from "@/components/scan/legacy-locale-notice";
 import { useGradeLabel, useFormatDate } from "@/lib/i18n-helpers";
 import type { ScanScores, ScanSummary, Issue, ScanStatus, CostEstimate, QuickWin } from "@/types/scanner";
 import { useRouter } from "next/navigation";
@@ -12,6 +13,7 @@ import { useRouter } from "next/navigation";
 interface ScanResultsProps {
   scanId: string;
   domain: string;
+  scanUrl?: string;
   scores: ScanScores;
   summary: ScanSummary;
   issues: Issue[];
@@ -23,6 +25,10 @@ interface ScanResultsProps {
   websitePersonality?: string | null;
   visitorExperience?: string | null;
   screenshotUrl?: string | null;
+  /** Locale this scan was originally generated in. */
+  scanLocale?: string;
+  /** True for legacy scans without alt-locale content. Triggers re-scan notice. */
+  needsReScanNotice?: boolean;
 }
 
 function barColor(score: number): string {
@@ -41,6 +47,7 @@ function scoreTextColor(score: number): string {
 export function ScanResults({
   scanId,
   domain,
+  scanUrl,
   scores,
   summary,
   issues,
@@ -51,6 +58,8 @@ export function ScanResults({
   quickWins,
   visitorExperience,
   screenshotUrl,
+  scanLocale,
+  needsReScanNotice,
 }: ScanResultsProps) {
   const router = useRouter();
   const t = useTranslations("scanResults");
@@ -232,6 +241,11 @@ export function ScanResults({
               </div>
             </div>
           </div>
+
+          {/* Legacy scan: prompt to re-run in current language when no alt content exists */}
+          {needsReScanNotice && scanLocale && (
+            <LegacyLocaleNotice scanLocale={scanLocale} scanUrl={scanUrl ?? `https://${domain}`} />
+          )}
 
           {/* Adashi context */}
           <p className="text-xs text-gray-400 leading-relaxed mb-6">{t("adashiContext")}</p>

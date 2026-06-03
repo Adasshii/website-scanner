@@ -1,10 +1,11 @@
 import { notFound } from "next/navigation";
-import { getTranslations } from "next-intl/server";
+import { getLocale, getTranslations } from "next-intl/server";
 import { createServerClient } from "@/lib/supabase";
 import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
 import { ScanResults } from "@/components/scan/scan-results";
-import type { ScanScores, Issue, ScanSummary, CostEstimate, QuickWin } from "@/types/scanner";
+import { pickLocalizedScan } from "@/lib/i18n-helpers";
+import type { ScanScores, Issue, ScanSummary, CostEstimate, QuickWin, AiContentAlt, IssuesAlt, PageResult } from "@/types/scanner";
 
 interface ScanData {
   id: string;
@@ -13,7 +14,7 @@ interface ScanData {
   status: string;
   scores: ScanScores | null;
   summary: ScanSummary | null;
-  pages: Array<{ issues: Issue[]; scores: ScanScores }>;
+  pages: PageResult[];
   created_at: string;
   design_ai_analyzed_at: string | null;
   cost_estimate: CostEstimate | null;
@@ -22,6 +23,9 @@ interface ScanData {
   visitor_experience: string | null;
   homepage_screenshot_url: string | null;
   screenshots: Record<string, { url: string }> | null;
+  locale: string | null;
+  ai_content_alt: AiContentAlt | null;
+  issues_alt: IssuesAlt | null;
 }
 
 export default async function ScanPage({
@@ -83,10 +87,12 @@ export default async function ScanPage({
     );
   }
 
-  // Collect all issues from all pages
-  const allIssues: Issue[] = scanData.pages?.flatMap(
-    (p: { issues: Issue[] }) => p.issues || []
-  ) || [];
+  // Swap AI content to the visitor's current locale when alt content is available.
+  const currentLocale = await getLocale();
+  const localized = pickLocalizedScan(scanData, currentLocale);
+
+  // Collect all issues from all pages (after alt-locale overrides applied).
+  const allIssues: Issue[] = localized.pages.flatMap((p) => p.issues || []);
 
   // Design analysis is pending when quick_done and background job hasn't finished yet
   const designAnalysisPending =
@@ -101,16 +107,19 @@ export default async function ScanPage({
         <ScanResults
           scanId={scanData.id}
           domain={scanData.domain}
+          scanUrl={scanData.url}
           scores={scanData.scores}
-          summary={scanData.summary}
+          summary={localized.summary!}
           issues={allIssues}
           scannedAt={scanData.created_at}
           status={scanData.status as "quick_done" | "completed"}
           designAnalysisPending={designAnalysisPending}
-          costEstimate={scanData.cost_estimate}
-          quickWins={scanData.quick_wins}
-          websitePersonality={scanData.website_personality}
-          visitorExperience={scanData.visitor_experience}
+          costEstimate={localized.cost_estimate}
+          quickWins={localized.quick_wins}
+          websitePersonality={localized.website_personality}
+          visitorExperience={localized.visitor_experience}
+          scanLocale={scanData.locale ?? "en"}
+          needsReScanNotice={localized.needsReScanNotice}
           screenshotUrl={
             scanData.homepage_screenshot_url ??
             (scanData.screenshots ? Object.values(scanData.screenshots)[0]?.url ?? null : null)

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { BusinessReport } from "@/components/report/business-report";
 import { TechnicalReport } from "@/components/report/technical-report";
+import { LegacyLocaleNotice } from "@/components/scan/legacy-locale-notice";
 import { useGradeLabel, useFormatDate } from "@/lib/i18n-helpers";
 import type {
   ScanScores,
@@ -30,6 +31,10 @@ interface FullReportProps {
   visitorExperience?: string | null;
   screenshots?: Record<string, ScreenshotInfo> | null;
   screenshotUrl?: string | null;
+  /** Locale this scan was originally generated in. */
+  scanLocale?: string;
+  /** True for legacy scans without alt-locale content. Triggers re-scan notice. */
+  needsReScanNotice?: boolean;
 }
 
 function barColor(score: number): string {
@@ -46,6 +51,7 @@ function scoreTextColor(score: number): string {
 
 export function FullReport({
   domain,
+  url,
   scores,
   summary,
   pages,
@@ -58,6 +64,8 @@ export function FullReport({
   visitorExperience,
   screenshots,
   screenshotUrl,
+  scanLocale,
+  needsReScanNotice,
 }: FullReportProps) {
   const t = useTranslations("report");
   const tScan = useTranslations("scanResults");
@@ -182,6 +190,11 @@ export function FullReport({
               {tScan("tab.technical")}
             </button>
           </nav>
+
+          {/* Legacy scan: prompt to re-run in current language when no alt content exists */}
+          {needsReScanNotice && scanLocale && (
+            <LegacyLocaleNotice scanLocale={scanLocale} scanUrl={url} />
+          )}
 
           {activeTab === "business" ? (
             <BusinessReport

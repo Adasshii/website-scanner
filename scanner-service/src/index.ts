@@ -8,15 +8,9 @@ import { scanPage, closeBrowser } from "./scanner";
 import type { ScanPageResultWithScreenshot } from "./scanner";
 import { discoverPages } from "./discovery";
 import {
-  generateComprehensiveAnalysis,
-  generateFallbackVerdict,
-  generateFallbackVisitorExperience,
-  generateFallbackQuickWins,
-  generateFallbackWebsitePersonality,
-  calculateCostEstimateFallback,
-  enhanceIssueDescriptions,
+  runLocaleAiPipeline,
+  otherLocale,
   generateSalesBrief,
-  generateWhyItMatters,
   generateDesignAnalysis,
   type DesignAnalysis,
 } from "./ai";
@@ -262,31 +256,54 @@ app.post("/api/scan/quick", async (req, res) => {
       scores: { ...result.scores, design: designScore, overall },
     };
 
-    // Run the 3 non-design AI calls in parallel
+    // Bilingual AI pipeline: run primary + alt locale in parallel so the language
+    // toggle on the resulting report works without re-scanning.
     const AI_CALL_TIMEOUT = 30_000;
-    const [analysis, enhancedIssues, whyItMattersMap] = await Promise.all([
-      withTimeout(generateComprehensiveAnalysis(domain, resultWithDesign.scores, summary, [resultWithDesign], locale), AI_CALL_TIMEOUT, null),
-      withTimeout(enhanceIssueDescriptions(result.issues, locale), AI_CALL_TIMEOUT, result.issues),
-      withTimeout(generateWhyItMatters(domain, result.issues, locale), AI_CALL_TIMEOUT, {}),
+    const altLocale = otherLocale(locale);
+    const [primaryAi, altAi] = await Promise.all([
+      runLocaleAiPipeline(domain, resultWithDesign.scores, summary, [resultWithDesign], result.issues, resultWithDesign.loadTimeMs, locale, AI_CALL_TIMEOUT),
+      runLocaleAiPipeline(domain, resultWithDesign.scores, summary, [resultWithDesign], result.issues, resultWithDesign.loadTimeMs, altLocale, AI_CALL_TIMEOUT),
     ]);
 
-    summary.verdict = analysis?.executiveSummary ?? generateFallbackVerdict(resultWithDesign.scores, summary.criticalIssues, locale);
-    const issuesWithContext = enhancedIssues.map((i) => ({
-      ...i,
-      whyItMatters: whyItMattersMap[i.id] ?? i.whyItMatters,
-    }));
+    // Primary content goes into the existing columns (legacy schema preserved).
+    summary.verdict = primaryAi.executiveSummary;
+    const issuesWithContext = result.issues.map((issue) => {
+      const ov = primaryAi.issueOverrides[issue.id];
+      if (!ov) return issue;
+      return {
+        ...issue,
+        ...(ov.title ? { title: ov.title } : {}),
+        ...(ov.description ? { description: ov.description } : {}),
+        ...(ov.recommendation ? { recommendation: ov.recommendation } : {}),
+        ...(ov.whyItMatters ? { whyItMatters: ov.whyItMatters } : {}),
+      };
+    });
     const enhancedResult = { ...resultWithDesign, issues: issuesWithContext };
     summary.topIssues = issuesWithContext.slice(0, 10);
 
-    const costEstimate = analysis?.costEstimate ?? calculateCostEstimateFallback(resultWithDesign.scores, summary, resultWithDesign.loadTimeMs, locale);
-    const quickWins = analysis?.quickWins ?? generateFallbackQuickWins(resultWithDesign.issues, locale);
-    const websitePersonality = analysis?.websitePersonality ?? generateFallbackWebsitePersonality(resultWithDesign.scores, locale);
-    const visitorExperience = analysis?.visitorExperience ?? generateFallbackVisitorExperience(resultWithDesign.scores, summary, locale);
+    const costEstimate = primaryAi.costEstimate;
+    const quickWins = primaryAi.quickWins;
+    const websitePersonality = primaryAi.websitePersonality;
+    const visitorExperience = primaryAi.visitorExperience;
+
+    // Alt-language mirror payloads — persisted by the Next.js side along with the rest.
+    const aiContentAlt = {
+      locale: altAi.locale,
+      executiveSummary: altAi.executiveSummary,
+      visitorExperience: altAi.visitorExperience,
+      costEstimate: altAi.costEstimate,
+      quickWins: altAi.quickWins,
+      websitePersonality: altAi.websitePersonality,
+    };
+    const issuesAlt = {
+      locale: altAi.locale,
+      byId: altAi.issueOverrides,
+    };
 
     // Design analysis runs asynchronously — scanId required to update DB when done
     const designAnalysisPending = !hasScanError && !!scanId && !!(screenshotUrl || designScreenshotBuffer);
 
-    console.log(`[quick-scan] AI enhanced: ${url}${designAnalysisPending ? " (design pending)" : ""}`);
+    console.log(`[quick-scan] AI enhanced: ${url} (primary=${locale}, alt=${altLocale})${designAnalysisPending ? " (design pending)" : ""}`);
 
     res.json({
       pages: [enhancedResult],
@@ -297,6 +314,8 @@ app.post("/api/scan/quick", async (req, res) => {
       quickWins,
       websitePersonality,
       visitorExperience,
+      aiContentAlt,
+      issuesAlt,
       designAnalysisPending,
     });
 
@@ -528,32 +547,52 @@ app.post("/api/scan/full-async", async (req, res) => {
       : 0;
 
     const AI_CALL_TIMEOUT = 45_000; // full scan allows a bit more time per call
-    const [analysis, enhancedIssues, salesBrief, whyItMattersMap] = await Promise.all([
-      withTimeout(generateComprehensiveAnalysis(domain, scores, summary, resultsWithDesign, locale), AI_CALL_TIMEOUT, null),
-      withTimeout(enhanceIssueDescriptions(allIssues, locale), AI_CALL_TIMEOUT, allIssues),
+    const altLocale = otherLocale(locale);
+    const [primaryAi, altAi, salesBrief] = await Promise.all([
+      runLocaleAiPipeline(domain, scores, summary, resultsWithDesign, allIssues, avgLoadTime, locale, AI_CALL_TIMEOUT),
+      runLocaleAiPipeline(domain, scores, summary, resultsWithDesign, allIssues, avgLoadTime, altLocale, AI_CALL_TIMEOUT),
       withTimeout(generateSalesBrief(domain, scores, summary, resultsWithDesign), AI_CALL_TIMEOUT, null),
-      withTimeout(generateWhyItMatters(domain, allIssues, locale), AI_CALL_TIMEOUT, {}),
     ]);
 
-    summary.verdict = analysis?.executiveSummary ?? generateFallbackVerdict(scores, summary.criticalIssues, locale);
-    summary.topIssues = enhancedIssues.slice(0, 10);
+    summary.verdict = primaryAi.executiveSummary;
 
-    const costEstimate = analysis?.costEstimate ?? calculateCostEstimateFallback(scores, summary, avgLoadTime, locale);
-    const quickWins = analysis?.quickWins ?? generateFallbackQuickWins(allIssues, locale);
-    const websitePersonality = analysis?.websitePersonality ?? generateFallbackWebsitePersonality(scores, locale);
-    const visitorExperience = analysis?.visitorExperience ?? generateFallbackVisitorExperience(scores, summary, locale);
-
-    // Map enhanced issues (with whyItMatters) back to their pages
-    const issueMap = new Map<string, Issue>();
-    for (const issue of enhancedIssues) {
-      issueMap.set(issue.id, { ...issue, whyItMatters: whyItMattersMap[issue.id] ?? issue.whyItMatters });
-    }
+    // Apply primary-locale issue overrides to pages
     const enhancedResults = resultsWithDesign.map((page) => ({
       ...page,
-      issues: page.issues.map((issue) => issueMap.get(issue.id) || issue),
+      issues: page.issues.map((issue) => {
+        const ov = primaryAi.issueOverrides[issue.id];
+        if (!ov) return issue;
+        return {
+          ...issue,
+          ...(ov.title ? { title: ov.title } : {}),
+          ...(ov.description ? { description: ov.description } : {}),
+          ...(ov.recommendation ? { recommendation: ov.recommendation } : {}),
+          ...(ov.whyItMatters ? { whyItMatters: ov.whyItMatters } : {}),
+        };
+      }),
     }));
 
-    console.log(`[full-scan-async] AI enhanced: ${url}`);
+    summary.topIssues = enhancedResults.flatMap((p) => p.issues).slice(0, 10);
+
+    const costEstimate = primaryAi.costEstimate;
+    const quickWins = primaryAi.quickWins;
+    const websitePersonality = primaryAi.websitePersonality;
+    const visitorExperience = primaryAi.visitorExperience;
+
+    const aiContentAlt = {
+      locale: altAi.locale,
+      executiveSummary: altAi.executiveSummary,
+      visitorExperience: altAi.visitorExperience,
+      costEstimate: altAi.costEstimate,
+      quickWins: altAi.quickWins,
+      websitePersonality: altAi.websitePersonality,
+    };
+    const issuesAlt = {
+      locale: altAi.locale,
+      byId: altAi.issueOverrides,
+    };
+
+    console.log(`[full-scan-async] AI enhanced: ${url} (primary=${locale}, alt=${altLocale})`);
 
     await supabase
       .from("scans")
@@ -567,6 +606,8 @@ app.post("/api/scan/full-async", async (req, res) => {
         quick_wins: quickWins,
         website_personality: websitePersonality,
         visitor_experience: visitorExperience,
+        ai_content_alt: aiContentAlt,
+        issues_alt: issuesAlt,
         sales_brief: salesBrief,
         design_ai_analysis: designAnalysis,
         design_ai_analyzed_at: designAnalysis ? new Date().toISOString() : null,

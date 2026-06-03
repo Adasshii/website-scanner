@@ -191,6 +191,13 @@
     "learnMore": "Learn more",
     "foundOnPages": "found on {count} pages"
   },
+  "legacyLocaleNotice": {
+    "heading": "This report was generated in {originalLanguage}",
+    "body": "We don't have a {currentLanguage} version of the analysis for this scan yet. Re-scan the same site to get the full report in {currentLanguage}.",
+    "cta": "Re-scan in {currentLanguage}",
+    "languageEn": "English",
+    "languageNl": "Dutch"
+  },
   "blurredSection": {
     "lockedHeading": "Full report locked",
     "lockedHint": "Enter your email above to unlock"

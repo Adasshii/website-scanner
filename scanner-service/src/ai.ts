@@ -34,6 +34,86 @@ export interface DesignAnalysis {
   issues: string[];
 }
 
+/** Full per-locale AI pipeline output: comprehensive analysis + per-issue overrides. */
+export interface LocaleAiPipelineResult {
+  locale: string;
+  executiveSummary: string;
+  visitorExperience: string;
+  costEstimate: CostEstimate;
+  quickWins: QuickWin[];
+  websitePersonality: string;
+  /** Per-issue language-bearing overrides keyed by issue id. */
+  issueOverrides: Record<string, {
+    title?: string;
+    description?: string;
+    recommendation?: string;
+    whyItMatters?: string;
+  }>;
+}
+
+/**
+ * Run the full locale-specific AI pipeline (comprehensive analysis + issue
+ * enhancement + whyItMatters). Used twice in parallel (primary + alt locale)
+ * to populate bilingual scan records.
+ */
+export async function runLocaleAiPipeline(
+  domain: string,
+  scores: ScanScores,
+  summary: ScanSummary,
+  pages: PageResult[],
+  issues: Issue[],
+  loadTimeMs: number,
+  locale: string,
+  timeoutMs: number,
+): Promise<LocaleAiPipelineResult> {
+  const withTimeoutLocal = <T>(p: Promise<T>, fallback: T): Promise<T> => {
+    return Promise.race<T>([
+      p,
+      new Promise<T>((resolve) => setTimeout(() => resolve(fallback), timeoutMs)),
+    ]).catch(() => fallback);
+  };
+
+  const [analysis, enhancedIssues, whyItMattersMap] = await Promise.all([
+    withTimeoutLocal(generateComprehensiveAnalysis(domain, scores, summary, pages, locale), null as ComprehensiveAnalysis | null),
+    withTimeoutLocal(enhanceIssueDescriptions(issues, locale), issues),
+    withTimeoutLocal(generateWhyItMatters(domain, issues, locale), {} as Record<string, string>),
+  ]);
+
+  const executiveSummary = analysis?.executiveSummary ?? generateFallbackVerdict(scores, summary.criticalIssues, locale);
+  const visitorExperience = analysis?.visitorExperience ?? generateFallbackVisitorExperience(scores, summary, locale);
+  const costEstimate = analysis?.costEstimate ?? calculateCostEstimateFallback(scores, summary, loadTimeMs, locale);
+  const quickWins = analysis?.quickWins ?? generateFallbackQuickWins(issues, locale);
+  const websitePersonality = analysis?.websitePersonality ?? generateFallbackWebsitePersonality(scores, locale);
+
+  const issueOverrides: LocaleAiPipelineResult["issueOverrides"] = {};
+  const enhancedById = new Map(enhancedIssues.map((i) => [i.id, i]));
+  for (const original of issues) {
+    const enhanced = enhancedById.get(original.id);
+    const why = whyItMattersMap[original.id];
+    const override: LocaleAiPipelineResult["issueOverrides"][string] = {};
+    if (enhanced && enhanced.title !== original.title) override.title = enhanced.title;
+    if (enhanced && enhanced.description !== original.description) override.description = enhanced.description;
+    if (enhanced && enhanced.recommendation !== original.recommendation) override.recommendation = enhanced.recommendation;
+    if (why) override.whyItMatters = why;
+    if (Object.keys(override).length > 0) issueOverrides[original.id] = override;
+  }
+
+  return {
+    locale,
+    executiveSummary,
+    visitorExperience,
+    costEstimate,
+    quickWins,
+    websitePersonality,
+    issueOverrides,
+  };
+}
+
+export const SUPPORTED_LOCALES: readonly string[] = ["en", "nl"];
+export function otherLocale(locale: string): string {
+  return locale === "nl" ? "en" : "nl";
+}
+
 // ── Effort classification ─────────────────────────────────────────────
 
 function classifyIssueEffort(

@@ -191,6 +191,13 @@
     "learnMore": "Meer informatie",
     "foundOnPages": "gevonden op {count} pagina's"
   },
+  "legacyLocaleNotice": {
+    "heading": "Dit rapport is gegenereerd in het {originalLanguage}",
+    "body": "We hebben nog geen {currentLanguage}talige versie van deze analyse. Scan dezelfde site opnieuw voor het volledige rapport in het {currentLanguage}.",
+    "cta": "Opnieuw scannen in het {currentLanguage}",
+    "languageEn": "Engels",
+    "languageNl": "Nederlands"
+  },
   "blurredSection": {
     "lockedHeading": "Volledig rapport vergrendeld",
     "lockedHint": "Vul hierboven je e-mailadres in om te ontgrendelen"

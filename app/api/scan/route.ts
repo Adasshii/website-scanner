@@ -75,11 +75,13 @@ export async function POST(request: NextRequest) {
 
     // Check for a recent scan of the same domain (cache: 1 hour)
     const oneHourAgoCache = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+    // Bilingual cache: a single domain entry now carries both languages
+    // (primary in existing columns, alt in ai_content_alt). One row per domain
+    // serves any locale toggle, so we filter only by domain — not by locale.
     const { data: cached } = await supabase
       .from("scans")
       .select("id, url, domain, type, status, scores, pages, summary, started_at, completed_at, screenshots, cost_estimate, quick_wins, website_personality, visitor_experience, homepage_screenshot_url")
       .eq("domain", domain)
-      .eq("locale", locale)
       .in("status", ["quick_done", "completed"])
       .gte("created_at", oneHourAgoCache)
       .order("created_at", { ascending: false })
@@ -87,7 +89,7 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (cached && cached.scores) {
-      console.log(`[scan] ${domain} cache hit (${locale}) id=${cached.id}`);
+      console.log(`[scan] ${domain} cache hit (toggle=${locale}) id=${cached.id}`);
       return NextResponse.json({
         id: cached.id,
         url: cached.url,
@@ -138,6 +140,8 @@ export async function POST(request: NextRequest) {
       design_ai_analyzed_at: null,
       homepage_screenshot_url: null,
       locale,
+      ai_content_alt: null,
+      issues_alt: null,
     } satisfies Omit<ScanRow, "created_at">);
 
     if (insertError) {
@@ -167,6 +171,8 @@ export async function POST(request: NextRequest) {
         quick_wins: result.quickWins || null,
         website_personality: result.websitePersonality || null,
         visitor_experience: result.visitorExperience || null,
+        ai_content_alt: result.aiContentAlt || null,
+        issues_alt: result.issuesAlt || null,
         homepage_screenshot_url: homepageScreenshotUrl,
         completed_at: completedAt,
         updated_at: completedAt,

@@ -301,6 +301,29 @@ export interface ScanRow {
   homepage_screenshot_url: string | null;
   /** Visitor's UI locale at scan submission ('en' | 'nl'). Drives AI output language and email language. */
   locale: string;
+  /** Other-language version of executive summary / visitor experience / cost estimate / quick wins / personality. Null on legacy scans. */
+  ai_content_alt: AiContentAlt | null;
+  /** Other-language overrides for issue title/description/recommendation/whyItMatters, keyed by issue id. Null on legacy scans. */
+  issues_alt: IssuesAlt | null;
+}
+
+export interface AiContentAlt {
+  locale: string;
+  executiveSummary: string;
+  visitorExperience: string;
+  costEstimate: CostEstimate | null;
+  quickWins: QuickWin[] | null;
+  websitePersonality: string;
+}
+
+export interface IssuesAlt {
+  locale: string;
+  byId: Record<string, {
+    title?: string;
+    description?: string;
+    recommendation?: string;
+    whyItMatters?: string;
+  }>;
 }
 
 export interface LeadRow {
