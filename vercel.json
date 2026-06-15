@@ -8,6 +8,10 @@
     {
       "path": "/api/cron/follow-up",
       "schedule": "0 10 * * *"
+    },
+    {
+      "path": "/api/cron/send-pending-reports",
+      "schedule": "0 * * * *"
     }
   ]
 }
