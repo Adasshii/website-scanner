@@ -624,7 +624,7 @@ app.post("/api/scan/full-async", async (req, res) => {
     const callbackUrl = process.env.CALLBACK_URL;
     const apiKey = process.env.SCANNER_API_KEY;
     if (callbackUrl && apiKey) {
-      fetch(`${callbackUrl.replace(/\/$/, "")}/api/internal/scan-complete`, {
+      fetch(callbackUrl, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
