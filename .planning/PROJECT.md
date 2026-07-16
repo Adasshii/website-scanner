@@ -52,10 +52,19 @@ a drafted message he is willing to send.
 - [ ] Prefer generic business addresses (`info@`) over named-person addresses
 - [ ] Generate a drafted cold email per prospect, grounded in that prospect's actual scan findings
 - [ ] Review queue where Joshua approves, edits, or rejects each message before it sends
-- [ ] Send approved outreach via Resend with a `List-Unsubscribe` header on every message
-- [ ] Suppression list in Supabase as the source of truth, checked before every send
+- [ ] Suppression list in Supabase as the source of truth, checked at send time (not draft time)
 - [ ] Working unsubscribe endpoint that writes to the suppression list
-- [ ] Audit trail of what was sent, to whom, when, and on what basis
+- [ ] Automatic suppression on hard bounce and spam complaint, wired to the existing Resend webhook
+- [ ] Immutable audit trail of what was sent, to whom, when, and on what legal basis
+- [ ] Article 14 GDPR notice folded into the first-contact message template
+- [ ] Legal basis (Legitimate Interest Assessment) stored as a versioned artifact in the repo
+- [ ] Per-country legal-basis configuration, so expansion is a config decision with a paper trail
+
+**Gated — blocked on the send-path decision (see Key Decisions):**
+
+- [ ] Dispatch approved outreach via a channel that permits it, with `List-Unsubscribe` on
+      every electronic message. Provider and channel are deliberately UNDECIDED. Resend is
+      ruled out (see below). Everything upstream of this is unblocked and gets built first.
 - [ ] Track prospect lifecycle beyond scan result (new → qualified → contacted → replied → booked)
 - [ ] Measure reply rate and booked calls attributable to outreach
 - [ ] Country and locale are parameters throughout — no hardcoded geography
@@ -132,21 +141,57 @@ pass. Two things were established during questioning and should not be re-litiga
 2. `info@bedrijf.nl` and `jan@bedrijf.nl` are not equivalent under GDPR. The second is
    personal data about an identifiable human.
 
-The specifics (the scope of any published-business-address exemption, the lawful basis
-for profiling businesses by scanning them) are **not settled** and must be researched
-against ACM guidance rather than assumed. Research output is not legal advice and does
-not substitute for it.
+**Research answered the exemption question, and the answer went against the premise.**
+Telecommunicatiewet art. 11.7 lid 2(a) exempts unsolicited B2B email only where the
+address was designated **and published specifically for receiving such communications**.
+A generic `info@bedrijf.nl` scraped from a contact page was published so customers could
+reach the business, not so agencies could pitch it. It does not clear that bar (MEDIUM
+confidence: consistent secondary legal sources, no directly on-point case law found).
+Preferring `info@` remains the right GDPR-minimisation choice, but it is **not** a
+Telecommunicatiewet safe harbour. See `.planning/research/LEGAL.md`.
 
-**Resend capabilities, verified against current docs during questioning.** Resend
-supports a `List-Unsubscribe` header on transactional sends, which surfaces native
-one-click unsubscribe in Gmail and Outlook. It exposes a Suppressions API
-(`resend.suppressions.add`) plus a batch endpoint documented as private beta — do not put
-the batch endpoint on a critical path without confirming account access. Contacts carry
-an `unsubscribed` flag, but that only applies to Audiences. Critically, Resend does **not**
-manage contact lists for transactional email, and per-prospect outreach is transactional.
-Joshua owns the unsubscribe endpoint, the token, and the decision not to send. Hence the
-suppression table in Supabase as source of truth, with Resend as a backstop rather than
-a record.
+Consequences now baked into the requirements above:
+
+- Default posture is a documented GDPR legitimate-interest basis (Art. 6(1)(f)) plus an
+  Art. 14 notice folded into the first message, treating any Tw exemption as a bonus case
+  rather than the default. Art. 14(5)(b) "disproportionate effort" will not save skipping
+  the notice; a directly analogous Polish DPA case rejected exactly that argument because
+  the controller already held usable contact details, as Joshua would.
+- Dutch legitimate-interest for customer acquisition is **genuinely unsettled**: the AP's
+  2019 guidance says it does not qualify, the 2020 VoetbalTV ruling undercut that, and
+  EDPB Guidelines 1/2024 take a middle path (possible, not automatic, three-part test).
+  This is live ambiguity and is recorded as ambiguity.
+- ACM enforcement at 10–50/week is low probability; real cases target mass spammers.
+  **Low enforcement probability is not the same as lawful.** These are separate claims and
+  are not to be merged.
+- Country risk ranking for expansion: UK (most favourable, PECR corporate-subscriber
+  exemption) > Netherlands > Belgium > Germany (most hostile, no B2B carve-out). Worth
+  noting that NL-first-then-global starts in the third-best of four researched markets.
+
+Research output is not legal advice and does not substitute for it. Counsel runs in
+parallel with the build and must land before the send phase opens.
+
+**Resend: mechanics understood, account ruled out for outreach.** Resend supports a
+`List-Unsubscribe` header on transactional sends, exposes a Suppressions API
+(`resend.suppressions.add`, with a batch endpoint still in private beta), and carries an
+`unsubscribed` flag on Contacts (Audiences only). It does **not** manage contact lists for
+transactional email, so Joshua owns the unsubscribe endpoint and the decision not to send
+regardless. That is why the suppression table lives in Supabase as source of truth.
+
+But Resend's **Acceptable Use Policy prohibits cold outreach outright**, so none of those
+mechanics are usable for this purpose on this account. Resend stays exactly where it is:
+transactional email for the existing public scanner, untouched and uncontaminated. The
+outreach channel is a separate, deliberately open decision. The `List-Unsubscribe`
+pattern and the suppression design carry over to whatever channel is chosen; only the
+dispatcher changes.
+
+**Other verified pitfalls now shaping the build** (see `.planning/research/PITFALLS.md`):
+bulk-scanning strangers' sites from the same Railway IP that serves the live public
+scanner risks WAF fingerprinting that would degrade the production product, so the scan
+queue owns rate-limiting, an honest user-agent, robots.txt respect, and skip-not-retry.
+Overture data quality is a proven risk on this project specifically, not a theoretical
+one — prior research already produced a 98% false-positive read before correction — so
+dedupe-by-domain and reachability verification belong to the import phase, not triage.
 
 ## Constraints
 
@@ -161,6 +206,11 @@ a record.
   are over-built and should be rejected on sight.
 - **Legal**: every send passes a human gate, carries `List-Unsubscribe`, and is checked
   against the suppression list first. Non-negotiable.
+- **Provider policy**: the outreach channel must permit outreach under its own terms.
+  Resend does not. Any candidate channel is checked against its AUP before it is built
+  against, not after.
+- **Blast radius**: nothing in this milestone may put the existing public scanner's email
+  or scanning at risk. It works and it earns. Outreach failures must stay contained.
 - **Geography**: country and locale are parameters, never hardcoded. NL is the first
   target, not the only one.
 - **Tenancy**: single-tenant. No users, no teams, no billing.
@@ -169,6 +219,10 @@ a record.
 
 | Decision | Rationale | Outcome |
 |----------|-----------|---------|
+| **Resend is ruled out for outreach** (supersedes the original "send via Resend" decision) | Resend's AUP (verified verbatim, updated 2026-05-28) prohibits "unsolicited messages of any kind, including cold outreach, purchased lists, or scraped contact data." No low-volume carve-out. Compounding: the production scanner shares that Resend account for transactional mail, so a violation risks killing email for the already-working product | ✓ Good (caught in research, before any build) |
+| **Build the engine, gate the send phase** | The legal and provider risk concentrates entirely in the send step. Import, triage, bulk scan, qualify, and draft are low-risk and hold the value. Decoupling unblocks all of it today and avoids building a send pipeline that may have to be thrown away | — Pending |
+| **Lawyer engaged in parallel, not as a blocker** | The open legal questions are real but do not gate the engine. Counsel runs alongside the build and must land before the send phase opens | — Pending |
+| Changing email provider does NOT fix the legal basis | Two separate problems. Resend's AUP is solved by changing provider; Telecommunicatiewet consent is not — it is indifferent to whether Resend, Gmail, or a human hand sent the message. Recorded because this conflation has already come up twice | ✓ Good |
 | Bad-website segment first, no-website deferred | Reuses the whole scan engine, and the prospect's own site supplies the contact email that Overture and Places cannot | — Pending |
 | Overture Maps over Google Places | Free and global; Places pushes `websiteUri` into the ~$35/1K Enterprise tier and imposes 30-day coordinate caching, both fatal under near-zero cost | — Pending |
 | Two-stage funnel: cheap triage, then full scan | A full Playwright + Lighthouse + Gemini scan on every prospect burns budget on businesses that will never be contacted | — Pending |
@@ -198,4 +252,7 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-07-16 after initialization*
+*Last updated: 2026-07-17 after initialization and the five-dimension research pass
+(STACK, FEATURES, ARCHITECTURE, PITFALLS, LEGAL). Research contradicted two locked
+decisions: the Resend send path is dead, and the Tw art. 11.7 B2B exemption does not
+cover scraped generic addresses. Both are reflected above.*
