@@ -60,6 +60,7 @@
 - [ ] **DRA-03**: The draft links to that prospect's hosted scan report as proof rather than restating it
 - [ ] **DRA-04**: Draft tone is written to land as helpful rather than as an insult about someone's website
 - [ ] **DRA-05**: The first-contact template programmatically includes the Article 14 notice; it is not left to per-send manual drafting
+- [ ] **DRA-06**: The verdict shown in the prospect list, the hosted scan report, and the drafted email is the same verdict for the same scan (one verdict-threshold function, exported from `lib/scoring.ts`)
 
 ### Approval Queue
 
@@ -148,17 +149,105 @@ Deferred. Tracked, not in the current roadmap.
 
 ## Traceability
 
-Populated during roadmap creation.
+Populated during roadmap creation. See `.planning/ROADMAP.md` for phase detail.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| _(pending roadmap)_ | — | Pending |
+| IMP-01 | Phase 1 | Pending |
+| IMP-02 | Phase 1 | Pending |
+| IMP-03 | Phase 1 | Pending |
+| IMP-04 | Phase 1 | Pending |
+| IMP-05 | Phase 1 | Pending |
+| IMP-06 | Phase 1 | Pending |
+| IMP-07 | Phase 1 | Pending |
+| TRI-01 | Phase 3 | Pending |
+| TRI-02 | Phase 3 | Pending |
+| TRI-03 | Phase 3 | Pending |
+| TRI-04 | Phase 3 | Pending |
+| TRI-05 | Phase 3 | Pending |
+| TRI-06 | Phase 3 | Pending |
+| TRI-07 | Phase 3 | Pending |
+| TRI-08 | Phase 3 | Pending |
+| TRI-09 | Phase 3 | Pending |
+| SCAN-01 | Phase 4 | Pending |
+| SCAN-02 | Phase 4 | Pending |
+| SCAN-03 | Phase 4 | Pending |
+| SCAN-04 | Phase 4 | Pending |
+| SCAN-05 | Phase 4 | Pending |
+| SCAN-06 | Phase 4 | Pending |
+| SCAN-07 | Phase 4 | Pending |
+| CON-01 | Phase 5 | Pending |
+| CON-02 | Phase 5 | Pending |
+| CON-03 | Phase 5 | Pending |
+| CON-04 | Phase 5 | Pending |
+| CON-05 | Phase 5 | Pending |
+| CON-06 | Phase 5 | Pending |
+| CON-07 | Phase 5 | Pending |
+| DRA-01 | Phase 6 | Pending |
+| DRA-02 | Phase 6 | Pending |
+| DRA-03 | Phase 6 | Pending |
+| DRA-04 | Phase 6 | Pending |
+| DRA-05 | Phase 6 | Pending |
+| DRA-06 | Phase 6 | Pending |
+| QUE-01 | Phase 6 | Pending |
+| QUE-02 | Phase 6 | Pending |
+| QUE-03 | Phase 6 | Pending |
+| QUE-04 | Phase 6 | Pending |
+| QUE-05 | Phase 6 | Pending |
+| CMP-01 | Phase 2 | Pending |
+| CMP-02 | Phase 8 | Pending (gated) |
+| CMP-03 | Phase 2 | Pending |
+| CMP-04 | Phase 2 | Pending |
+| CMP-05 | Phase 2 | Pending |
+| CMP-06 | Phase 2 | Pending |
+| CMP-07 | Phase 2 | Pending |
+| CMP-08 | Phase 2 | Pending |
+| CMP-09 | Phase 8 | Pending (gated) |
+| CMP-10 | Phase 8 | Pending (gated) |
+| CMP-11 | Phase 8 | Pending (gated) |
+| CMP-12 | Phase 8 | Pending (gated) |
+| CMP-13 | Phase 7 | Pending |
+| CMP-14 | Phase 7 | Pending |
+| CMP-15 | Phase 7 | Pending |
+| CMP-16 | Phase 2 | Pending |
+| CMP-17 | Phase 4 | Pending |
+| SND-01 | Phase 8 | Pending (gated) |
+| SND-02 | Phase 8 | Pending (gated) |
+| SND-03 | Phase 8 | Pending (gated) |
+| SND-04 | Phase 8 | Pending (gated) |
+| TRK-01 | Phase 7 | Pending |
+| TRK-02 | Phase 7 | Pending |
+| TRK-03 | Phase 7 | Pending |
+| TRK-04 | Phase 7 | Pending |
+| TRK-05 | Phase 7 | Pending |
 
 **Coverage:**
-- v1 requirements: 66 total (IMP 7, TRI 9, SCAN 7, CON 7, DRA 5, QUE 5, CMP 17, SND 4, TRK 5)
-- Mapped to phases: 0 (roadmap not yet created)
-- Unmapped: 66 ⚠️
+- v1 requirements: 67 total (IMP 7, TRI 9, SCAN 7, CON 7, DRA 6, QUE 5, CMP 17, SND 4, TRK 5)
+- Mapped to phases: 67 ✓
+- Unmapped: 0 ✓
+- Duplicated across phases: 0 ✓
+
+"Pending (gated)" marks the 9 requirements in Phase 8, blocked on the send-path decision
+running as a parallel track. The other 57 are unblocked and build immediately.
+
+### Note on DRA-06 (added 2026-07-17, after roadmap approval)
+
+The **scoring verdict-threshold divergence** was surfaced by architecture research as phase
+work with no requirement ID. It is now numbered as **DRA-06** and scheduled as Phase 6's
+first plan.
+
+`lib/scoring.ts` and `scanner-service/src/index.ts` each carry their own verdict-threshold
+function with different cutoffs (95/85/70/50 vs 90/70/50). Today that is a cosmetic
+admin-panel mismatch. The moment a draft quotes a verdict to a stranger, the same number
+must mean the same thing in the prospect list, in the report the prospect clicks through
+to, and in the email — otherwise the pitch contradicts itself in front of the person being
+pitched. Fix: consolidate into one function exported from `lib/scoring.ts`.
+
+Scope guard: this is **distinct** from the per-page (`scorePage()`) vs aggregate
+(`aggregateScores()`) split, which is intentional layering and stays (see Out of Scope).
+Triage's score is a third independent function and is untouched. Only the verdict threshold
+is consolidated. This is not a scoring refactor.
 
 ---
 *Requirements defined: 2026-07-17*
-*Last updated: 2026-07-17 after initial definition*
+*Last updated: 2026-07-17 after roadmap approval — DRA-06 added and mapped, 67/67 mapped*
