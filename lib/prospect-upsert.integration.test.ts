@@ -201,6 +201,38 @@ describe("upsertOverturePlace", () => {
     expect(p2.lifecycle_state).toBe("no_website");
   });
 
+  it("D-11 fix: a row whose website resolves to an aggregator domain (tripadvisor.com) imports as no_website with null domain/website_url, and the raw URL survives in prospect_sources", async () => {
+    const a = makeOverturePlace({ websiteUrl: "https://www.tripadvisor.com/Restaurant_Review-a" });
+    const b = makeOverturePlace({ websiteUrl: "https://www.tripadvisor.com/Restaurant_Review-b" });
+
+    const r1 = await upsertOverturePlace(sb, a, CAMPAIGN_TAG);
+    const r2 = await upsertOverturePlace(sb, b, CAMPAIGN_TAG);
+
+    // Two different aggregator listings must never collapse into one
+    // prospect — they share tripadvisor.com but are different businesses.
+    expect(r1.prospectId).not.toBe(r2.prospectId);
+
+    const { data: prospect, error } = await sb
+      .from("prospects")
+      .select("*")
+      .eq("id", r1.prospectId)
+      .single();
+    if (error) throw error;
+
+    expect(prospect.domain).toBeNull();
+    expect(prospect.website_url).toBeNull();
+    expect(prospect.lifecycle_state).toBe("no_website");
+
+    const { data: source, error: sourceError } = await sb
+      .from("prospect_sources")
+      .select("raw_website_url")
+      .eq("overture_gers_id", a.gersId)
+      .single();
+    if (sourceError) throw sourceError;
+
+    expect(source.raw_website_url).toBe(a.websiteUrl);
+  });
+
   it("D-14: a no_website prospect gaining a website stays no_website with null domain; the URL is recorded as pending", async () => {
     const place = makeOverturePlace({ websiteUrl: null });
     const { prospectId } = await upsertOverturePlace(sb, place, CAMPAIGN_TAG);

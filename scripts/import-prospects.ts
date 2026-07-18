@@ -21,7 +21,7 @@ import { queryOverturePlaces, type OvertureQueryParams } from "@/lib/overture-cl
 import { upsertOverturePlace } from "@/lib/prospect-upsert";
 import { createServerClient } from "@/lib/supabase";
 import { validateUrlSafe } from "@/lib/url-validation.server";
-import { normalizeDomain } from "@/lib/domain-normalize";
+import { isAggregatorDomain, normalizeDomain } from "@/lib/domain-normalize";
 import type { OverturePlaceRow } from "@/types/scanner";
 
 const USAGE =
@@ -140,13 +140,17 @@ const defaultDeps: ImportDeps = {
 
 // ── Dry-run reachability + sample reporting ────────────────────────────────
 
-type ReachabilitySignal = "no-website" | "reachable" | "unreachable" | "blocked";
+type ReachabilitySignal = "no-website" | "reachable" | "unreachable" | "blocked" | "aggregator";
 
 async function checkReachability(
   url: string | null,
   deps: ImportDeps
 ): Promise<ReachabilitySignal> {
   if (!url) return "no-website";
+  // Aggregator/directory links (tripadvisor.com, facebook.com, ...) route to
+  // the no-website prospect path (D-11 audit fix) — labeled distinctly here
+  // rather than fetched, since it is never the business's own site.
+  if (isAggregatorDomain(url)) return "aggregator";
 
   let validated: string;
   try {
@@ -207,8 +211,11 @@ export async function runImport(
   // queryOverturePlaces in tests is still capped by the CLI's own logic).
   const rows = args.limit ? queried.slice(0, args.limit) : queried;
 
+  // Aggregator rows resolve to no_website prospects (isAggregatorDomain, D-11
+  // fix) so they count toward noWebsiteCount here, matching upsertOverturePlace.
   const hasDomainCount = rows.filter(
-    (row) => row.websiteUrl && normalizeDomain(row.websiteUrl)
+    (row) =>
+      row.websiteUrl && normalizeDomain(row.websiteUrl) && !isAggregatorDomain(row.websiteUrl)
   ).length;
   const noWebsiteCount = rows.length - hasDomainCount;
 

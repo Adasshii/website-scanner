@@ -159,6 +159,27 @@ describe("runImport — --dry-run", () => {
     // fetchReachability must never be reached for this row.
     expect(deps.fetchReachability).not.toHaveBeenCalled();
   });
+
+  it("D-11 fix: an aggregator-domain row (tripadvisor.com) is labeled 'aggregator', counts as no-website, and is never fetched", async () => {
+    const aggregatorRow = makeOverturePlace({
+      websiteUrl: "https://www.tripadvisor.com/Restaurant_Review-x",
+    });
+    const deps = makeDeps({ queryOverturePlaces: vi.fn(async () => [aggregatorRow]) });
+    const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+
+    const result = await runImport({ ...baseArgs, dryRun: true }, deps);
+
+    expect(result.hasDomainCount).toBe(0);
+    expect(result.noWebsiteCount).toBe(1);
+    // Aggregator check short-circuits before validateUrlSafe/fetchReachability —
+    // an Overture-listed directory link is never fetched at all.
+    expect(deps.validateUrlSafe).not.toHaveBeenCalled();
+    expect(deps.fetchReachability).not.toHaveBeenCalled();
+    const sampleLines = logSpy.mock.calls.map((call) => String(call[0])).join("\n");
+    expect(sampleLines).toContain("aggregator");
+
+    logSpy.mockRestore();
+  });
 });
 
 describe("runImport — --limit caps a real (writing) run", () => {

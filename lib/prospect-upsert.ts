@@ -1,6 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { OverturePlaceRow } from "@/types/scanner";
-import { normalizeDomain } from "./domain-normalize";
+import { isAggregatorDomain, normalizeDomain } from "./domain-normalize";
 
 interface ProspectIdentitySnapshot {
   lifecycle_state: string;
@@ -30,7 +30,14 @@ export async function upsertOverturePlace(
   place: OverturePlaceRow,
   campaignTag: string | null
 ): Promise<{ prospectId: string; created: boolean }> {
-  const domain = place.websiteUrl ? normalizeDomain(place.websiteUrl) : null;
+  // Aggregator/directory links (tripadvisor.com, facebook.com, ...) must
+  // never become prospect identity (D-01 audit follow-up, D-11 fix) — treat
+  // them as no-website: null domain, null website_url on `prospects`. The
+  // raw aggregator URL is still preserved below in every prospect_sources
+  // raw_website_url write (place.websiteUrl, untouched), so nothing is lost.
+  const isAggregator = place.websiteUrl ? isAggregatorDomain(place.websiteUrl) : false;
+  const effectiveWebsiteUrl = isAggregator ? null : place.websiteUrl;
+  const domain = effectiveWebsiteUrl ? normalizeDomain(effectiveWebsiteUrl) : null;
 
   // 1. Idempotency (IMP-03): have we imported this exact Overture record before?
   const { data: existingSource, error: sourceLookupError } = await sb
@@ -68,7 +75,7 @@ export async function upsertOverturePlace(
     // no_website prospects, which are never 'new') flag it as pending —
     // this is also how a no_website prospect gaining a website is recorded,
     // without ever touching domain or lifecycle_state.
-    await maybeRefreshWebsiteUrl(sb, existingSource.prospect_id, place.websiteUrl, prospect);
+    await maybeRefreshWebsiteUrl(sb, existingSource.prospect_id, effectiveWebsiteUrl, prospect);
     // D-13: country is frozen always, even while 'new' — stricter than website_url.
     await maybeFlagCountry(sb, existingSource.prospect_id, place.country, prospect.country);
 
@@ -99,7 +106,7 @@ export async function upsertOverturePlace(
       if (sourceInsertError) throw sourceInsertError;
       // D-03: first-seen wins — display fields NOT touched here.
 
-      await maybeRefreshWebsiteUrl(sb, existingProspect.id, place.websiteUrl, existingProspect);
+      await maybeRefreshWebsiteUrl(sb, existingProspect.id, effectiveWebsiteUrl, existingProspect);
       await maybeFlagCountry(sb, existingProspect.id, place.country, existingProspect.country);
 
       return { prospectId: existingProspect.id, created: false };
@@ -116,7 +123,7 @@ export async function upsertOverturePlace(
       category: place.category,
       region: place.region,
       country: place.country,
-      website_url: place.websiteUrl,
+      website_url: effectiveWebsiteUrl,
       lifecycle_state: domain ? "new" : "no_website",
       campaign_tag: campaignTag,
     })
