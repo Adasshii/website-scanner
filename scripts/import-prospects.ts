@@ -166,7 +166,7 @@ async function checkReachability(
   }
 }
 
-function pickRandomSample<T>(rows: T[], min = 20, max = 30): T[] {
+export function pickRandomSample<T>(rows: T[], min = 20, max = 30): T[] {
   if (rows.length <= min) return [...rows];
   const size = Math.min(max, rows.length);
   return [...rows].sort(() => Math.random() - 0.5).slice(0, size);
@@ -273,6 +273,20 @@ export async function runImport(
   };
 }
 
+/**
+ * Parses argv then runs the import — the exact sequence main() uses. Exposed
+ * separately so tests can assert that an invalid-args run never reaches
+ * queryOverturePlaces/createServerClient/upsertOverturePlace (parseImportArgs
+ * throws synchronously, before runImport is ever called).
+ */
+export async function runCli(
+  argv: string[],
+  deps: ImportDeps = defaultDeps
+): Promise<ImportResult> {
+  const args = parseImportArgs(argv);
+  return runImport(args, deps);
+}
+
 // ── CLI entrypoint ──────────────────────────────────────────────────────────
 
 function loadLocalEnv(): void {
@@ -290,18 +304,16 @@ function loadLocalEnv(): void {
 async function main(): Promise<void> {
   loadLocalEnv();
 
-  let args: ImportArgs;
   try {
-    args = parseImportArgs(process.argv.slice(2));
+    await runCli(process.argv.slice(2));
   } catch (err) {
     if (err instanceof ImportArgsError) {
       console.error(err.message);
       process.exit(1);
+      return;
     }
     throw err;
   }
-
-  await runImport(args);
 }
 
 if (require.main === module) {
