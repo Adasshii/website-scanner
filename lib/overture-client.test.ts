@@ -100,8 +100,7 @@ describe("buildPlacesSql", () => {
       "s3://bucket/divisions/*",
       "gers-noord-holland-id"
     );
-    expect(sql).toContain("ST_Within(ST_GeomFromWKB(place.geometry), province.geometry)");
-    expect(sql).toContain("ST_GeomFromWKB(geometry) AS geometry");
+    expect(sql).toContain("ST_Within(place.geometry, province.geometry)");
     expect(sql).toContain("gers-noord-holland-id");
     // bbox pruning still present alongside the exact containment
     expect(sql).toContain("place.bbox.xmin > 4.49");

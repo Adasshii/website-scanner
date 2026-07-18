@@ -219,6 +219,14 @@ export function pickProvinceDivisionId(
  * to a handful of rows, and pruning on a second, independently-authored bbox
  * table (REGION_BBOXES) risks a false "zero matches" if the two bboxes don't
  * agree exactly at the boundary.
+ *
+ * `class = 'land'` is required: coastal NL provinces (Noord-Holland,
+ * Zuid-Holland, Zeeland, Fryslân — confirmed live against the divisions
+ * theme) each have TWO subtype='region' rows sharing the same name — one
+ * `class='land'` (the province itself) and one `class='maritime'`
+ * (territorial waters, `is_territorial=true`). Businesses sit on land, so
+ * the maritime row is excluded rather than left to trip the ambiguity
+ * fail-fast in pickProvinceDivisionId() on every coastal province.
  */
 export async function resolveProvinceDivisionId(
   conn: DuckDBConnection,
@@ -230,6 +238,7 @@ export async function resolveProvinceDivisionId(
     SELECT id, names.primary AS name
     FROM read_parquet('${overtureDivisionsPath()}', hive_partitioning=1)
     WHERE subtype = 'region'
+      AND class = 'land'
       AND country = '${escapeSqlString(iso2)}'
   `);
   const rows = reader
@@ -274,13 +283,16 @@ export function buildPlacesSql(
   if (divisionsPath && divisionId) {
     // Exact province containment (D-11 audit follow-up) — replaces the
     // rectangular bbox as the region boundary. The bbox above remains, but
-    // only as pruning.
+    // only as pruning. Both `geometry` columns are already a native GEOMETRY
+    // type (GeoParquet metadata is auto-detected by the spatial extension) —
+    // ST_GeomFromWKB errors as a type mismatch if applied to them; confirmed
+    // live via DESCRIBE against both the places and divisions Parquet.
     fromClause += `, (
-        SELECT ST_GeomFromWKB(geometry) AS geometry
+        SELECT geometry
         FROM read_parquet('${divisionsPath}', hive_partitioning=1)
         WHERE id = '${escapeSqlString(divisionId)}'
       ) AS province`;
-    conditions.push(`ST_Within(ST_GeomFromWKB(place.geometry), province.geometry)`);
+    conditions.push(`ST_Within(place.geometry, province.geometry)`);
   }
 
   const limitClause = params.limit
@@ -315,10 +327,10 @@ export function buildPlacesSql(
  * given, the bbox now runs ONLY as row-group pruning; the exact boundary is
  * an `ST_Within` polygon containment check against the real province
  * geometry resolved from the Overture divisions theme (theme=divisions,
- * type=division_area, subtype='region') — see resolveProvinceDivisionId()
- * and buildPlacesSql(). Country-only runs (no --region) are unaffected: the
- * addresses[1].country field is populated and already exact (RESEARCH.md
- * Pitfall — only the region field is unusable).
+ * type=division_area, subtype='region', class='land') — see
+ * resolveProvinceDivisionId() and buildPlacesSql(). Country-only runs (no
+ * --region) are unaffected: the addresses[1].country field is populated and
+ * already exact (RESEARCH.md Pitfall — only the region field is unusable).
  */
 export async function queryOverturePlaces(
   params: OvertureQueryParams
