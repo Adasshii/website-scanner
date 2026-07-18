@@ -49,7 +49,11 @@ This track runs alongside Phases 1–7 from day one. It gates **Phase 8 only**. 
   3. Re-running the import leaves triage results, lifecycle state, and approval history already on a prospect untouched (IMP-05)
   4. Every prospect shows which country it belongs to (IMP-06)
   5. Prospects with no website appear marked as such and never enter the outreach flow (IMP-07)
-**Plans**: TBD (est. 3-4)
+**Plans**: 4 plans
+- [ ] 01-01-PLAN.md — Migrations 010–013 (prospects, prospect_sources, outreach_messages, scans.prospect_id) + [BLOCKING] live-prod schema push (wave 1)
+- [ ] 01-02-PLAN.md — Test infra (vitest) + package-legitimacy checkpoint & installs (@duckdb/node-api, tldts, tsx) + shared types & Overture fixtures (wave 1)
+- [ ] 01-03-PLAN.md — Dedupe engine: normalizeDomain (tldts) + upsertOverturePlace (GERS-then-domain branching, freeze-by-omission) + integration suite (wave 2)
+- [ ] 01-04-PLAN.md — Importer CLI: overture-client (DuckDB, runtime category detection) + import-prospects.ts (--dry-run/--limit, SSRF-safe reachability) + D-11 sample-audit gate (wave 3)
 
 Phase work not yet a numbered requirement:
 - Migrations: `prospects`, `outreach_messages`, `scans.prospect_id` (nullable). Deliberately NOT merged into `leads` — `leads` implies opt-in, and that distinction is the legal crux of the milestone.
@@ -203,7 +207,7 @@ Phase 8 does not begin until the Parallel Track closes, regardless of numeric or
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Prospect Data Foundation & Import | 0/TBD | Not started | - |
+| 1. Prospect Data Foundation & Import | 0/4 | Not started | - |
 | 2. Compliance Spine | 0/TBD | Not started | - |
 | 3. Triage & Shortlist | 0/TBD | Not started | - |
 | 4. Bulk Scan Queue | 0/TBD | Not started | - |
