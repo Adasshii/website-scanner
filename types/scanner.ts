@@ -340,3 +340,87 @@ export interface LeadRow {
   /** Locale used for emails sent to this lead */
   locale: string;
 }
+
+// ── Prospect Radar (Phase 1) ───────────────────────────────────────
+
+/**
+ * A single Overture Maps "place" record, already reduced to the fields
+ * Prospect Radar needs (websiteUrl is websites[0], not the raw array).
+ * Not a DB row — this is the shape read from the Overture DuckDB query,
+ * before it is branched into a prospects/prospect_sources write
+ * (see lib/prospect-upsert.ts, RESEARCH.md Pattern 1).
+ */
+export interface OverturePlaceRow {
+  /** Overture's Global Entity Reference System ID — the idempotency key for re-imports (IMP-03) */
+  gersId: string;
+  name: string | null;
+  address: string | null;
+  category: string | null;
+  region: string | null;
+  country: string;
+  /** Already reduced from the raw Overture websites[0] array */
+  websiteUrl: string | null;
+  confidence: number | null;
+}
+
+/** prospects.lifecycle_state — see supabase/migrations/010_create_prospects.sql */
+export type ProspectLifecycleState =
+  | "new"
+  | "no_website"
+  | "triaged"
+  | "qualified"
+  | "scan_queued"
+  | "scanned"
+  | "drafted"
+  | "approved"
+  | "contacted"
+  | "replied"
+  | "booked"
+  | "rejected"
+  | "suppressed";
+
+export interface ProspectRow {
+  id: string;
+  /** Normalised registrable domain; null = no-website prospect (D-06/D-07) */
+  domain: string | null;
+  name: string | null;
+  address: string | null;
+  category: string | null;
+  region: string | null;
+  /** Required (IMP-06); frozen after first import (D-13) */
+  country: string;
+  website_url: string | null;
+  /** D-05: a re-import's differing website_url, held for review, never auto-applied */
+  website_url_pending: string | null;
+  website_url_changed_at: string | null;
+  /** D-13: a re-import's differing country, held for review, never auto-applied */
+  country_pending: string | null;
+  country_changed_at: string | null;
+  campaign_tag: string | null;
+  lifecycle_state: ProspectLifecycleState;
+  triage_score: Record<string, unknown> | null;
+  triage_checked_at: string | null;
+  latest_scan_id: string | null;
+  contact_email: string | null;
+  contact_email_type: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ProspectSourceRow {
+  id: string;
+  prospect_id: string;
+  /** The idempotency key for re-imports (IMP-03) */
+  overture_gers_id: string;
+  overture_release: string | null;
+  raw_name: string | null;
+  raw_address: string | null;
+  raw_category: string | null;
+  raw_region: string | null;
+  raw_country: string | null;
+  raw_website_url: string | null;
+  raw_confidence: number | null;
+  first_seen_at: string;
+  last_seen_at: string;
+  created_at: string;
+}
