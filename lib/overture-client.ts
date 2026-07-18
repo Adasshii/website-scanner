@@ -34,6 +34,10 @@ function overturePlacesPath(): string {
   return `s3://overturemaps-us-west-2/release/${OVERTURE_RELEASE}/theme=places/type=place/*`;
 }
 
+function overtureDivisionsPath(): string {
+  return `s3://overturemaps-us-west-2/release/${OVERTURE_RELEASE}/theme=divisions/type=division_area/*`;
+}
+
 function escapeSqlString(value: string): string {
   return value.replace(/'/g, "''");
 }
@@ -61,6 +65,16 @@ export const COUNTRY_BBOXES: Record<string, Bbox> = {
  * minutes with zero matches possible). The same probe with a bbox predicate
  * completed in 23 seconds and returned real NL rows. Region scoping now
  * happens via bbox instead of the (unusable) region string field.
+ *
+ * D-11 audit follow-up: this bbox is a rectangular pre-filter for row-group
+ * pruning ONLY — it is no longer the region boundary itself when --region is
+ * given. A rectangular box necessarily bleeds in neighboring-province border
+ * towns (e.g. Zuid-Holland's Leiden/Sassenheim/Warmond area inside a
+ * Noord-Holland bbox). The exact boundary is the province polygon resolved
+ * from the Overture divisions theme — see resolveProvinceDivisionId() and
+ * buildPlacesSql(). Keep these bboxes generous (superset of the true
+ * polygon); tightening them risks pruning away real rows before the exact
+ * polygon filter even runs.
  */
 export const REGION_BBOXES: Record<string, Bbox> = {
   "NL:noord-holland": [4.49, 52.16, 5.33, 53.22],
@@ -153,6 +167,135 @@ export async function detectCategoryColumn(
   );
 }
 
+interface DivisionCandidate {
+  id: string;
+  name: string | null;
+}
+
+/**
+ * Pure validation/matching logic split out of resolveProvinceDivisionId() so
+ * it is testable without a live DuckDB/S3 connection (RESEARCH.md §Validation
+ * Architecture — SQL-building/validation logic gets static tests, the S3
+ * fetch itself stays untested). Matches diacritic/case-insensitively via
+ * slugifyRegion, same as resolveBbox(), and fails fast on zero or multiple
+ * matches rather than silently picking one — an ambiguous or missing match
+ * here would otherwise resolve to the wrong province polygon (or none) with
+ * no signal to the caller.
+ */
+export function pickProvinceDivisionId(
+  rows: DivisionCandidate[],
+  region: string
+): string {
+  const targetSlug = slugifyRegion(region);
+  const matches = rows.filter(
+    (row) => slugifyRegion(String(row.name ?? "")) === targetSlug
+  );
+
+  if (matches.length === 0) {
+    const seen = rows.map((r) => r.name).join(", ") || "(no region rows found)";
+    throw new Error(
+      `No division_area region found for "${region}" — cannot build an exact ` +
+        `province boundary. Region rows seen: ${seen}`
+    );
+  }
+  if (matches.length > 1) {
+    throw new Error(
+      `Ambiguous division_area match for "${region}": ${matches.length} rows ` +
+        `matched (ids: ${matches.map((m) => m.id).join(", ")}). Expected exactly one.`
+    );
+  }
+
+  return matches[0].id;
+}
+
+/**
+ * Resolves the Overture GERS id of the divisions-theme `division_area` row
+ * for a country's named region (subtype='region', e.g. NL "Noord-Holland") —
+ * the exact province polygon used to replace the rectangular bbox
+ * pre-filter's border-town bleed (D-11 audit follow-up: Zuid-Holland border
+ * towns like Leiden/Sassenheim/Warmond were appearing inside a Noord-Holland
+ * bbox slice). Only the id/name columns are projected — the file's own bbox
+ * pruning is deliberately skipped here: subtype+country already narrows this
+ * to a handful of rows, and pruning on a second, independently-authored bbox
+ * table (REGION_BBOXES) risks a false "zero matches" if the two bboxes don't
+ * agree exactly at the boundary.
+ */
+export async function resolveProvinceDivisionId(
+  conn: DuckDBConnection,
+  country: string,
+  region: string
+): Promise<string> {
+  const iso2 = country.toUpperCase();
+  const reader = await conn.runAndReadAll(`
+    SELECT id, names.primary AS name
+    FROM read_parquet('${overtureDivisionsPath()}', hive_partitioning=1)
+    WHERE subtype = 'region'
+      AND country = '${escapeSqlString(iso2)}'
+  `);
+  const rows = reader
+    .getRowObjectsJS()
+    .map((row) => ({ id: String(row.id), name: (row.name as string | null) ?? null }));
+
+  return pickProvinceDivisionId(rows, region);
+}
+
+/**
+ * Builds the places SQL. Pure/synchronous so it is statically testable
+ * without a DuckDB/S3 connection: given a resolved category column and (when
+ * a region is scoped) a resolved division id, it produces the exact query
+ * text queryOverturePlaces executes. The bbox conditions always run first
+ * (row-group pruning); ST_Within is the exact boundary and is only added
+ * when a region + divisionId are supplied.
+ */
+export function buildPlacesSql(
+  placesPath: string,
+  categoryColumn: string,
+  params: OvertureQueryParams,
+  divisionsPath: string | null,
+  divisionId: string | null
+): string {
+  const [minLon, minLat, maxLon, maxLat] = resolveBbox(params.country, params.region);
+
+  const conditions = [
+    `place.addresses[1].country = '${escapeSqlString(params.country)}'`,
+    `place.${categoryColumn} = '${escapeSqlString(params.category)}'`,
+    // bbox pre-filter (row-group pruning ONLY) — replaces the unusable
+    // addresses[1].region string predicate, see resolveBbox() doc comment.
+    // When a region is given, ST_Within below is the exact boundary; this
+    // bbox just narrows which Parquet row groups get scanned.
+    `place.bbox.xmin > ${minLon}`,
+    `place.bbox.xmax < ${maxLon}`,
+    `place.bbox.ymin > ${minLat}`,
+    `place.bbox.ymax < ${maxLat}`,
+  ];
+
+  let fromClause = `read_parquet('${placesPath}', filename=true, hive_partitioning=1) AS place`;
+
+  if (divisionsPath && divisionId) {
+    // Exact province containment (D-11 audit follow-up) — replaces the
+    // rectangular bbox as the region boundary. The bbox above remains, but
+    // only as pruning.
+    fromClause += `, (
+        SELECT ST_GeomFromWKB(geometry) AS geometry
+        FROM read_parquet('${divisionsPath}', hive_partitioning=1)
+        WHERE id = '${escapeSqlString(divisionId)}'
+      ) AS province`;
+    conditions.push(`ST_Within(ST_GeomFromWKB(place.geometry), province.geometry)`);
+  }
+
+  const limitClause = params.limit
+    ? `LIMIT ${Math.max(0, Math.floor(params.limit))}`
+    : "";
+
+  return `
+      SELECT place.id AS gers_id, place.names.primary AS name, place.websites, place.addresses,
+             place.${categoryColumn} AS category, place.confidence
+      FROM ${fromClause}
+      WHERE ${conditions.join(" AND ")}
+      ${limitClause}
+    `;
+}
+
 /**
  * Queries Overture Places directly from the public S3 GeoParquet bucket via
  * DuckDB's spatial+httpfs extensions, in-process — no download, no API key
@@ -164,7 +307,18 @@ export async function detectCategoryColumn(
  * is NULL on every sampled NL row — that predicate could never match. A bbox
  * pre-filter on the native `bbox.xmin/xmax/ymin/ymax` columns prunes Parquet
  * row groups effectively (confirmed: 23s vs 9+ minutes on a real NL region
- * probe) and replaces the region string predicate entirely. See resolveBbox().
+ * probe). See resolveBbox().
+ *
+ * D-11 AUDIT FOLLOW-UP: the bbox alone is a rectangle, not the province
+ * boundary — it bled in neighboring-province border towns (Zuid-Holland's
+ * Leiden/Sassenheim/Warmond inside a Noord-Holland slice). When --region is
+ * given, the bbox now runs ONLY as row-group pruning; the exact boundary is
+ * an `ST_Within` polygon containment check against the real province
+ * geometry resolved from the Overture divisions theme (theme=divisions,
+ * type=division_area, subtype='region') — see resolveProvinceDivisionId()
+ * and buildPlacesSql(). Country-only runs (no --region) are unaffected: the
+ * addresses[1].country field is populated and already exact (RESEARCH.md
+ * Pitfall — only the region field is unusable).
  */
 export async function queryOverturePlaces(
   params: OvertureQueryParams
@@ -181,29 +335,19 @@ export async function queryOverturePlaces(
 
     const path = overturePlacesPath();
     const categoryColumn = await detectCategoryColumn(conn, path);
-    const [minLon, minLat, maxLon, maxLat] = resolveBbox(params.country, params.region);
 
-    const conditions = [
-      `addresses[1].country = '${escapeSqlString(params.country)}'`,
-      `${categoryColumn} = '${escapeSqlString(params.category)}'`,
-      // bbox pre-filter (row-group pruning) — replaces the unusable
-      // addresses[1].region string predicate, see resolveBbox() doc comment.
-      `bbox.xmin > ${minLon}`,
-      `bbox.xmax < ${maxLon}`,
-      `bbox.ymin > ${minLat}`,
-      `bbox.ymax < ${maxLat}`,
-    ];
-    const limitClause = params.limit
-      ? `LIMIT ${Math.max(0, Math.floor(params.limit))}`
-      : "";
+    let divisionId: string | null = null;
+    if (params.region) {
+      divisionId = await resolveProvinceDivisionId(conn, params.country, params.region);
+    }
 
-    const sql = `
-      SELECT id AS gers_id, names.primary AS name, websites, addresses,
-             ${categoryColumn} AS category, confidence
-      FROM read_parquet('${path}', filename=true, hive_partitioning=1)
-      WHERE ${conditions.join(" AND ")}
-      ${limitClause}
-    `;
+    const sql = buildPlacesSql(
+      path,
+      categoryColumn,
+      params,
+      params.region ? overtureDivisionsPath() : null,
+      divisionId
+    );
 
     const reader = await conn.runAndReadAll(sql);
     const rows = reader.getRowObjectsJS();
