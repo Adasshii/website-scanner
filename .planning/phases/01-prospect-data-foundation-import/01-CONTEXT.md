@@ -54,8 +54,8 @@ their behavior.
   `triage_checked_at`, `latest_scan_id`, `contact_email`, `contact_email_type`, and any
   approval history in `outreach_messages`. This satisfies IMP-05 by construction, not by
   convention.
-- **D-05: `website_url` freezes once work starts, and later changes are flagged, not
-  applied.** While a prospect is still `new`, re-import may refresh `website_url` freely.
+- **D-05: `website_url` freezes once work starts; later changes are flagged, never applied.**
+  While a prospect is still `new`, re-import may refresh `website_url` freely.
   Once it moves to `triaged` or beyond, `website_url` is frozen; an incoming Overture
   change is recorded (a `website_url_changed_at` timestamp plus the proposed new value in
   a nullable column, e.g. `website_url_pending`) for Joshua to review — never
@@ -104,8 +104,8 @@ their behavior.
   change for Joshua to review (same pattern as D-05's `website_url` change), never
   auto-apply. Rationale: the legal-basis distinction is the crux of the milestone
   (surfaced by Phase 1 research as an open question CONTEXT.md hadn't resolved).
-- **D-14: A `no_website` prospect that later gains a website is recorded + flagged, not
-  auto-transitioned.** When a re-import brings a `website_url` for a prospect currently in
+- **D-14: A `no_website` prospect that later gains a website is recorded + flagged, never auto-transitioned.**
+  When a re-import brings a `website_url` for a prospect currently in
   `lifecycle_state = 'no_website'` (GERS-keyed, null `domain`), the new URL is stored as a
   pending value and flagged; the prospect STAYS `no_website` and null-domain until Joshua
   accepts it. Do NOT auto-fill `domain` / flip to `new` on import: auto-filling could

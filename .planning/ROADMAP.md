@@ -9,6 +9,7 @@ The compliance spine is not the last phase. Suppression and unsubscribe ship in 
 ## Phases
 
 **Phase Numbering:**
+
 - Integer phases (1, 2, 3): Planned milestone work
 - Decimal phases (2.1, 2.2): Urgent insertions (marked with INSERTED)
 
@@ -40,41 +41,58 @@ This track runs alongside Phases 1–7 from day one. It gates **Phase 8 only**. 
 ## Phase Details
 
 ### Phase 1: Prospect Data Foundation & Import
+
 **Goal**: Joshua pulls a country/region/category slice of businesses from Overture into a durable prospect list that survives re-import
 **Depends on**: Nothing (first phase)
 **Requirements**: IMP-01, IMP-02, IMP-03, IMP-04, IMP-05, IMP-06, IMP-07
 **Success Criteria** (what must be TRUE):
+
   1. Joshua runs the importer with a country, region, and category and new prospects appear in the list (IMP-01, IMP-02)
   2. Re-running the same import creates no duplicates, and two Overture records sharing a domain appear as one prospect (IMP-03, IMP-04)
   3. Re-running the import leaves triage results, lifecycle state, and approval history already on a prospect untouched (IMP-05)
   4. Every prospect shows which country it belongs to (IMP-06)
   5. Prospects with no website appear marked as such and never enter the outreach flow (IMP-07)
+
 **Plans**: 4 plans
+**Wave 1**
+
 - [ ] 01-01-PLAN.md — Migrations 010–013 (prospects, prospect_sources, outreach_messages, scans.prospect_id) + [BLOCKING] live-prod schema push (wave 1)
 - [ ] 01-02-PLAN.md — Test infra (vitest) + package-legitimacy checkpoint & installs (@duckdb/node-api, tldts, tsx) + shared types & Overture fixtures (wave 1)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
 - [ ] 01-03-PLAN.md — Dedupe engine: normalizeDomain (tldts) + upsertOverturePlace (GERS-then-domain branching, freeze-by-omission) + integration suite (wave 2)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
 - [ ] 01-04-PLAN.md — Importer CLI: overture-client (DuckDB, runtime category detection) + import-prospects.ts (--dry-run/--limit, SSRF-safe reachability) + D-11 sample-audit gate (wave 3)
 
 Phase work not yet a numbered requirement:
+
 - Migrations: `prospects`, `outreach_messages`, `scans.prospect_id` (nullable). Deliberately NOT merged into `leads` — `leads` implies opt-in, and that distinction is the legal crux of the milestone.
 
 Notes:
+
 - The importer is a one-off script (`scripts/import-prospects.ts`) run locally or on demand, NOT a Vercel route. Overture GeoParquet scans are the wrong shape for a 300s function.
 - Overture data quality is a proven risk on this project, not a theoretical one — prior research produced a 98% false-positive read before correction. Dedupe-by-domain belongs here, not in triage, and a manual sample audit runs before the pipeline is trusted at scale (Pitfall 3).
 
 ### Phase 2: Compliance Spine
+
 **Goal**: A business that says "stop" is unreachable from that moment on, and the basis for contacting anyone is recorded and versioned
 **Depends on**: Nothing (runs in parallel with Phase 1 — its tables are independent)
 **Requirements**: CMP-01, CMP-03, CMP-04, CMP-05, CMP-06, CMP-07, CMP-08, CMP-16
 **Success Criteria** (what must be TRUE):
+
   1. Clicking unsubscribe returns success only after the suppression is written, and clicking it twice succeeds both times (CMP-04)
   2. A suppressed record blocks that address and every other address on the same domain, permanently and from the next send cycle onward (CMP-01, CMP-03, CMP-05)
   3. A hard bounce or spam complaint on the existing Resend event webhook lands in the suppression list without anyone touching it (CMP-07)
   4. Re-adding a suppressed record is impossible without an explicit override that leaves a log entry (CMP-06)
   5. Joshua can look up which LIA version and which country's legal regime applies to a given prospect (CMP-08, CMP-16)
+
 **Plans**: TBD (est. 3-4)
 
 Notes:
+
 - ARCHITECTURE.md is explicit: this is a **co-requisite of the data-model migration, not step 9**. Compliance ships in v1. It is placed second, not last, on purpose.
 - This phase owns its own migrations (`suppressions`, per-country legal-basis config). It does not depend on Phase 1's tables.
 - The suppression table is the source of truth. Resend's Suppressions API is a backstop only — and this account never sends outreach regardless.
@@ -82,75 +100,92 @@ Notes:
 - CMP-07 wires to the existing Resend webhook, which already exists. This is the one place the existing transactional integration is touched, and it is read-only with respect to sending.
 
 ### Phase 3: Triage & Shortlist
+
 **Goal**: Joshua opens a ranked shortlist of the worst sites, produced without spending a cent on Playwright, Lighthouse, or AI
 **Depends on**: Phase 1
 **Requirements**: TRI-01, TRI-02, TRI-03, TRI-04, TRI-05, TRI-06, TRI-07, TRI-08, TRI-09
 **Success Criteria** (what must be TRUE):
+
   1. Every imported prospect gets a triage result with no browser, no Lighthouse, and no AI anywhere in the path (TRI-01)
   2. Each triaged prospect shows reachability, HTTPS plus the full redirect chain, mobile viewport presence, page weight, and response time (TRI-02, TRI-03, TRI-04, TRI-05)
   3. Joshua opens a shortlist ranked worst-first by a single triage score (TRI-06, TRI-07)
   4. Changing the cutoff changes which prospects are eligible for a full scan (TRI-08)
   5. With the cutoff opened wide, no run releases more full scans than the hard ceiling allows (TRI-09)
+
 **Plans**: TBD (est. 3-4)
 **UI hint**: yes
 
 Notes:
+
 - **This phase must ship before or with Phase 4. It is the load-bearing sequencing decision of the whole project.** Queueing every imported prospect straight into the scan queue reintroduces the exact concurrency and budget failure CONCERNS.md warns about.
 - Triage is native `fetch()` + regex on raw HTML. DOM libraries (jsdom, Cheerio) are rejected on sight — they are the exact cost triage exists to avoid.
 - TRI-09's ceiling is enforced independently of TRI-08's cutoff. A permissive cutoff is a tuning mistake; a missing ceiling is a budget blowout (Pitfall 4). Set an explicit pass-rate target here.
 
 ### Phase 4: Bulk Scan Queue
+
 **Goal**: Shortlisted prospects get real scan reports at bulk without putting the live public scanner at risk
 **Depends on**: Phase 3
 **Requirements**: SCAN-01, SCAN-02, SCAN-03, SCAN-04, SCAN-05, SCAN-06, SCAN-07, CMP-17
 **Success Criteria** (what must be TRUE):
+
   1. Joshua queues a batch of shortlisted prospects and each one ends showing queued, scanning, done, or failed (SCAN-01, SCAN-03)
   2. The scanner service refuses requests over its capacity instead of accepting them and timing out (SCAN-02)
   3. The live public scanner holds its normal success rate throughout a bulk run (SCAN-06)
   4. A prospect whose scan fails is skipped rather than retried indefinitely, and bulk scanning identifies itself honestly, respects robots.txt, and is rate-limited (SCAN-04, SCAN-05)
   5. Each scanned prospect has a report at a hosted URL identical in form to the public scanner's, and personal data caught incidentally in screenshots is not separately indexed, profiled, or reused (SCAN-07, CMP-17)
+
 **Plans**: TBD (est. 4-5)
 
 Notes:
+
 - Postgres `SELECT ... FOR UPDATE SKIP LOCKED` + Vercel Cron + `p-limit`. STACK.md and ARCHITECTURE.md converged on this design independently — treat as high confidence. No job-queue library. No new infrastructure.
 - The concurrency gate extends the scanner-service's existing `activeFullScans` map. It already tracks exactly what is needed. This is an addition, not a rewrite.
 - Blast radius: bulk-scanning strangers' sites from the same Railway IP that serves the live scanner risks WAF fingerprinting that would degrade the production product (Pitfall 2). Verification watches the public scanner's success rate alongside the bulk run — no shared degradation is a pass condition, not a nice-to-have.
 - Dispatch reuses `lib/scanner-client.ts` and the existing `full-async` endpoint. No new scanner-service endpoint.
 
 ### Phase 5: Contact Extraction & Classification
+
 **Goal**: Each scanned prospect carries a contact address whose legal status is known and recorded
 **Depends on**: Phase 4
 **Requirements**: CON-01, CON-02, CON-03, CON-04, CON-05, CON-06, CON-07
 **Success Criteria** (what must be TRUE):
+
   1. A prospect's contact email appears after its scan, with no second fetch of the site (CON-01)
   2. Addresses behind `mailto:` links, in body text, and behind Cloudflare `data-cfemail` obfuscation are all found (CON-02)
   3. Every address is stored as `generic` or `named-person`, and where both exist the generic one is chosen (CON-03, CON-04)
   4. A prospect whose only address is a named person is flagged for manual review and stays out of the default outreach flow (CON-05)
   5. Each prospect records whether its source page invited commercial contact (defaulting to no) and whether it is a sole proprietorship whose generic address is therefore personal data (CON-06, CON-07)
+
 **Plans**: TBD (est. 3-4)
 
 Notes:
+
 - The extractor rides the scan Playwright already runs (`scanner-service/src/extractor.ts`). It adds no crawl and no second fetch — re-fetching the page is an explicit anti-pattern in ARCHITECTURE.md.
 - CON-06 is the only field that could ever trigger the narrow Tw art. 11.7(2)(a) exemption. It defaults to "no" and the pipeline proceeds on legitimate-interest plus notice regardless. Preferring `info@` is a GDPR-minimisation choice, **not** a Telecommunicatiewet safe harbour. Do not re-litigate this.
 - CON-07 (eenmanszaak) is the sole-proprietorship edge case SUMMARY.md flagged as an open design gap. It lands here.
 
 ### Phase 6: Draft Generation & Approval Queue
+
 **Goal**: Joshua opens a queue of drafted messages he is willing to send, each backed by evidence he can check
 **Depends on**: Phase 5
 **Requirements**: DRA-01, DRA-02, DRA-03, DRA-04, DRA-05, DRA-06, QUE-01, QUE-02, QUE-03, QUE-04, QUE-05
 **Success Criteria** (what must be TRUE):
+
   1. The verdict in the ranked prospect list, the hosted scan report, and the drafted email are the same verdict for the same scan (DRA-06)
   2. Each shortlisted prospect has a draft citing a specific checkable number from its own scan and linking to its own hosted report rather than restating it (DRA-01, DRA-02, DRA-03)
   3. Drafts land as helpful rather than as an insult about someone's website (DRA-04)
   4. The first-contact template carries the Article 14 notice without anyone adding it by hand (DRA-05)
   5. Joshua reads every draft with its scan evidence beside it, edits inline, approves one at a time, or rejects the prospect outright — and finds no bulk-approve action anywhere (QUE-01, QUE-02, QUE-03, QUE-04, QUE-05)
+
 **Plans**: TBD (est. 4-5)
 **UI hint**: yes
 
 **DRA-06 — scoring verdict-threshold fix (first plan of this phase):**
+
 - `lib/scoring.ts` and `scanner-service/src/index.ts` each carry their own verdict-threshold function with different cutoffs (95/85/70/50 vs 90/70/50). Today that is a cosmetic admin-panel mismatch. The moment a draft quotes a verdict in an email to a stranger, the same number has to mean the same thing in the prospect list, the report the prospect clicks through to, and the email — or the pitch contradicts itself in front of the person being pitched. Consolidate into one function exported from `lib/scoring.ts`, imported by `scanner-service/src/index.ts` and the draft generator. **This is a one-function prerequisite scheduled as the first plan of this phase — it does not gate Phases 1-5.** Numbered as DRA-06 on 2026-07-17 at Joshua's direction, after the roadmapper correctly flagged that unnumbered work goes untracked.
 
 Notes:
+
 - The **intentional** per-page (`scorePage()`) vs aggregate (`aggregateScores()`) split stays. It is documented layering, not a bug, and triage's score is a third independent function that touches neither. Only the verdict-threshold divergence gets fixed. Do not turn this into a scoring refactor.
 - The draft generator needs **full scan output**, not triage output. Triage is too thin to write a credible evidence-based line.
 - Suppression is NOT checked here. It gates send only (Phase 8) — state changes while a draft waits in the queue.
@@ -158,39 +193,47 @@ Notes:
 - No bulk-approve, by design. It directly undermines the human gate the compliance posture depends on.
 
 ### Phase 7: Lifecycle, Reporting & Retention
+
 **Goal**: Joshua sees what the funnel actually did, and data that has outlived its basis expires without him thinking about it
 **Depends on**: Phase 4
 **Requirements**: TRK-01, TRK-02, TRK-03, TRK-04, TRK-05, CMP-13, CMP-14, CMP-15
 **Success Criteria** (what must be TRUE):
+
   1. Every prospect shows a lifecycle state of new, qualified, contacted, replied, or booked, advancing off real events rather than manual bookkeeping (TRK-01, TRK-02)
   2. Joshua sees how many prospects were imported, triaged, scanned, and contacted per run (TRK-05)
   3. Joshua sees reply rate across contacted prospects and booked calls attributable to outreach, from the existing Fillout `booked_at` signal (TRK-03, TRK-04)
   4. Prospect, scan, and outreach data past the retention window expires on a schedule, deleting or anonymising by config rather than by hardcoding (CMP-13, CMP-14)
   5. Suppression records survive the retention job and are flagged in code as permanently exempt (CMP-15)
+
 **Plans**: TBD (est. 3-4)
 **UI hint**: yes
 
 Notes:
+
 - **Placed before the gated send phase on purpose.** ARCHITECTURE.md's build order put reporting last, but that ordering assumed send was not gated. Reporting is presentation, not new plumbing — it ships and reads honest zeros until Phase 8 lands.
 - Honest dependency: the `contacted` transition and the channel-specific reply signal are fired by Phase 8. This phase builds the state machine, the transitions that already have events (new, qualified from triage, booked from the existing Fillout webhook), and the counters. Phase 8 calls the hooks it defines. Reply rate and booked-call figures read empty until then.
 - CMP-13's 12-month window is a **placeholder pending the LIA, not a legal fact**. It is config (CMP-14), so counsel's answer changes a value, not the code.
 - CMP-15 is the trap: deleting a suppression record to satisfy a generic retention job recreates the exact problem retention exists to prevent. It gets an explicit code comment, not just a config default someone can quietly flip.
 
 ### Phase 8: Send — GATED
+
 **Goal**: An approved message reaches a real business through a channel that permits it, with the proof of why it was allowed to
 **Depends on**: Phase 2, Phase 6, **and the Parallel Track send-path decision**
 **Requirements**: SND-01, SND-02, SND-03, SND-04, CMP-02, CMP-09, CMP-10, CMP-11, CMP-12
 **Success Criteria** (what must be TRUE):
+
   1. Joshua approves a message and it dispatches through a channel whose own AUP permits outreach, verified in writing before any code was built against it (SND-01, SND-04)
   2. Every electronic message carries `List-Unsubscribe` and `List-Unsubscribe-Post` one-click headers (SND-02)
   3. An outreach failure leaves the existing public scanner's transactional email untouched and working (SND-03)
   4. A send is refused when the address is suppressed at that moment, and a first-touch send is refused when the Article 14 notice flag is not true (CMP-02, CMP-10)
   5. Joshua answers "why were we allowed to email this business?" in seconds from an immutable per-send record holding the resolved address and classification, the content actually sent, legal basis, LIA version, Tw exemption claimed, approver, and the suppression-check result (CMP-09, CMP-11, CMP-12)
+
 **Plans**: TBD (est. 3-4)
 
 > ⚠️ **BLOCKED on the send-path decision.** Do not plan or build this phase until the Parallel Track closes.
 
 Notes:
+
 - **Resend is ruled out.** Its AUP prohibits "unsolicited messages of any kind, including cold outreach, purchased lists, or scraped contact data" (verified verbatim, current 2026-05-28). No low-volume carve-out. The channel and provider are deliberately **UNDECIDED**.
 - Resend stays exactly where it is: transactional email for the existing public scanner, untouched and uncontaminated. SND-03 is what enforces that separation.
 - Changing provider fixes the AUP problem. It does **not** fix the legal-basis problem — Telecommunicatiewet is indifferent to whether Resend, Gmail, or a human hand sent the message. These are two separate problems and this conflation has already come up twice.
