@@ -53,7 +53,7 @@ This track runs alongside Phases 1–7 from day one. It gates **Phase 8 only**. 
   4. Every prospect shows which country it belongs to (IMP-06)
   5. Prospects with no website appear marked as such and never enter the outreach flow (IMP-07)
 
-**Plans**: 2/4 plans executed
+**Plans**: 3/4 plans executed
 **Wave 1**
 
 - [x] 01-01-PLAN.md — Migrations 010–013 (prospects, prospect_sources, outreach_messages, scans.prospect_id) + [BLOCKING] live-prod schema push (wave 1)
@@ -61,7 +61,7 @@ This track runs alongside Phases 1–7 from day one. It gates **Phase 8 only**. 
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 01-03-PLAN.md — Dedupe engine: normalizeDomain (tldts) + upsertOverturePlace (GERS-then-domain branching, freeze-by-omission) + integration suite (wave 2)
+- [x] 01-03-PLAN.md — Dedupe engine: normalizeDomain (tldts) + upsertOverturePlace (GERS-then-domain branching, freeze-by-omission) + integration suite (wave 2)
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
@@ -250,7 +250,7 @@ Phase 8 does not begin until the Parallel Track closes, regardless of numeric or
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Prospect Data Foundation & Import | 2/4 | In Progress|  |
+| 1. Prospect Data Foundation & Import | 3/4 | In Progress|  |
 | 2. Compliance Spine | 0/TBD | Not started | - |
 | 3. Triage & Shortlist | 0/TBD | Not started | - |
 | 4. Bulk Scan Queue | 0/TBD | Not started | - |

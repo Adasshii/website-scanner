@@ -5,15 +5,15 @@ milestone_name: milestone
 current_phase: 1
 current_phase_name: Prospect Data Foundation & Import
 status: executing
-stopped_at: Completed 01-02-PLAN.md (vitest infra + duckdb/tldts installed + Overture/prospect types + fixture generator)
-last_updated: "2026-07-18T19:39:05.904Z"
+stopped_at: Completed 01-03-PLAN.md (normalizeDomain + upsertOverturePlace identity/dedupe core, integration-tested against local Supabase)
+last_updated: "2026-07-18T19:59:55.994Z"
 last_activity: 2026-07-18
 last_activity_desc: Phase 1 execution started
 progress:
   total_phases: 8
   completed_phases: 0
   total_plans: 4
-  completed_plans: 2
+  completed_plans: 3
   percent: 0
 ---
 
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-07-17)
 ## Current Position
 
 Phase: 1 (Prospect Data Foundation & Import) — EXECUTING
-Plan: 3 of 4
+Plan: 4 of 4
 Status: Ready to execute
 Last activity: 2026-07-18 — Phase 1 execution started
 
@@ -57,6 +57,7 @@ Progress: [░░░░░░░░░░] 0%
 *Updated after each plan completion*
 | Phase 01 P01 | 5min | 3 tasks | 4 files |
 | Phase 01 P02 | 12min | 3 tasks | 5 files |
+| Phase 01 P03 | 20min | 3 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -74,6 +75,8 @@ Recent decisions affecting current work:
 - [Phase 01-01]: Live push (migrations 010-013) applied via Supabase dashboard SQL Editor, not supabase db push CLI — Matches convention used for migrations 001-009 on this project; all DDL is IF NOT EXISTS/idempotent so a future CLI push stays safe
 - [Phase 01-02]: Human approved @duckdb/node-api and tldts as legitimate (official org repos, high download counts, too-new-publish false positive) before install
 - [Phase 01-02]: Added vitest passWithNoTests:true so npx vitest run exits 0 before 01-03/01-04 add test files
+- [Phase 01-03]: D-14 (no_website gains website) required no special-case code — the existing D-05 else-branch (website_url_pending) already applies since no_website prospects are never lifecycle_state='new'
+- [Phase 01-03]: Added supabase/seed.sql (local-dev-only grants) to unblock local integration testing — repo had no prior supabase/config.toml/local-dev history, causing "permission denied" on all tables including pre-existing ones
 
 ### Pending Todos
 
@@ -96,6 +99,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-18T19:39:05.895Z
-Stopped at: Completed 01-02-PLAN.md (vitest infra + duckdb/tldts installed + Overture/prospect types + fixture generator)
+Last session: 2026-07-18T19:59:55.987Z
+Stopped at: Completed 01-03-PLAN.md (normalizeDomain + upsertOverturePlace identity/dedupe core, integration-tested against local Supabase)
 Resume file: None

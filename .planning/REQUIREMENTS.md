@@ -15,7 +15,7 @@
 
 - [x] **IMP-01**: Joshua can import businesses from Overture Maps filtered by country, region, and category
 - [ ] **IMP-02**: Import runs as a repeatable script with parameters, not manual data entry
-- [ ] **IMP-03**: Re-running the importer does not create duplicate prospects (stable identity via Overture GERS ID)
+- [x] **IMP-03**: Re-running the importer does not create duplicate prospects (stable identity via Overture GERS ID)
 - [x] **IMP-04**: Prospects are deduplicated by normalised registrable domain, so the same business at two Overture records becomes one prospect
 - [x] **IMP-05**: Re-import never overwrites or resets triage results, lifecycle state, or approval history Joshua has already produced
 - [x] **IMP-06**: Import records which country each prospect belongs to, so downstream legal rules can be applied per country
@@ -155,7 +155,7 @@ Populated during roadmap creation. See `.planning/ROADMAP.md` for phase detail.
 |-------------|-------|--------|
 | IMP-01 | Phase 1 | Complete |
 | IMP-02 | Phase 1 | Pending |
-| IMP-03 | Phase 1 | Pending |
+| IMP-03 | Phase 1 | Complete |
 | IMP-04 | Phase 1 | Complete |
 | IMP-05 | Phase 1 | Complete |
 | IMP-06 | Phase 1 | Complete |
