@@ -5,15 +5,15 @@ milestone_name: milestone
 current_phase: 1
 current_phase_name: Prospect Data Foundation & Import
 status: executing
-stopped_at: Completed 01-01-PLAN.md (Task 3 checkpoint approved; gate satisfied via dashboard SQL Editor push, all-zeros verified)
-last_updated: "2026-07-18T19:30:24.604Z"
+stopped_at: Completed 01-02-PLAN.md (vitest infra + duckdb/tldts installed + Overture/prospect types + fixture generator)
+last_updated: "2026-07-18T19:39:05.904Z"
 last_activity: 2026-07-18
 last_activity_desc: Phase 1 execution started
 progress:
   total_phases: 8
   completed_phases: 0
   total_plans: 4
-  completed_plans: 1
+  completed_plans: 2
   percent: 0
 ---
 
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-07-17)
 ## Current Position
 
 Phase: 1 (Prospect Data Foundation & Import) — EXECUTING
-Plan: 2 of 4
+Plan: 3 of 4
 Status: Ready to execute
 Last activity: 2026-07-18 — Phase 1 execution started
 
@@ -56,6 +56,7 @@ Progress: [░░░░░░░░░░] 0%
 
 *Updated after each plan completion*
 | Phase 01 P01 | 5min | 3 tasks | 4 files |
+| Phase 01 P02 | 12min | 3 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -71,6 +72,8 @@ Recent decisions affecting current work:
 - [Research]: Resend ruled out for outreach (AUP prohibits cold outreach verbatim). Channel deliberately undecided.
 - [Research]: Tw art. 11.7 lid 2(a) does not cover scraped `info@`. Default posture is legitimate interest + Article 14 notice.
 - [Phase 01-01]: Live push (migrations 010-013) applied via Supabase dashboard SQL Editor, not supabase db push CLI — Matches convention used for migrations 001-009 on this project; all DDL is IF NOT EXISTS/idempotent so a future CLI push stays safe
+- [Phase 01-02]: Human approved @duckdb/node-api and tldts as legitimate (official org repos, high download counts, too-new-publish false positive) before install
+- [Phase 01-02]: Added vitest passWithNoTests:true so npx vitest run exits 0 before 01-03/01-04 add test files
 
 ### Pending Todos
 
@@ -93,6 +96,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-18T19:29:28.706Z
-Stopped at: Completed 01-01-PLAN.md (Task 3 checkpoint approved; gate satisfied via dashboard SQL Editor push, all-zeros verified)
+Last session: 2026-07-18T19:39:05.895Z
+Stopped at: Completed 01-02-PLAN.md (vitest infra + duckdb/tldts installed + Overture/prospect types + fixture generator)
 Resume file: None
