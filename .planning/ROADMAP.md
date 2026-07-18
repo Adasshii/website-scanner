@@ -15,7 +15,7 @@ The compliance spine is not the last phase. Suppression and unsubscribe ship in 
 
 Decimal phases appear between their surrounding integers in numeric order.
 
-- [ ] **Phase 1: Prospect Data Foundation & Import** - Overture businesses become a durable prospect list that survives re-import
+- [x] **Phase 1: Prospect Data Foundation & Import** - Overture businesses become a durable prospect list that survives re-import (completed 2026-07-18)
 - [ ] **Phase 2: Compliance Spine** - Suppression, unsubscribe, and versioned legal basis exist before anything can be sent
 - [ ] **Phase 3: Triage & Shortlist** - Every prospect gets a cheap verdict; only the worst earn a full scan
 - [ ] **Phase 4: Bulk Scan Queue** - Shortlisted prospects get real scan reports without harming the live public scanner
@@ -53,7 +53,7 @@ This track runs alongside Phases 1–7 from day one. It gates **Phase 8 only**. 
   4. Every prospect shows which country it belongs to (IMP-06)
   5. Prospects with no website appear marked as such and never enter the outreach flow (IMP-07)
 
-**Plans**: 3/4 plans executed
+**Plans**: 4/4 plans complete
 **Wave 1**
 
 - [x] 01-01-PLAN.md — Migrations 010–013 (prospects, prospect_sources, outreach_messages, scans.prospect_id) + [BLOCKING] live-prod schema push (wave 1)
@@ -65,7 +65,7 @@ This track runs alongside Phases 1–7 from day one. It gates **Phase 8 only**. 
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 01-04-PLAN.md — Importer CLI: overture-client (DuckDB, runtime category detection) + import-prospects.ts (--dry-run/--limit, SSRF-safe reachability) + D-11 sample-audit gate (wave 3)
+- [x] 01-04-PLAN.md — Importer CLI: overture-client (DuckDB, runtime category detection) + import-prospects.ts (--dry-run/--limit, SSRF-safe reachability) + D-11 sample-audit gate (wave 3)
 
 Phase work not yet a numbered requirement:
 
@@ -250,7 +250,7 @@ Phase 8 does not begin until the Parallel Track closes, regardless of numeric or
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Prospect Data Foundation & Import | 3/4 | In Progress|  |
+| 1. Prospect Data Foundation & Import | 4/4 | Complete   | 2026-07-18 |
 | 2. Compliance Spine | 0/TBD | Not started | - |
 | 3. Triage & Shortlist | 0/TBD | Not started | - |
 | 4. Bulk Scan Queue | 0/TBD | Not started | - |

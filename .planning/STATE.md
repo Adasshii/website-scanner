@@ -4,17 +4,17 @@ milestone: v1.0
 milestone_name: milestone
 current_phase: 1
 current_phase_name: Prospect Data Foundation & Import
-status: executing
-stopped_at: Completed 01-03-PLAN.md (normalizeDomain + upsertOverturePlace identity/dedupe core, integration-tested against local Supabase)
-last_updated: "2026-07-18T19:59:55.994Z"
+status: verifying
+stopped_at: "Completed 01-04-PLAN.md (Overture importer + D-11 data-quality gate: exact province boundary + aggregator-domain denylist, human-approved)"
+last_updated: "2026-07-18T20:56:44.665Z"
 last_activity: 2026-07-18
 last_activity_desc: Phase 1 execution started
 progress:
   total_phases: 8
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 4
-  completed_plans: 3
-  percent: 0
+  completed_plans: 4
+  percent: 13
 ---
 
 # Project State
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-07-17)
 
 Phase: 1 (Prospect Data Foundation & Import) — EXECUTING
 Plan: 4 of 4
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-07-18 — Phase 1 execution started
 
 Progress: [░░░░░░░░░░] 0%
@@ -58,6 +58,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 01 P01 | 5min | 3 tasks | 4 files |
 | Phase 01 P02 | 12min | 3 tasks | 5 files |
 | Phase 01 P03 | 20min | 3 tasks | 5 files |
+| Phase 01 P04 | 50min | 4 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -77,6 +78,8 @@ Recent decisions affecting current work:
 - [Phase 01-02]: Added vitest passWithNoTests:true so npx vitest run exits 0 before 01-03/01-04 add test files
 - [Phase 01-03]: D-14 (no_website gains website) required no special-case code — the existing D-05 else-branch (website_url_pending) already applies since no_website prospects are never lifecycle_state='new'
 - [Phase 01-03]: Added supabase/seed.sql (local-dev-only grants) to unblock local integration testing — repo had no prior supabase/config.toml/local-dev history, causing "permission denied" on all tables including pre-existing ones
+- [Phase 01-04]: Region matching via addresses[1].region is impossible on real NL data; region scoping uses a bbox pre-filter for pruning plus an exact ST_Within polygon check against the Overture divisions theme (class=land to exclude maritime duplicates) as the true boundary
+- [Phase 01-04]: Aggregator/directory domains (tripadvisor.com, facebook.com, etc.) are never valid prospect identity - resolved to no-website (null domain/website_url, lifecycle_state=no_website) inside upsertOverturePlace, while prospect_sources.raw_website_url preserves the original URL (D-11 human-approval condition)
 
 ### Pending Todos
 
@@ -99,6 +102,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-18T19:59:55.987Z
-Stopped at: Completed 01-03-PLAN.md (normalizeDomain + upsertOverturePlace identity/dedupe core, integration-tested against local Supabase)
+Last session: 2026-07-18T20:56:44.655Z
+Stopped at: Completed 01-04-PLAN.md (Overture importer + D-11 data-quality gate: exact province boundary + aggregator-domain denylist, human-approved)
 Resume file: None
