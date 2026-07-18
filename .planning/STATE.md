@@ -5,15 +5,15 @@ milestone_name: milestone
 current_phase: 1
 current_phase_name: Prospect Data Foundation & Import
 status: executing
-stopped_at: "Plan 01-01 Task 3: paused at blocking human-verify checkpoint (live prod schema push); Tasks 1-2 committed (db9f892, 19cccdb)"
-last_updated: "2026-07-18T11:01:27.345Z"
+stopped_at: Completed 01-01-PLAN.md (Task 3 checkpoint approved; gate satisfied via dashboard SQL Editor push, all-zeros verified)
+last_updated: "2026-07-18T19:30:24.604Z"
 last_activity: 2026-07-18
 last_activity_desc: Phase 1 execution started
 progress:
   total_phases: 8
   completed_phases: 0
   total_plans: 4
-  completed_plans: 0
+  completed_plans: 1
   percent: 0
 ---
 
@@ -29,8 +29,8 @@ See: .planning/PROJECT.md (updated 2026-07-17)
 ## Current Position
 
 Phase: 1 (Prospect Data Foundation & Import) — EXECUTING
-Plan: 1 of 4
-Status: Executing Phase 1
+Plan: 2 of 4
+Status: Ready to execute
 Last activity: 2026-07-18 — Phase 1 execution started
 
 Progress: [░░░░░░░░░░] 0%
@@ -55,6 +55,7 @@ Progress: [░░░░░░░░░░] 0%
 - Trend: —
 
 *Updated after each plan completion*
+| Phase 01 P01 | 5min | 3 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -69,6 +70,7 @@ Recent decisions affecting current work:
 - [Roadmap]: Phase 7 (lifecycle/reporting) placed before the gated send phase so it ships; ARCHITECTURE.md's "reporting last" ordering assumed send was not gated.
 - [Research]: Resend ruled out for outreach (AUP prohibits cold outreach verbatim). Channel deliberately undecided.
 - [Research]: Tw art. 11.7 lid 2(a) does not cover scraped `info@`. Default posture is legitimate interest + Article 14 notice.
+- [Phase 01-01]: Live push (migrations 010-013) applied via Supabase dashboard SQL Editor, not supabase db push CLI — Matches convention used for migrations 001-009 on this project; all DDL is IF NOT EXISTS/idempotent so a future CLI push stays safe
 
 ### Pending Todos
 
@@ -80,7 +82,6 @@ None yet.
 - **Scoring verdict-threshold divergence** (`lib/scoring.ts` vs `scanner-service/src/index.ts`, 95/85/70/50 vs 90/70/50) is scheduled as the first plan of Phase 6 but is not a numbered v1 requirement. REQUIREMENTS.md may need an addition — see ROADMAP Coverage Notes.
 - **Blast radius:** nothing in this milestone may risk the existing scanner's email or scanning. It works and it earns. Phase 4 verification watches the public scanner's success rate during bulk runs.
 - **Overture data quality** is a proven risk here, not theoretical — prior research produced a 98% false-positive read before correction. Manual sample audit required in Phase 1.
-- Plan 01-01 Task 3 paused: awaiting human authorization to run supabase db push (migrations 010-013) against live production Supabase
 
 ## Deferred Items
 
@@ -92,6 +93,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-18T11:01:27.338Z
-Stopped at: Plan 01-01 Task 3: paused at blocking human-verify checkpoint (live prod schema push); Tasks 1-2 committed (db9f892, 19cccdb)
-Resume file: .planning/phases/01-prospect-data-foundation-import/01-01-PLAN.md
+Last session: 2026-07-18T19:29:28.706Z
+Stopped at: Completed 01-01-PLAN.md (Task 3 checkpoint approved; gate satisfied via dashboard SQL Editor push, all-zeros verified)
+Resume file: None
