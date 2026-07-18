@@ -96,6 +96,24 @@ their behavior.
   anything proceeds.
 - **D-12: Country is recorded per prospect** (IMP-06), a parameter and never hardcoded,
   so downstream legal rules apply per country. NL is the first target, not the only one.
+- **D-13: `country` is first-seen-wins AND frozen, because it is legally load-bearing.**
+  It is set on first import and NEVER auto-changed by a later re-import, even while the
+  prospect is still `new` (stricter than `website_url`, which may refresh during `new`).
+  A prospect triaged/contacted under one country's legal rules must not have that basis
+  silently shift. If Overture later reports a different country, record it as a flagged
+  change for Joshua to review (same pattern as D-05's `website_url` change), never
+  auto-apply. Rationale: the legal-basis distinction is the crux of the milestone
+  (surfaced by Phase 1 research as an open question CONTEXT.md hadn't resolved).
+- **D-14: A `no_website` prospect that later gains a website is recorded + flagged, not
+  auto-transitioned.** When a re-import brings a `website_url` for a prospect currently in
+  `lifecycle_state = 'no_website'` (GERS-keyed, null `domain`), the new URL is stored as a
+  pending value and flagged; the prospect STAYS `no_website` and null-domain until Joshua
+  accepts it. Do NOT auto-fill `domain` / flip to `new` on import: auto-filling could
+  violate the partial-unique domain constraint if another prospect already owns that
+  registrable domain, and it would silently move the row between identity schemes
+  (GERS-keyed → domain-keyed). Consistent with D-05's flag-don't-apply rule. The
+  acceptance action (populate domain, collision-check, transition to `new`) belongs to the
+  admin review surface (Phase 3+), not the importer. (Surfaced by Phase 1 research.)
 
 ### Claude's Discretion
 - Exact column names/types beyond those named above, the `prospect_sources` table's full
