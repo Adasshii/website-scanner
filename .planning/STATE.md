@@ -6,14 +6,14 @@ current_phase: 02
 current_phase_name: compliance-spine
 status: executing
 stopped_at: Phase 2 context gathered
-last_updated: "2026-07-19T22:04:11.678Z"
+last_updated: "2026-07-19T22:10:56.547Z"
 last_activity: 2026-07-19
 last_activity_desc: Phase 02 execution started
 progress:
   total_phases: 8
   completed_phases: 1
   total_plans: 11
-  completed_plans: 5
+  completed_plans: 6
   percent: 13
 ---
 
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-07-17)
 ## Current Position
 
 Phase: 02 (compliance-spine) — EXECUTING
-Plan: 2 of 7
+Plan: 3 of 7
 Status: Ready to execute
 Last activity: 2026-07-19 — Phase 02 execution started
 
@@ -60,6 +60,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 01 P03 | 20min | 3 tasks | 5 files |
 | Phase 01 P04 | 50min | 4 tasks | 8 files |
 | Phase 02-compliance-spine P01 | 12min | 3 tasks | 5 files |
+| Phase 02 P02 | 12min | 3 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -84,6 +85,8 @@ Recent decisions affecting current work:
 - [Phase ?]: isSuppressed matches active rows via a single .or(email.eq.X,domain.eq.Y) query, proving both exact-match and domain-wide match
 - [Phase ?]: lib/suppression.ts never references prospects or lifecycle_state (D-07 pure lookup), verified by grep gate
 - [Phase ?]: supabase/.branches/ added to .gitignore rather than committed (Supabase CLI local artifact)
+- [Phase 02]: legal_regimes.current_lia_version is a hard FK to lia_versions(version), enforced at the DB level
+- [Phase 02]: lia_versions immutability enforced via a BEFORE UPDATE OR DELETE trigger (Pitfall 6), not app-level convention
 
 ### Pending Todos
 
@@ -106,6 +109,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-19T22:02:53.960Z
+Last session: 2026-07-19T22:10:00.173Z
 Stopped at: Phase 2 context gathered
 Resume file: .planning/phases/02-compliance-spine/02-CONTEXT.md

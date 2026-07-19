@@ -79,7 +79,7 @@
 - [x] **CMP-05**: Unsubscribes take effect permanently and by the very next send cycle, with no delay language
 - [x] **CMP-06**: No code path can re-add a suppressed record without an explicit, logged manual override
 - [ ] **CMP-07**: Hard bounces and spam complaints automatically suppress, wired to the existing Resend event webhook
-- [ ] **CMP-08**: A versioned Legitimate Interest Assessment lives in the repo, and every send references the LIA version that applied to it
+- [x] **CMP-08**: A versioned Legitimate Interest Assessment lives in the repo, and every send references the LIA version that applied to it
 - [ ] **CMP-09**: Every send record stores legal basis, LIA version, and whether a Tw exemption was claimed
 - [ ] **CMP-10**: The send layer refuses a first-touch send unless the Article 14 notice flag is true
 - [ ] **CMP-11**: Every send persists an immutable record: prospect, resolved address and classification, timestamp, the message content actually sent, legal basis, approver, and the suppression-check result
@@ -87,7 +87,7 @@
 - [ ] **CMP-13**: A scheduled retention job expires prospect, scan, and outreach data (placeholder: 12 months from last contact, pending the LIA — not a legal fact)
 - [ ] **CMP-14**: Retention expiry can delete or anonymise by config, not hardcoded
 - [ ] **CMP-15**: Suppression records are exempt from retention deletion and retained indefinitely, flagged explicitly in code so nobody silently changes it
-- [ ] **CMP-16**: Legal-basis rules live in a per-country config table (`country_code`, `spam_law_regime`, `notes_url`), never hardcoded NL logic
+- [x] **CMP-16**: Legal-basis rules live in a per-country config table (`country_code`, `spam_law_regime`, `notes_url`), never hardcoded NL logic
 - [ ] **CMP-17**: The scan pipeline does not separately index, profile, or reuse incidental personal data (staff photos, named bios) captured in screenshots
 
 ### Send — GATED
@@ -201,7 +201,7 @@ Populated during roadmap creation. See `.planning/ROADMAP.md` for phase detail.
 | CMP-05 | Phase 2 | Complete |
 | CMP-06 | Phase 2 | Complete |
 | CMP-07 | Phase 2 | Pending |
-| CMP-08 | Phase 2 | Pending |
+| CMP-08 | Phase 2 | Complete |
 | CMP-09 | Phase 8 | Pending (gated) |
 | CMP-10 | Phase 8 | Pending (gated) |
 | CMP-11 | Phase 8 | Pending (gated) |
@@ -209,7 +209,7 @@ Populated during roadmap creation. See `.planning/ROADMAP.md` for phase detail.
 | CMP-13 | Phase 7 | Pending |
 | CMP-14 | Phase 7 | Pending |
 | CMP-15 | Phase 7 | Pending |
-| CMP-16 | Phase 2 | Pending |
+| CMP-16 | Phase 2 | Complete |
 | CMP-17 | Phase 4 | Pending |
 | SND-01 | Phase 8 | Pending (gated) |
 | SND-02 | Phase 8 | Pending (gated) |
