@@ -2,18 +2,18 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_phase: 2
-current_phase_name: Compliance Spine
+current_phase: 02
+current_phase_name: compliance-spine
 status: executing
 stopped_at: Phase 2 context gathered
-last_updated: "2026-07-19T18:26:05.284Z"
-last_activity: 2026-07-18
-last_activity_desc: Phase 1 complete, transitioned to Phase 2
+last_updated: "2026-07-19T22:04:11.678Z"
+last_activity: 2026-07-19
+last_activity_desc: Phase 02 execution started
 progress:
   total_phases: 8
   completed_phases: 1
-  total_plans: 4
-  completed_plans: 4
+  total_plans: 11
+  completed_plans: 5
   percent: 13
 ---
 
@@ -24,14 +24,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-17)
 
 **Core value:** Joshua opens the tool and finds businesses genuinely worth pitching, with the proof already written, so that outreach costs him minutes instead of hours.
-**Current focus:** Phase 1 — Prospect Data Foundation & Import
+**Current focus:** Phase 02 — compliance-spine
 
 ## Current Position
 
-Phase: 2 — Compliance Spine
-Plan: Not started
+Phase: 02 (compliance-spine) — EXECUTING
+Plan: 2 of 7
 Status: Ready to execute
-Last activity: 2026-07-18 — Phase 1 complete, transitioned to Phase 2
+Last activity: 2026-07-19 — Phase 02 execution started
 
 Progress: [░░░░░░░░░░] 0%
 
@@ -59,6 +59,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 01 P02 | 12min | 3 tasks | 5 files |
 | Phase 01 P03 | 20min | 3 tasks | 5 files |
 | Phase 01 P04 | 50min | 4 tasks | 8 files |
+| Phase 02-compliance-spine P01 | 12min | 3 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -80,6 +81,9 @@ Recent decisions affecting current work:
 - [Phase 01-03]: Added supabase/seed.sql (local-dev-only grants) to unblock local integration testing — repo had no prior supabase/config.toml/local-dev history, causing "permission denied" on all tables including pre-existing ones
 - [Phase 01-04]: Region matching via addresses[1].region is impossible on real NL data; region scoping uses a bbox pre-filter for pruning plus an exact ST_Within polygon check against the Overture divisions theme (class=land to exclude maritime duplicates) as the true boundary
 - [Phase 01-04]: Aggregator/directory domains (tripadvisor.com, facebook.com, etc.) are never valid prospect identity - resolved to no-website (null domain/website_url, lifecycle_state=no_website) inside upsertOverturePlace, while prospect_sources.raw_website_url preserves the original URL (D-11 human-approval condition)
+- [Phase ?]: isSuppressed matches active rows via a single .or(email.eq.X,domain.eq.Y) query, proving both exact-match and domain-wide match
+- [Phase ?]: lib/suppression.ts never references prospects or lifecycle_state (D-07 pure lookup), verified by grep gate
+- [Phase ?]: supabase/.branches/ added to .gitignore rather than committed (Supabase CLI local artifact)
 
 ### Pending Todos
 
@@ -102,6 +106,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-19T17:37:37.387Z
+Last session: 2026-07-19T22:02:53.960Z
 Stopped at: Phase 2 context gathered
 Resume file: .planning/phases/02-compliance-spine/02-CONTEXT.md
