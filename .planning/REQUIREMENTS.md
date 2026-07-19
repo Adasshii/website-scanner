@@ -78,7 +78,7 @@
 - [x] **CMP-04**: An unsubscribe endpoint writes to the suppression list synchronously before returning success, and is idempotent
 - [x] **CMP-05**: Unsubscribes take effect permanently and by the very next send cycle, with no delay language
 - [x] **CMP-06**: No code path can re-add a suppressed record without an explicit, logged manual override
-- [ ] **CMP-07**: Hard bounces and spam complaints automatically suppress, wired to the existing Resend event webhook
+- [x] **CMP-07**: Hard bounces and spam complaints automatically suppress, wired to the existing Resend event webhook
 - [x] **CMP-08**: A versioned Legitimate Interest Assessment lives in the repo, and every send references the LIA version that applied to it
 - [ ] **CMP-09**: Every send record stores legal basis, LIA version, and whether a Tw exemption was claimed
 - [ ] **CMP-10**: The send layer refuses a first-touch send unless the Article 14 notice flag is true
@@ -200,7 +200,7 @@ Populated during roadmap creation. See `.planning/ROADMAP.md` for phase detail.
 | CMP-04 | Phase 2 | Complete |
 | CMP-05 | Phase 2 | Complete |
 | CMP-06 | Phase 2 | Complete |
-| CMP-07 | Phase 2 | Pending |
+| CMP-07 | Phase 2 | Complete |
 | CMP-08 | Phase 2 | Complete |
 | CMP-09 | Phase 8 | Pending (gated) |
 | CMP-10 | Phase 8 | Pending (gated) |
