@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Webhook } from "svix";
 import { createServerClient } from "@/lib/supabase";
+import { normalizeDomain } from "@/lib/domain-normalize";
+import { writeSuppression } from "@/lib/suppression";
 
 export const runtime = "nodejs";
 
@@ -55,16 +57,35 @@ export async function POST(request: NextRequest) {
 
     // Update the email_events row
     const supabase = createServerClient();
-    const { error } = await supabase
+    const { data: updated, error } = await supabase
       .from("email_events")
       .update({
         status: newStatus,
         updated_at: new Date().toISOString(),
       })
-      .eq("resend_email_id", resendEmailId);
+      .eq("resend_email_id", resendEmailId)
+      .select("email")
+      .maybeSingle(); // read the recipient back — payload never carries it (Pitfall 2)
 
     if (error) {
       console.error("[webhook/resend] Failed to update email event:", error);
+    }
+
+    // CMP-07/D-05: hard bounce and spam complaint both suppress domain-wide,
+    // one rule one code path. Wrapped so a failure here never changes the
+    // webhook's existing 200 acknowledgement behaviour (T-02-19).
+    if (updated?.email && (newStatus === "bounced" || newStatus === "complained")) {
+      try {
+        const domain = normalizeDomain(updated.email);
+        await writeSuppression(supabase, {
+          email: updated.email.toLowerCase(),
+          domain,
+          reason: newStatus,
+          source: "resend_webhook",
+        });
+      } catch (suppressError) {
+        console.error("[webhook/resend] auto-suppress failed", suppressError);
+      }
     }
 
     return NextResponse.json({ received: true, status: newStatus });
