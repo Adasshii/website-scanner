@@ -28,6 +28,9 @@ yarn-error.log*
 
 # local env files
 .env
+
+# supabase CLI local artifacts
+supabase/.branches/
 .env*.local
 
 # vercel
