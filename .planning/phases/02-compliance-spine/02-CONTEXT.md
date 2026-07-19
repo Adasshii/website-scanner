@@ -72,7 +72,7 @@ contacting anyone recorded and versioned. It delivers, and only delivers:
   same shape as `scripts/import-prospects.ts`: explicit arguments, prints what it
   did, writes the log entry. Satisfies CMP-06 without building throwaway UI ahead
   of Phase 3.
-- **D-09: Override *lifts*, never deletes.** The suppression row stays forever
+- **D-09: Override _lifts_, never deletes.** The suppression row stays forever
   with `lifted_at` + `lifted_by_reason` (or equivalent); matching ignores lifted
   rows; a later re-suppression adds a new row. Preserves the full audit trail and
   aligns with CMP-15's "suppressions retained indefinitely" posture.
