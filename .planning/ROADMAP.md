@@ -16,7 +16,7 @@ The compliance spine is not the last phase. Suppression and unsubscribe ship in 
 Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: Prospect Data Foundation & Import** - Overture businesses become a durable prospect list that survives re-import (completed 2026-07-18)
-- [ ] **Phase 2: Compliance Spine** - Suppression, unsubscribe, and versioned legal basis exist before anything can be sent
+- [x] **Phase 2: Compliance Spine** - Suppression, unsubscribe, and versioned legal basis exist before anything can be sent (completed 2026-07-19)
 - [ ] **Phase 3: Triage & Shortlist** - Every prospect gets a cheap verdict; only the worst earn a full scan
 - [ ] **Phase 4: Bulk Scan Queue** - Shortlisted prospects get real scan reports without harming the live public scanner
 - [ ] **Phase 5: Contact Extraction & Classification** - Each scanned prospect carries a contact address whose legal status is known
@@ -102,7 +102,7 @@ Notes:
 - [x] 02-04-PLAN.md — app/api/unsubscribe/[token]/route.ts (GET verify→write→confirm, RFC 8058 one-click POST) + integration test (wave 2)
 - [x] 02-05-PLAN.md — Resend webhook auto-suppression (extend in place) + scripts/backfill-suppressions.ts (D-06) + tests (wave 2)
 - [x] 02-06-PLAN.md — scripts/suppression-override.ts (logged lift) + scripts/legal-basis.ts (country→regime→LIA lookup) + tests (wave 2)
-- [ ] 02-07-PLAN.md — [BLOCKING] apply migrations 014 + 015 to the live Supabase project (wave 2, human gate)
+- [x] 02-07-PLAN.md — [BLOCKING] apply migrations 014 + 015 to the live Supabase project (wave 2, human gate)
 
 Notes:
 
@@ -264,7 +264,7 @@ Phase 8 does not begin until the Parallel Track closes, regardless of numeric or
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Prospect Data Foundation & Import | 4/4 | Complete    | 2026-07-18 |
-| 2. Compliance Spine | 6/7 | In Progress|  |
+| 2. Compliance Spine | 7/7 | Complete    | 2026-07-19 |
 | 3. Triage & Shortlist | 0/TBD | Not started | - |
 | 4. Bulk Scan Queue | 0/TBD | Not started | - |
 | 5. Contact Extraction & Classification | 0/TBD | Not started | - |
