@@ -126,3 +126,7 @@ None - no external service configuration required. Both scripts use the existing
 ---
 *Phase: 02-compliance-spine*
 *Completed: 2026-07-20*
+
+## Self-Check: PASSED
+
+All created files verified present on disk (scripts/suppression-override.ts, scripts/suppression-override.test.ts, scripts/legal-basis.ts, scripts/legal-basis.test.ts, this SUMMARY.md). All task commits (bc178ae, 2930a70) and this doc commit (145000d) verified present in `git log`.
