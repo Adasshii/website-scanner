@@ -89,7 +89,7 @@ Notes:
   4. Re-adding a suppressed record is impossible without an explicit override that leaves a log entry (CMP-06)
   5. Joshua can look up which LIA version and which country's legal regime applies to a given prospect (CMP-08, CMP-16)
 
-**Plans**: 3/7 plans executed
+**Plans**: 4/7 plans executed
 
 **Wave 1** *(independent foundations — parallel)*
 
@@ -99,7 +99,7 @@ Notes:
 
 **Wave 2** *(consumers — blocked on Wave 1)*
 
-- [ ] 02-04-PLAN.md — app/api/unsubscribe/[token]/route.ts (GET verify→write→confirm, RFC 8058 one-click POST) + integration test (wave 2)
+- [x] 02-04-PLAN.md — app/api/unsubscribe/[token]/route.ts (GET verify→write→confirm, RFC 8058 one-click POST) + integration test (wave 2)
 - [ ] 02-05-PLAN.md — Resend webhook auto-suppression (extend in place) + scripts/backfill-suppressions.ts (D-06) + tests (wave 2)
 - [ ] 02-06-PLAN.md — scripts/suppression-override.ts (logged lift) + scripts/legal-basis.ts (country→regime→LIA lookup) + tests (wave 2)
 - [ ] 02-07-PLAN.md — [BLOCKING] apply migrations 014 + 015 to the live Supabase project (wave 2, human gate)
@@ -264,7 +264,7 @@ Phase 8 does not begin until the Parallel Track closes, regardless of numeric or
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Prospect Data Foundation & Import | 4/4 | Complete    | 2026-07-18 |
-| 2. Compliance Spine | 3/7 | In Progress|  |
+| 2. Compliance Spine | 4/7 | In Progress|  |
 | 3. Triage & Shortlist | 0/TBD | Not started | - |
 | 4. Bulk Scan Queue | 0/TBD | Not started | - |
 | 5. Contact Extraction & Classification | 0/TBD | Not started | - |

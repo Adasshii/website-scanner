@@ -6,14 +6,14 @@ current_phase: 02
 current_phase_name: compliance-spine
 status: executing
 stopped_at: Phase 2 context gathered
-last_updated: "2026-07-19T22:15:29.211Z"
+last_updated: "2026-07-19T22:22:41.739Z"
 last_activity: 2026-07-19
 last_activity_desc: Phase 02 execution started
 progress:
   total_phases: 8
   completed_phases: 1
   total_plans: 11
-  completed_plans: 7
+  completed_plans: 8
   percent: 13
 ---
 
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-07-17)
 ## Current Position
 
 Phase: 02 (compliance-spine) — EXECUTING
-Plan: 4 of 7
+Plan: 5 of 7
 Status: Ready to execute
 Last activity: 2026-07-19 — Phase 02 execution started
 
@@ -62,6 +62,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 02-compliance-spine P01 | 12min | 3 tasks | 5 files |
 | Phase 02 P02 | 12min | 3 tasks | 3 files |
 | Phase 02-compliance-spine P03 | 20min | 1 tasks | 2 files |
+| Phase 02 P04 | 20min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -90,6 +91,7 @@ Recent decisions affecting current work:
 - [Phase 02]: lia_versions immutability enforced via a BEFORE UPDATE OR DELETE trigger (Pitfall 6), not app-level convention
 - [Phase ?]: Unsubscribe token follows RESEARCH Pattern 3 verbatim: HMAC-SHA256 over node:crypto, UUID-only payload, no JWT dependency, no expiry
 - [Phase ?]: Added internal getSecret() helper shared by sign/verify for the fail-closed missing-secret check, avoiding drift between the two functions
+- [Phase ?]: Unsubscribe route queries only contact_email + country from prospects, never lifecycle_state, keeping suppression a pure lookup (D-07)
 
 ### Pending Todos
 
@@ -112,6 +114,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-19T22:14:54.376Z
+Last session: 2026-07-19T22:21:54.908Z
 Stopped at: Phase 2 context gathered
 Resume file: .planning/phases/02-compliance-spine/02-CONTEXT.md
