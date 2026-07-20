@@ -6,14 +6,14 @@ current_phase: 03
 current_phase_name: triage-shortlist
 status: executing
 stopped_at: Completed 03-04-PLAN.md
-last_updated: "2026-07-20T14:11:25.668Z"
+last_updated: "2026-07-20T14:19:20.900Z"
 last_activity: 2026-07-20
 last_activity_desc: Phase 03 execution started
 progress:
   total_phases: 8
   completed_phases: 2
   total_plans: 17
-  completed_plans: 15
+  completed_plans: 16
   percent: 25
 ---
 
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-07-17)
 ## Current Position
 
 Phase: 03 (triage-shortlist) — EXECUTING
-Plan: 5 of 6
+Plan: 6 of 6
 Status: Ready to execute
 Last activity: 2026-07-20 — Phase 03 execution started
 
@@ -69,6 +69,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 03 P01 | 15min | 3 tasks | 5 files |
 | Phase 03 P03 | 15min | 2 tasks | 3 files |
 | Phase 03 P04 | 10min | 2 tasks | 5 files |
+| Phase 03 P05 | 20min | 3 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -106,6 +107,7 @@ Recent decisions affecting current work:
 - [Phase ?]: Release ceiling enforced with a JS .slice(0, ceiling) over real-number-sorted rows, not a Postgres jsonb ->> text-comparison filter/order/limit (Pitfall 5)
 - [Phase ?]: releaseWorstN is a thin two-step select-then-update wrapper (no new Postgres RPC) — correct at this project's human-triggered, single-tenant concurrency profile
 - [Phase 03]: getTriageCandidates()/getShortlist() are pure reads (D-07); the release manual smoke-test ran against local Supabase since production still lacks migration 016 (Plan 06's job)
+- [Phase 03]: Shortlist tab: server-side gated/score sort in the shortlist route, ReleaseButton takes secret as a prop, no next-intl on the admin surface (matches existing zero-i18n admin convention)
 
 ### Pending Todos
 
@@ -128,6 +130,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-20T14:11:25.661Z
+Last session: 2026-07-20T14:18:44.721Z
 Stopped at: Completed 03-04-PLAN.md
 Resume file: None
