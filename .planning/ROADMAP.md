@@ -125,7 +125,7 @@ Notes:
   4. Changing the cutoff changes which prospects are eligible for a full scan (TRI-08)
   5. With the cutoff opened wide, no run releases more full scans than the hard ceiling allows (TRI-09)
 
-**Plans**: 3/6 plans executed
+**Plans**: 4/6 plans executed
 **UI hint**: yes
 
 Plans:
@@ -140,7 +140,7 @@ Plans:
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 03-04-PLAN.md — CLI: lib/triage-candidates.ts + scripts/triage-prospects.ts (`npm run triage`, bounded concurrency) (wave 3)
+- [x] 03-04-PLAN.md — CLI: lib/triage-candidates.ts + scripts/triage-prospects.ts (`npm run triage`, bounded concurrency) (wave 3)
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
@@ -287,7 +287,7 @@ Phase 8 does not begin until the Parallel Track closes, regardless of numeric or
 |-------|----------------|--------|-----------|
 | 1. Prospect Data Foundation & Import | 4/4 | Complete    | 2026-07-18 |
 | 2. Compliance Spine | 7/7 | Complete    | 2026-07-19 |
-| 3. Triage & Shortlist | 3/6 | In Progress|  |
+| 3. Triage & Shortlist | 4/6 | In Progress|  |
 | 4. Bulk Scan Queue | 0/TBD | Not started | - |
 | 5. Contact Extraction & Classification | 0/TBD | Not started | - |
 | 6. Draft Generation & Approval Queue | 0/TBD | Not started | - |

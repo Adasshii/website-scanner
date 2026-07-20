@@ -23,13 +23,13 @@
 
 ### Triage
 
-- [ ] **TRI-01**: Every imported prospect gets a cheap triage pass using plain HTTP fetch, with no Playwright, no Lighthouse, and no AI
-- [ ] **TRI-02**: Triage records whether the site is reachable at all
-- [ ] **TRI-03**: Triage records HTTPS availability and the full redirect chain
-- [ ] **TRI-04**: Triage records presence of a mobile viewport meta tag
-- [ ] **TRI-05**: Triage records HTML page weight and response time
-- [ ] **TRI-06**: Triage produces a single score used to rank prospects
-- [ ] **TRI-07**: Joshua can view a shortlist ranked by triage score, worst first
+- [x] **TRI-01**: Every imported prospect gets a cheap triage pass using plain HTTP fetch, with no Playwright, no Lighthouse, and no AI
+- [x] **TRI-02**: Triage records whether the site is reachable at all
+- [x] **TRI-03**: Triage records HTTPS availability and the full redirect chain
+- [x] **TRI-04**: Triage records presence of a mobile viewport meta tag
+- [x] **TRI-05**: Triage records HTML page weight and response time
+- [x] **TRI-06**: Triage produces a single score used to rank prospects
+- [x] **TRI-07**: Joshua can view a shortlist ranked by triage score, worst first
 - [x] **TRI-08**: A configurable cutoff controls which prospects are eligible for a full scan
 - [x] **TRI-09**: A hard ceiling caps how many full scans triage can release per run, so a permissive cutoff cannot blow the budget
 
@@ -160,13 +160,13 @@ Populated during roadmap creation. See `.planning/ROADMAP.md` for phase detail.
 | IMP-05 | Phase 1 | Complete |
 | IMP-06 | Phase 1 | Complete |
 | IMP-07 | Phase 1 | Complete |
-| TRI-01 | Phase 3 | Pending |
-| TRI-02 | Phase 3 | Pending |
-| TRI-03 | Phase 3 | Pending |
-| TRI-04 | Phase 3 | Pending |
-| TRI-05 | Phase 3 | Pending |
-| TRI-06 | Phase 3 | Pending |
-| TRI-07 | Phase 3 | Pending |
+| TRI-01 | Phase 3 | Complete |
+| TRI-02 | Phase 3 | Complete |
+| TRI-03 | Phase 3 | Complete |
+| TRI-04 | Phase 3 | Complete |
+| TRI-05 | Phase 3 | Complete |
+| TRI-06 | Phase 3 | Complete |
+| TRI-07 | Phase 3 | Complete |
 | TRI-08 | Phase 3 | Complete |
 | TRI-09 | Phase 3 | Complete |
 | SCAN-01 | Phase 4 | Pending |
