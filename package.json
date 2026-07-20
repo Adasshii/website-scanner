@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "test": "vitest run"
+    "test": "vitest run",
+    "triage": "tsx scripts/triage-prospects.ts"
   },
   "dependencies": {
     "@duckdb/node-api": "^1.5.4-r.1",
