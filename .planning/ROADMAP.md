@@ -17,7 +17,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: Prospect Data Foundation & Import** - Overture businesses become a durable prospect list that survives re-import (completed 2026-07-18)
 - [x] **Phase 2: Compliance Spine** - Suppression, unsubscribe, and versioned legal basis exist before anything can be sent (completed 2026-07-19)
-- [ ] **Phase 3: Triage & Shortlist** - Every prospect gets a cheap verdict; only the worst earn a full scan
+- [x] **Phase 3: Triage & Shortlist** - Every prospect gets a cheap verdict; only the worst earn a full scan (completed 2026-07-20)
 - [ ] **Phase 4: Bulk Scan Queue** - Shortlisted prospects get real scan reports without harming the live public scanner
 - [ ] **Phase 5: Contact Extraction & Classification** - Each scanned prospect carries a contact address whose legal status is known
 - [ ] **Phase 6: Draft Generation & Approval Queue** - A drafted message Joshua is willing to send, backed by evidence he can check
@@ -125,7 +125,7 @@ Notes:
   4. Changing the cutoff changes which prospects are eligible for a full scan (TRI-08)
   5. With the cutoff opened wide, no run releases more full scans than the hard ceiling allows (TRI-09)
 
-**Plans**: 5/6 plans executed
+**Plans**: 6/6 plans complete
 **UI hint**: yes
 
 Plans:
@@ -148,7 +148,7 @@ Plans:
 
 **Wave 5** *(blocked on Wave 4 completion)*
 
-- [ ] 03-06-PLAN.md — [BLOCKING] apply migration 016 to live Supabase (human gate) (wave 5)
+- [x] 03-06-PLAN.md — [BLOCKING] apply migration 016 to live Supabase (human gate) (wave 5)
 
 Notes:
 
@@ -287,7 +287,7 @@ Phase 8 does not begin until the Parallel Track closes, regardless of numeric or
 |-------|----------------|--------|-----------|
 | 1. Prospect Data Foundation & Import | 4/4 | Complete    | 2026-07-18 |
 | 2. Compliance Spine | 7/7 | Complete    | 2026-07-19 |
-| 3. Triage & Shortlist | 5/6 | In Progress|  |
+| 3. Triage & Shortlist | 6/6 | Complete   | 2026-07-20 |
 | 4. Bulk Scan Queue | 0/TBD | Not started | - |
 | 5. Contact Extraction & Classification | 0/TBD | Not started | - |
 | 6. Draft Generation & Approval Queue | 0/TBD | Not started | - |
