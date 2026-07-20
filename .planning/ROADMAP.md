@@ -125,8 +125,16 @@ Notes:
   4. Changing the cutoff changes which prospects are eligible for a full scan (TRI-08)
   5. With the cutoff opened wide, no run releases more full scans than the hard ceiling allows (TRI-09)
 
-**Plans**: TBD (est. 3-4)
+**Plans**: 6 plans
 **UI hint**: yes
+
+Plans:
+- [ ] 03-01-PLAN.md — Foundations: migration 016 (scan_released_at) + local apply, types/triage.ts, tunable constants block, Wave 0 fixtures (wave 1)
+- [ ] 03-02-PLAN.md — Compute: lib/triage-fetch.ts (redirect-chain GET, per-hop SSRF guard, robots.txt, viewport/weight/TTFB) + lib/triage-scorer.ts (gate-then-weighted) (wave 2)
+- [ ] 03-03-PLAN.md — Release: lib/triage-release.ts (worst-N + hard ceiling) + app/api/admin/release-prospects route (wave 2)
+- [ ] 03-04-PLAN.md — CLI: lib/triage-candidates.ts + scripts/triage-prospects.ts (`npm run triage`, bounded concurrency) (wave 3)
+- [ ] 03-05-PLAN.md — Shortlist UI: SignalChips/CutoffSlider/ShortlistTable/ReleaseButton + shortlist GET route + admin tab (wave 4)
+- [ ] 03-06-PLAN.md — [BLOCKING] apply migration 016 to live Supabase (human gate) (wave 5)
 
 Notes:
 
@@ -265,7 +273,7 @@ Phase 8 does not begin until the Parallel Track closes, regardless of numeric or
 |-------|----------------|--------|-----------|
 | 1. Prospect Data Foundation & Import | 4/4 | Complete    | 2026-07-18 |
 | 2. Compliance Spine | 7/7 | Complete    | 2026-07-19 |
-| 3. Triage & Shortlist | 0/TBD | Not started | - |
+| 3. Triage & Shortlist | 0/6 | Not started | - |
 | 4. Bulk Scan Queue | 0/TBD | Not started | - |
 | 5. Contact Extraction & Classification | 0/TBD | Not started | - |
 | 6. Draft Generation & Approval Queue | 0/TBD | Not started | - |
