@@ -2,18 +2,18 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_phase: 3
-current_phase_name: Triage & Shortlist
+current_phase: 03
+current_phase_name: triage-shortlist
 status: executing
-stopped_at: Phase 3 UI-SPEC approved
-last_updated: "2026-07-20T08:23:10.616Z"
-last_activity: 2026-07-19
-last_activity_desc: Phase 02 complete, transitioned to Phase 3
+stopped_at: Completed 03-01-PLAN.md
+last_updated: "2026-07-20T11:58:04.556Z"
+last_activity: 2026-07-20
+last_activity_desc: Phase 03 execution started
 progress:
   total_phases: 8
   completed_phases: 2
-  total_plans: 11
-  completed_plans: 11
+  total_plans: 17
+  completed_plans: 12
   percent: 25
 ---
 
@@ -24,14 +24,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-17)
 
 **Core value:** Joshua opens the tool and finds businesses genuinely worth pitching, with the proof already written, so that outreach costs him minutes instead of hours.
-**Current focus:** Phase 02 — compliance-spine
+**Current focus:** Phase 03 — triage-shortlist
 
 ## Current Position
 
-Phase: 3 — Triage & Shortlist
-Plan: Not started
+Phase: 03 (triage-shortlist) — EXECUTING
+Plan: 2 of 6
 Status: Ready to execute
-Last activity: 2026-07-19 — Phase 02 complete, transitioned to Phase 3
+Last activity: 2026-07-20 — Phase 03 execution started
 
 Progress: [░░░░░░░░░░] 0%
 
@@ -66,6 +66,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 02 P04 | 20min | 2 tasks | 2 files |
 | Phase 02 P05 | 30min | 2 tasks | 4 files |
 | Phase 02 P06 | 15min | 2 tasks | 4 files |
+| Phase 03 P01 | 15min | 3 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -98,6 +99,8 @@ Recent decisions affecting current work:
 - [Phase 02]: CMP-07 auto-suppression extended in place on the live Resend webhook (no second route); D-06 backfill dedupes by normalised email with no email_type filter
 - [Phase ?]: legal-basis.ts exposes lookupProspect/lookupLegalRegime/lookupLiaVersion as injectable functions for DI-seam testability, mirroring import-prospects.ts's upsertOverturePlace convention
 - [Phase ?]: Domain-only legal-basis lookups pass the domain string to isSuppressed() — its existing OR clause already matches on domain, no second suppression-lookup path needed
+- [Phase 03]: TRIAGE_USER_AGENT is a distinct honest UA string, never equal to the full scanner's UA — D-12 requires an honest, identifiable, non-spoofed UA distinct from the existing scanner tool
+- [Phase 03]: Weighted-band thresholds/deductions exported as named constants in lib/triage-constants.ts, matching RESEARCH.md's proposed defaults — Single tunable source per D-03/D-04 so the later scorer plan has no inline magic numbers to invent or drift from
 
 ### Pending Todos
 
@@ -120,6 +123,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-20T08:23:10.609Z
-Stopped at: Phase 3 UI-SPEC approved
-Resume file: .planning/phases/03-triage-shortlist/03-UI-SPEC.md
+Last session: 2026-07-20T11:58:04.550Z
+Stopped at: Completed 03-01-PLAN.md
+Resume file: None

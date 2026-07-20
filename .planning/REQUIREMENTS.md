@@ -30,8 +30,8 @@
 - [ ] **TRI-05**: Triage records HTML page weight and response time
 - [ ] **TRI-06**: Triage produces a single score used to rank prospects
 - [ ] **TRI-07**: Joshua can view a shortlist ranked by triage score, worst first
-- [ ] **TRI-08**: A configurable cutoff controls which prospects are eligible for a full scan
-- [ ] **TRI-09**: A hard ceiling caps how many full scans triage can release per run, so a permissive cutoff cannot blow the budget
+- [x] **TRI-08**: A configurable cutoff controls which prospects are eligible for a full scan
+- [x] **TRI-09**: A hard ceiling caps how many full scans triage can release per run, so a permissive cutoff cannot blow the budget
 
 ### Scan
 
@@ -167,8 +167,8 @@ Populated during roadmap creation. See `.planning/ROADMAP.md` for phase detail.
 | TRI-05 | Phase 3 | Pending |
 | TRI-06 | Phase 3 | Pending |
 | TRI-07 | Phase 3 | Pending |
-| TRI-08 | Phase 3 | Pending |
-| TRI-09 | Phase 3 | Pending |
+| TRI-08 | Phase 3 | Complete |
+| TRI-09 | Phase 3 | Complete |
 | SCAN-01 | Phase 4 | Pending |
 | SCAN-02 | Phase 4 | Pending |
 | SCAN-03 | Phase 4 | Pending |
