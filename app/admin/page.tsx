@@ -3,6 +3,11 @@
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { EmailStatusGroup } from "@/components/admin/email-status-badge";
+import { CutoffSlider } from "@/components/admin/cutoff-slider";
+import { ShortlistTable } from "@/components/admin/shortlist-table";
+import { ReleaseButton } from "@/components/admin/release-button";
+import type { ShortlistRow } from "@/lib/triage-candidates";
+import { DEFAULT_CUTOFF } from "@/lib/triage-constants";
 
 interface Stats {
   totalScans: number;
@@ -44,7 +49,7 @@ interface LeadRow {
   emailStatuses: Array<{ email_type: string; status: string }>;
 }
 
-type Tab = "scans" | "leads";
+type Tab = "scans" | "leads" | "shortlist";
 
 export default function AdminPage() {
   const router = useRouter();
@@ -59,6 +64,9 @@ export default function AdminPage() {
   const [error, setError] = useState("");
   const [keepaliveLoading, setKeepaliveLoading] = useState(false);
   const [keepaliveStatus, setKeepaliveStatus] = useState<"idle" | "ok" | "error">("idle");
+  const [shortlistRows, setShortlistRows] = useState<ShortlistRow[]>([]);
+  const [shortlistLoading, setShortlistLoading] = useState(false);
+  const [cutoff, setCutoff] = useState(DEFAULT_CUTOFF);
 
   // Restore secret from sessionStorage
   useEffect(() => {
@@ -106,11 +114,36 @@ export default function AdminPage() {
     [secret]
   );
 
+  const fetchShortlist = useCallback(async () => {
+    setShortlistLoading(true);
+    try {
+      const res = await fetch("/api/admin/shortlist", {
+        headers: { "x-admin-secret": secret },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setShortlistRows(data.rows);
+        setAuthenticated(true);
+        sessionStorage.setItem("admin_secret", secret);
+      } else if (res.status === 401) {
+        setAuthenticated(false);
+        setError("Invalid admin secret.");
+      }
+    } catch {
+      setError("Could not connect to server.");
+    } finally {
+      setShortlistLoading(false);
+    }
+  }, [secret]);
+
   useEffect(() => {
-    if (authenticated) {
+    if (!authenticated) return;
+    if (tab === "shortlist") {
+      fetchShortlist();
+    } else {
       fetchData(tab, page);
     }
-  }, [authenticated, tab, page, fetchData]);
+  }, [authenticated, tab, page, fetchData, fetchShortlist]);
 
   function handleLogin(e: React.FormEvent) {
     e.preventDefault();
@@ -246,21 +279,38 @@ export default function AdminPage() {
           >
             Leads
           </TabButton>
+          <TabButton
+            active={tab === "shortlist"}
+            onClick={() => handleTabChange("shortlist")}
+          >
+            Shortlist
+          </TabButton>
         </div>
 
         {/* Table */}
-        <div className="bg-white rounded-2xl shadow-card overflow-hidden">
-          {loading ? (
-            <div className="p-12 text-center text-gray-400">Loading...</div>
-          ) : tab === "scans" ? (
-            <ScansTable rows={rows as ScanRow[]} secret={secret} onDelete={() => fetchData(tab, page)} />
-          ) : (
-            <LeadsTable rows={rows as LeadRow[]} secret={secret} router={router} onDelete={() => fetchData(tab, page)} />
-          )}
-        </div>
+        {tab === "shortlist" ? (
+          <ShortlistTab
+            rows={shortlistRows}
+            loading={shortlistLoading}
+            cutoff={cutoff}
+            setCutoff={setCutoff}
+            secret={secret}
+            onReleased={fetchShortlist}
+          />
+        ) : (
+          <div className="bg-white rounded-2xl shadow-card overflow-hidden">
+            {loading ? (
+              <div className="p-12 text-center text-gray-400">Loading...</div>
+            ) : tab === "scans" ? (
+              <ScansTable rows={rows as ScanRow[]} secret={secret} onDelete={() => fetchData(tab, page)} />
+            ) : (
+              <LeadsTable rows={rows as LeadRow[]} secret={secret} router={router} onDelete={() => fetchData(tab, page)} />
+            )}
+          </div>
+        )}
 
         {/* Pagination */}
-        {totalPages > 1 && (
+        {tab !== "shortlist" && totalPages > 1 && (
           <div className="flex items-center justify-center gap-2 mt-6">
             <button
               onClick={() => setPage((p) => Math.max(1, p - 1))}
@@ -310,6 +360,54 @@ function StatCard({
       </div>
       <div className="text-sm text-gray-500 mt-1">{label}</div>
       {sub && <div className="text-xs text-gray-400 mt-0.5">{sub}</div>}
+    </div>
+  );
+}
+
+function ShortlistTab({
+  rows,
+  loading,
+  cutoff,
+  setCutoff,
+  secret,
+  onReleased,
+}: {
+  rows: ShortlistRow[];
+  loading: boolean;
+  cutoff: number;
+  setCutoff: (n: number) => void;
+  secret: string;
+  onReleased: () => void;
+}) {
+  const gatedCount = rows.filter((r) => r.triage_score.gated).length;
+  const releasedCount = rows.filter((r) => r.scan_released_at).length;
+  const eligibleCount = rows.filter(
+    (r) => !r.scan_released_at && (r.triage_score.gated || r.triage_score.score <= cutoff)
+  ).length;
+
+  return (
+    <div>
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
+        <StatCard label="Total triaged" value={rows.length} />
+        <StatCard label="Gated" value={gatedCount} />
+        <StatCard label="Eligible now" value={eligibleCount} highlight />
+        <StatCard label="Released" value={releasedCount} />
+      </div>
+
+      <div className="bg-white rounded-2xl shadow-card p-4 mb-6">
+        <CutoffSlider
+          value={cutoff}
+          onChange={setCutoff}
+          eligibleCount={eligibleCount}
+          totalTriaged={rows.length}
+        />
+      </div>
+
+      <div className="bg-white rounded-2xl shadow-card overflow-hidden mb-6">
+        <ShortlistTable rows={rows} cutoff={cutoff} loading={loading} />
+      </div>
+
+      <ReleaseButton cutoff={cutoff} eligibleCount={eligibleCount} secret={secret} onReleased={onReleased} />
     </div>
   );
 }
