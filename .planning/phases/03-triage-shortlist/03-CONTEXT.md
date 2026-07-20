@@ -61,8 +61,8 @@ scan. It delivers, and only delivers:
   the cutoff than the ceiling allows, release the worst-ranked up to the ceiling;
   the rest stay shortlisted and roll into the next run. The ceiling is a
   throughput cap, never a rejection — nothing is lost.
-- **D-06: Ceiling is per release invocation, and released prospects never
-  re-release.** Each explicit release action gets its own ceiling, and a prospect
+- **D-06: Ceiling is per release invocation, and released prospects never re-release.**
+  Each explicit release action gets its own ceiling, and a prospect
   already released to the scan queue is marked and excluded from every future
   release. Total scans stay bounded no matter how many times triage/release runs —
   TRI-09 enforced independently of TRI-08's cutoff (Pitfall 4).
