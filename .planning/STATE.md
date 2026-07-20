@@ -5,15 +5,15 @@ milestone_name: milestone
 current_phase: 03
 current_phase_name: triage-shortlist
 status: executing
-stopped_at: Completed 03-01-PLAN.md
-last_updated: "2026-07-20T12:07:59.302Z"
+stopped_at: Completed 03-03-PLAN.md
+last_updated: "2026-07-20T14:00:41.822Z"
 last_activity: 2026-07-20
 last_activity_desc: Phase 03 execution started
 progress:
   total_phases: 8
   completed_phases: 2
   total_plans: 17
-  completed_plans: 13
+  completed_plans: 14
   percent: 25
 ---
 
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-07-17)
 ## Current Position
 
 Phase: 03 (triage-shortlist) — EXECUTING
-Plan: 3 of 6
+Plan: 4 of 6
 Status: Ready to execute
 Last activity: 2026-07-20 — Phase 03 execution started
 
@@ -67,6 +67,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 02 P05 | 30min | 2 tasks | 4 files |
 | Phase 02 P06 | 15min | 2 tasks | 4 files |
 | Phase 03 P01 | 15min | 3 tasks | 5 files |
+| Phase 03 P03 | 15min | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -101,6 +102,8 @@ Recent decisions affecting current work:
 - [Phase ?]: Domain-only legal-basis lookups pass the domain string to isSuppressed() — its existing OR clause already matches on domain, no second suppression-lookup path needed
 - [Phase 03]: TRIAGE_USER_AGENT is a distinct honest UA string, never equal to the full scanner's UA — D-12 requires an honest, identifiable, non-spoofed UA distinct from the existing scanner tool
 - [Phase 03]: Weighted-band thresholds/deductions exported as named constants in lib/triage-constants.ts, matching RESEARCH.md's proposed defaults — Single tunable source per D-03/D-04 so the later scorer plan has no inline magic numbers to invent or drift from
+- [Phase ?]: Release ceiling enforced with a JS .slice(0, ceiling) over real-number-sorted rows, not a Postgres jsonb ->> text-comparison filter/order/limit (Pitfall 5)
+- [Phase ?]: releaseWorstN is a thin two-step select-then-update wrapper (no new Postgres RPC) — correct at this project's human-triggered, single-tenant concurrency profile
 
 ### Pending Todos
 
@@ -123,6 +126,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-20T11:58:04.550Z
-Stopped at: Completed 03-01-PLAN.md
+Last session: 2026-07-20T14:00:41.815Z
+Stopped at: Completed 03-03-PLAN.md
 Resume file: None
