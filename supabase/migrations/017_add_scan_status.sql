@@ -35,6 +35,17 @@ create index if not exists idx_prospects_scan_status_queued
 -- the caller passes (V5 input-validation defence-in-depth, T-04-01) — the
 -- function does not trust its own argument.
 --
+-- The claimable-id subquery is wrapped in a `MATERIALIZED` CTE, not left as
+-- an inline `WHERE id IN (subquery ... LIMIT n)`. Without that, Postgres's
+-- planner rewrote the IN as a per-outer-row semi-join and re-ran the LIMIT-
+-- and-SKIP-LOCKED subquery once per candidate row instead of once overall
+-- (visible via EXPLAIN ANALYZE as `loops=N`), so the LIMIT clamp was
+-- silently defeated — a batch_size of 999 against 12 eligible rows claimed
+-- all 12, not the intended 10 (caught by plan 04-03's integration test,
+-- lib/scan-drain.integration.test.ts). MATERIALIZED forces the CTE to
+-- execute exactly once as an optimization fence, restoring the intended
+-- single-pass LIMIT + SKIP LOCKED semantics this function exists for.
+--
 -- Does NOT touch scan_attempts (spent at dispatch time, plan 04-03, so a
 -- capacity-refusal requeue never burns D-04's single attempt) and does NOT
 -- write lifecycle_state (those enum values exist in migration 010 but are
@@ -46,9 +57,7 @@ language plpgsql
 as $$
 begin
   return query
-  update prospects
-  set scan_status = 'scanning'
-  where id in (
+  with claimable as materialized (
     select id from prospects
     where scan_status = 'queued'
       and scan_released_at is not null
@@ -57,6 +66,9 @@ begin
     for update skip locked
     limit least(greatest(batch_size, 0), 10)
   )
+  update prospects
+  set scan_status = 'scanning'
+  where id in (select id from claimable)
   returning *;
 end;
 $$;
