@@ -6,6 +6,7 @@ import { EmailStatusGroup } from "@/components/admin/email-status-badge";
 import { CutoffSlider } from "@/components/admin/cutoff-slider";
 import { ShortlistTable } from "@/components/admin/shortlist-table";
 import { ReleaseButton } from "@/components/admin/release-button";
+import { RunBatchButton } from "@/components/admin/run-batch-button";
 import type { ShortlistRow } from "@/lib/triage-candidates";
 import { DEFAULT_CUTOFF } from "@/lib/triage-constants";
 
@@ -384,6 +385,7 @@ function ShortlistTab({
   const eligibleCount = rows.filter(
     (r) => !r.scan_released_at && (r.triage_score.gated || r.triage_score.score <= cutoff)
   ).length;
+  const armableCount = rows.filter((r) => r.scan_released_at && r.scan_status === null).length;
 
   return (
     <div>
@@ -404,10 +406,13 @@ function ShortlistTab({
       </div>
 
       <div className="bg-white rounded-2xl shadow-card overflow-hidden mb-6">
-        <ShortlistTable rows={rows} cutoff={cutoff} loading={loading} />
+        <ShortlistTable rows={rows} cutoff={cutoff} loading={loading} secret={secret} onRequeued={onReleased} />
       </div>
 
-      <ReleaseButton cutoff={cutoff} eligibleCount={eligibleCount} secret={secret} onReleased={onReleased} />
+      <div className="flex gap-3">
+        <ReleaseButton cutoff={cutoff} eligibleCount={eligibleCount} secret={secret} onReleased={onReleased} />
+        <RunBatchButton armableCount={armableCount} secret={secret} onArmed={onReleased} />
+      </div>
     </div>
   );
 }
