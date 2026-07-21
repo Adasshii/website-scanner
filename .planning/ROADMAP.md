@@ -287,7 +287,7 @@ Phase 8 does not begin until the Parallel Track closes, regardless of numeric or
 |-------|----------------|--------|-----------|
 | 1. Prospect Data Foundation & Import | 4/4 | Complete    | 2026-07-18 |
 | 2. Compliance Spine | 7/7 | Complete    | 2026-07-19 |
-| 3. Triage & Shortlist | 6/6 | Complete   | 2026-07-20 |
+| 3. Triage & Shortlist | 6/6 | Complete    | 2026-07-20 |
 | 4. Bulk Scan Queue | 0/TBD | Not started | - |
 | 5. Contact Extraction & Classification | 0/TBD | Not started | - |
 | 6. Draft Generation & Approval Queue | 0/TBD | Not started | - |
