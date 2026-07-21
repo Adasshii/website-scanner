@@ -11,7 +11,8 @@
     "start": "next start",
     "lint": "next lint",
     "test": "vitest run",
-    "triage": "tsx scripts/triage-prospects.ts"
+    "triage": "tsx scripts/triage-prospects.ts",
+    "scanner-health": "tsx scripts/check-public-scanner-health.ts"
   },
   "dependencies": {
     "@duckdb/node-api": "^1.5.4-r.1",
