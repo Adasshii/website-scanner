@@ -2,6 +2,9 @@
   "name": "website-scanner",
   "version": "0.1.0",
   "private": true,
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -15,6 +18,7 @@
     "@supabase/supabase-js": "^2.99.3",
     "next": "14.2.35",
     "next-intl": "^4.13.0",
+    "p-limit": "^7.3.1",
     "react": "^18",
     "react-dom": "^18",
     "resend": "^6.9.4",
