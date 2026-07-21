@@ -203,6 +203,8 @@ export async function closeBrowser(): Promise<void> {
 export interface ScanPageOptions {
   url: string;
   timeoutMs?: number;
+  /** Optional crawl identity override (e.g. bulk scan UA). Defaults to the public scanner's UA. */
+  userAgent?: string;
 }
 
 /** Extended result with screenshot data — only used internally, not stored in DB */
@@ -224,6 +226,7 @@ export async function scanPage(
   const b = await getBrowser();
   const context = await b.newContext({
     userAgent:
+      options.userAgent ??
       "AdashiScanner/1.0 (+https://scan.adashi.io) — accessibility & SEO checker",
     viewport: { width: 1280, height: 720 },
     ignoreHTTPSErrors: true,

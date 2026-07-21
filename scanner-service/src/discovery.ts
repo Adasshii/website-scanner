@@ -4,6 +4,8 @@ export interface DiscoveryOptions {
   startUrl: string;
   maxPages: number;
   timeoutMs?: number;
+  /** Optional crawl identity override (e.g. bulk scan UA). Defaults to the public scanner's UA. */
+  userAgent?: string;
 }
 
 /**
@@ -22,6 +24,7 @@ export async function discoverPages(
   const browser = await getBrowser();
   const context = await browser.newContext({
     userAgent:
+      options.userAgent ??
       "AdashiScanner/1.0 (+https://scan.adashi.io) — accessibility & SEO checker",
     viewport: { width: 1280, height: 720 },
     ignoreHTTPSErrors: true,

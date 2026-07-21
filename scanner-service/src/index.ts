@@ -17,6 +17,7 @@ import {
 import { uploadScreenshot } from "./screenshots";
 import type { ScanRequest, PageResult, ScanScores, ScanSummary, Issue, IssueSeverity, ScreenshotInfo } from "../../types/scanner";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { isAtCapacity, CAPACITY_RETRY_AFTER_SECONDS } from "./capacity";
 
 /** Race a promise against a timer; resolve to `fallback` if it times out */
 function withTimeout<T>(promise: Promise<T>, ms: number, fallback: T): Promise<T> {
@@ -388,15 +389,31 @@ app.post("/api/scan/full", async (req, res) => {
 // ── Async full scan: fire-and-forget, updates DB directly ─────────
 
 app.post("/api/scan/full-async", async (req, res) => {
-  const { url, scanId, maxPages = 7, locale = "en" } = req.body as {
+  const { url, scanId, maxPages = 7, locale = "en", source, userAgent, prospectId } = req.body as {
     url: string;
     scanId: string;
     maxPages?: number;
     locale?: string;
+    source?: "bulk";
+    userAgent?: string;
+    // Accepted and logged only — the service does not write to the `prospects`
+    // table. Status write-back is reconciled on the Next.js side (plan 04-04).
+    prospectId?: string;
   };
 
   if (!url || !scanId) {
     res.status(400).json({ error: "url and scanId are required" });
+    return;
+  }
+
+  // Capacity guard (D-08, SCAN-02, T-04-04): refuse bulk work above the
+  // reserved-headroom ceiling before it is ever registered as in-flight.
+  // `source` and `userAgent` are untrusted labels — they select a ceiling and
+  // a crawl identity, never authorisation (T-04-06). The refusal body carries
+  // no internal counts or ceilings (T-04-05); those stay in Railway logs.
+  if (isAtCapacity(activeFullScans.size, source)) {
+    console.log(`[full-scan-async] refused: scanId=${scanId} source=${source ?? "public"} prospectId=${prospectId ?? "n/a"} (at capacity)`);
+    res.status(503).json({ error: "At capacity", retryAfterSeconds: CAPACITY_RETRY_AFTER_SECONDS });
     return;
   }
 
@@ -422,13 +439,13 @@ app.post("/api/scan/full-async", async (req, res) => {
   try {
     console.log(`[full-scan-async] Starting: ${url} (scan ${scanId}, max ${pageLimit} pages)`);
 
-    const pageUrls = await discoverPages({ startUrl: url, maxPages: pageLimit });
+    const pageUrls = await discoverPages({ startUrl: url, maxPages: pageLimit, userAgent });
     console.log(`[full-scan-async] Discovered ${pageUrls.length} pages`);
 
     const scanResults: ScanPageResultWithScreenshot[] = [];
     for (const pageUrl of pageUrls) {
       console.log(`[full-scan-async] Scanning: ${pageUrl}`);
-      const scanResult = await scanPage({ url: pageUrl });
+      const scanResult = await scanPage({ url: pageUrl, userAgent });
       scanResults.push(scanResult);
     }
 
