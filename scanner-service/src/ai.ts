@@ -8,6 +8,7 @@ import type {
   CostFactor,
   QuickWin,
 } from "../../types/scanner";
+import { buildDesignAnalysisPrompt } from "./design-prompt";
 
 let genAI: GoogleGenerativeAI | null = null;
 
@@ -855,28 +856,7 @@ export async function generateDesignAnalysis(
           data: base64,
         },
       },
-      `You are a professional web designer reviewing a website screenshot for a business owner. Rate each dimension 0-100 and identify the most important visual issues.
-
-Website: ${domain}
-
-Score each dimension (0=very poor, 100=excellent):
-- visualHierarchy: Is there a clear focal point? Does the eye flow naturally?
-- whitespace: Is spacing balanced? Does the layout breathe?
-- typography: Are fonts readable, consistent, and professional?
-- ctaProminence: Are calls-to-action visible and compelling?
-- professionalism: Does the overall design look polished and trustworthy?
-
-Also identify up to 4 specific visual issues that hurt conversions or credibility (plain English, one sentence each, for a non-technical business owner).
-
-Respond with JSON only:
-{
-  "visualHierarchy": <number>,
-  "whitespace": <number>,
-  "typography": <number>,
-  "ctaProminence": <number>,
-  "professionalism": <number>,
-  "issues": ["<issue 1>", "<issue 2>", ...]
-}`,
+      buildDesignAnalysisPrompt(domain),
     ]);
 
     const text = result.response.text().trim();
