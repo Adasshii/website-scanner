@@ -144,9 +144,9 @@ export function ShortlistTable({ rows, cutoff, loading, secret, onRequeued }: Sh
             <th className="px-4 py-3 w-8"></th>
             <th className="px-4 py-3">Domain</th>
             <th className="px-4 py-3">Triage score</th>
-            <th className="px-4 py-3">Signals</th>
             <th className="px-4 py-3">Status</th>
             <th className="px-4 py-3">Released</th>
+            <th className="px-4 py-3">Signals</th>
           </tr>
         </thead>
         <tbody>
@@ -187,9 +187,6 @@ export function ShortlistTable({ rows, cutoff, loading, secret, onRequeued }: Sh
                   </span>
                 </td>
                 <td className="px-4 py-3">
-                  <SignalChips score={score} />
-                </td>
-                <td className="px-4 py-3">
                   {row.scan_status === null ? null : row.scan_status === "done" && row.latest_scan_id ? (
                     <a
                       href={`/report/${row.latest_scan_id}`}
@@ -220,6 +217,9 @@ export function ShortlistTable({ rows, cutoff, loading, secret, onRequeued }: Sh
                 </td>
                 <td className="px-4 py-3 text-gray-400 text-xs whitespace-nowrap">
                   {released ? `Released ${relativeDate(row.scan_released_at as string)}` : ""}
+                </td>
+                <td className="px-4 py-3">
+                  <SignalChips score={score} />
                 </td>
               </tr>
             );
