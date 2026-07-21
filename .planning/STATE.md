@@ -112,7 +112,9 @@ Recent decisions affecting current work:
 
 ### Pending Todos
 
-None yet.
+2 pending (captured 2026-07-21 during Phase 4 cutover):
+- Exclude food-service categories at ingestion/triage (`2026-07-21-exclude-food-service-categories-at-triage.md`)
+- Split triage gate: unreachable not releasable, no-HTTPS stays prioritized, rename GATED label — revises D-01 (`2026-07-21-split-triage-gate-unreachable-vs-no-https.md`)
 
 ### Blockers/Concerns
 
