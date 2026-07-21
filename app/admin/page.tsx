@@ -117,19 +117,29 @@ export default function AdminPage() {
 
   const fetchShortlist = useCallback(async () => {
     setShortlistLoading(true);
+    setError("");
+
     try {
       const res = await fetch("/api/admin/shortlist", {
         headers: { "x-admin-secret": secret },
       });
-      if (res.ok) {
-        const data = await res.json();
-        setShortlistRows(data.rows);
-        setAuthenticated(true);
-        sessionStorage.setItem("admin_secret", secret);
-      } else if (res.status === 401) {
-        setAuthenticated(false);
-        setError("Invalid admin secret.");
+
+      if (!res.ok) {
+        if (res.status === 401) {
+          setAuthenticated(false);
+          setError("Invalid admin secret.");
+        } else {
+          const body = await res.json().catch(() => ({}));
+          setError(`Failed to fetch shortlist${body.detail ? `: ${body.detail}` : ""}.`);
+        }
+        setShortlistLoading(false);
+        return;
       }
+
+      const data = await res.json();
+      setShortlistRows(data.rows);
+      setAuthenticated(true);
+      sessionStorage.setItem("admin_secret", secret);
     } catch {
       setError("Could not connect to server.");
     } finally {
@@ -263,6 +273,13 @@ export default function AdminPage() {
               value={stats.averageScore ?? "-"}
               sub={stats.averageScoreThisWeek ? `${stats.averageScoreThisWeek} this week` : undefined}
             />
+          </div>
+        )}
+
+        {/* Error banner (non-401 fetch failures; 401 bounces to the login form) */}
+        {error && (
+          <div className="mb-6 rounded-xl bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
+            {error}
           </div>
         )}
 

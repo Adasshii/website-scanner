@@ -30,7 +30,15 @@ export async function GET(request: NextRequest) {
     });
     return NextResponse.json({ rows: sorted });
   } catch (e) {
-    const msg = e instanceof Error ? e.message : String(e);
+    // Supabase throws plain PostgrestError objects (not `instanceof Error`),
+    // so a bare String(e) serializes to "[object Object]". Prefer `.message`
+    // when present, falling back to JSON.stringify for anything else.
+    const msg =
+      e instanceof Error
+        ? e.message
+        : e && typeof e === "object" && "message" in e
+        ? String((e as { message: unknown }).message)
+        : JSON.stringify(e);
     console.error("Admin shortlist error:", msg);
     return NextResponse.json({ error: "Failed to fetch shortlist", detail: msg }, { status: 500 });
   }
