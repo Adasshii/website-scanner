@@ -12,6 +12,10 @@
     {
       "path": "/api/cron/send-pending-reports",
       "schedule": "0 * * * *"
+    },
+    {
+      "path": "/api/cron/drain-scan-queue",
+      "schedule": "*/10 * * * *"
     }
   ]
 }
