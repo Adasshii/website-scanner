@@ -144,3 +144,35 @@ with no schema change — this file is not hardcoded to any one country.
 effective date, and a sha256 content hash, so the running application can
 verify this on-disk file has not been altered since the version was
 recorded.*
+
+---
+
+## Addendum (2026-07-21): CMP-17 No-Profiling Control
+
+Per this document's own immutability note (D-11) and the `lia_versions`
+content-hash registration above, the body of this v1 assessment is not
+rewritten in place. This addendum records a technical control implemented
+after the v1 text was committed, so the compliance claim below points at
+checkable behaviour rather than an intention.
+
+**Control:** Incidental personal data captured in design-analysis
+screenshots (staff photos, named bios) is never separately indexed,
+profiled, or reused — consistent with §5 Data Minimisation above. The
+control is a no-profiling instruction in the design-analysis prompt built
+by `buildDesignAnalysisPrompt()` (`scanner-service/src/design-prompt.ts`),
+which directs the vision model not to describe, name, or identify any
+person visible in the screenshot. Nothing person-identifying derived from a
+screenshot is persisted. The instruction's presence, wording, and ordering
+in the built prompt are asserted by `lib/scanner-design-prompt.test.ts`.
+
+**Face redaction was considered and rejected** as disproportionate cost
+against the near-zero-spend constraint this project operates under (D-13)
+— an instruction-based control achieves the same data-minimisation outcome
+without an added image-processing pipeline or its cost.
+
+**Versioning note:** this addendum is appended text within the same v1
+file, not a body rewrite, but it does change the file's bytes and therefore
+its sha256. Whether this requires a new `lia_versions` row (a v1.1 hash
+update or a new version) is flagged for a decision outside this plan — see
+the 04-02 plan SUMMARY. No `lia_versions` row was inserted or modified by
+this change.
