@@ -6,7 +6,7 @@ current_phase: 04
 current_phase_name: bulk-scan-queue
 status: executing
 stopped_at: Phase 4 planned
-last_updated: "2026-07-21T20:02:37.176Z"
+last_updated: "2026-07-21T20:10:02.420Z"
 last_activity: 2026-07-21
 last_activity_desc: Phase 04 execution started
 progress:
@@ -120,6 +120,7 @@ None yet.
 - **Scoring verdict-threshold divergence** (`lib/scoring.ts` vs `scanner-service/src/index.ts`, 95/85/70/50 vs 90/70/50) is scheduled as the first plan of Phase 6 but is not a numbered v1 requirement. REQUIREMENTS.md may need an addition — see ROADMAP Coverage Notes.
 - **Blast radius:** nothing in this milestone may risk the existing scanner's email or scanning. It works and it earns. Phase 4 verification watches the public scanner's success rate during bulk runs.
 - **Overture data quality** is a proven risk here, not theoretical — prior research produced a 98% false-positive read before correction. Manual sample audit required in Phase 1.
+- 04-06 Tasks 2-3 deferred by Joshua (2026-07-21): live push of migration 017 (MUST carry 04-03's MATERIALIZED CTE fix, already in the file) + E2E batch run with SCAN-06 baseline. Both are blocking human-verify checkpoints — run in a dedicated session. Health script is ready: npm run scanner-health -- --save phase04-baseline
 
 ## Deferred Items
 
