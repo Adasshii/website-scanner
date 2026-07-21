@@ -169,7 +169,32 @@ Notes:
   4. A prospect whose scan fails is skipped rather than retried indefinitely, and bulk scanning identifies itself honestly, respects robots.txt, and is rate-limited (SCAN-04, SCAN-05)
   5. Each scanned prospect has a report at a hosted URL identical in form to the public scanner's, and personal data caught incidentally in screenshots is not separately indexed, profiled, or reused (SCAN-07, CMP-17)
 
-**Plans**: TBD (est. 4-5)
+**Plans**: 6 plans
+
+Plans:
+**Wave 1**
+
+- [ ] 04-01-PLAN.md — Foundations: migration 017 (scan_status/attempts/reason + `claim_next_scan_batch` SKIP LOCKED RPC) + `lib/bulk-scan-constants.ts` + `scanner-service/src/capacity.ts` + p-limit declared (wave 1)
+
+**Wave 2** *(blocked on Wave 1)*
+
+- [ ] 04-02-PLAN.md — Scanner service: `full-async` 503 capacity refusal, bulk user-agent passthrough, CMP-17 no-profiling prompt + LIA record (wave 2)
+
+**Wave 3** *(blocked on Wave 2)*
+
+- [ ] 04-03-PLAN.md — Libraries: `lib/scan-queue.ts` (arm/claim/fail/requeue/reconcile) + `lib/bulk-scan-dispatch.ts` (robots pre-flight, SSRF, paced p-limit dispatch) + SKIP LOCKED overlap integration test (wave 3)
+
+**Wave 4** *(blocked on Wave 3)*
+
+- [ ] 04-04-PLAN.md — Routes: `/api/cron/drain-scan-queue` + vercel.json schedule, `/api/admin/run-batch`, `/api/admin/requeue-scan` (wave 4)
+
+**Wave 5** *(blocked on Wave 4)*
+
+- [ ] 04-05-PLAN.md — Admin UI: Shortlist status column, report link, re-queue action, RunBatchButton (wave 5, human checkpoint)
+
+**Wave 6** *(blocked on Wave 5)*
+
+- [ ] 04-06-PLAN.md — SCAN-06 health measurement script + [BLOCKING] apply migration 017 to live Supabase + end-to-end batch verification (wave 6, human gate)
 
 Notes:
 
