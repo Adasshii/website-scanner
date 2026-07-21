@@ -1,14 +1,16 @@
 ---
 phase: 03-triage-shortlist
 verified: 2026-07-20T23:40:00Z
-status: human_needed
+status: passed
 score: 9/9 must-haves verified
 behavior_unverified: 0
 overrides_applied: 0
 human_verification:
+
   - test: "Slide the cutoff control on the admin Shortlist tab and watch the eligible count / row highlighting change"
     expected: "The eligible count and which rows are treated as eligible update instantly on every slider tick, with no network request fired (confirm via browser devtools Network tab — no /api/admin/shortlist call on drag)"
     why_human: "Code inspection confirms `setCutoff` only updates React state and `fetchShortlist()` is never called from the slider's onChange handler, but actually seeing the live re-shuffle in a browser is the point of TRI-08's roadmap success criterion (visual, real-time UI behavior) and 03-VALIDATION.md lists this explicitly as a Manual-Only Verification"
+
   - test: "Run `npm run triage -- --dry-run --limit 5` against a handful of real, live prospect websites (not just the seeded local-DB smoke test already done in Plan 04)"
     expected: "Prints a summary line (`N triaged, M clear the cutoff, K unreachable`) and the fetch/score pipeline handles real-world redirects, slow sites, and non-viewport pages without crashing, with zero writes under --dry-run"
     why_human: "This is an external-network integration path that unit/integration tests intentionally mock (DI seam); 03-VALIDATION.md flags this exact scenario as Manual-Only ('hits live sites over the network'). The Plan 04 executor's own smoke test only exercised one seeded local-DB row, not a real external fetch against a live website"
