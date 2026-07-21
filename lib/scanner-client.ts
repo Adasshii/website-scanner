@@ -1,4 +1,5 @@
 import type { PageResult, ScanScores, ScanSummary, ScreenshotInfo, CostEstimate, QuickWin, AiContentAlt, IssuesAlt } from "@/types/scanner";
+import { BULK_MAX_PAGES } from "@/lib/bulk-scan-constants";
 
 /** Response shape from the scanner service */
 export interface ScannerResponse {
@@ -50,6 +51,54 @@ export class ScannerClient {
     const body: Record<string, unknown> = { url, maxPages };
     if (locale) body.locale = locale;
     return this.request("/api/scan/full", body);
+  }
+
+  /**
+   * Run a bulk full-async scan (Phase 4). Posts to /api/scan/full-async with
+   * `source: "bulk"`, the bulk crawl identity, and the claimed prospect's
+   * id, so the request-body contract in scanner-service/src/index.ts (plan
+   * 04-02) resolves the reserved-headroom ceiling and the crawl UA.
+   *
+   * Cannot reuse the private request() helper: request() throws on any
+   * non-ok response, but a 503 here is an expected structural outcome (the
+   * capacity guard, D-08) — not a failure of this prospect's site. This
+   * method only awaits the immediate accept-or-refuse, never the scan
+   * itself, so it uses a short 30s timeout instead of request()'s 3-minute
+   * one. Locale is deliberately omitted, not hardcoded — geography/locale
+   * are parameters on this project, and omitting the field lets the
+   * scans.locale column default apply.
+   */
+  async fullScanBulk(
+    url: string,
+    opts: { scanId: string; prospectId: string; userAgent: string; maxPages?: number }
+  ): Promise<{ accepted: boolean }> {
+    const res = await fetch(`${this.baseUrl}/api/scan/full-async`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${this.apiKey}`,
+      },
+      body: JSON.stringify({
+        url,
+        scanId: opts.scanId,
+        maxPages: opts.maxPages ?? BULK_MAX_PAGES,
+        source: "bulk",
+        userAgent: opts.userAgent,
+        prospectId: opts.prospectId,
+      }),
+      signal: AbortSignal.timeout(30_000),
+    });
+
+    if (res.status === 503) return { accepted: false };
+
+    if (!res.ok) {
+      const error = await res.json().catch(() => ({ message: "Unknown error" }));
+      throw new Error(
+        `Scanner service error (${res.status}): ${error.message || error.error || "Unknown"}`
+      );
+    }
+
+    return { accepted: true };
   }
 
   /** Check if the scanner service is healthy */
