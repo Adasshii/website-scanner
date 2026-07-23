@@ -6,15 +6,15 @@ current_phase: 5
 current_phase_name: Contact Extraction & Classification
 status: verifying
 stopped_at: Completed 04-06-PLAN.md — Phase 4 fully executed, awaiting verifier
-last_updated: "2026-07-23T21:30:09.693Z"
+last_updated: "2026-07-23T21:38:30.615Z"
 last_activity: 2026-07-23
 last_activity_desc: Phase 04 complete, transitioned to Phase 5
 progress:
-  total_phases: 8
+  total_phases: 9
   completed_phases: 4
   total_plans: 23
   completed_plans: 23
-  percent: 50
+  percent: 44
 ---
 
 # Project State
@@ -125,6 +125,10 @@ Recent decisions affecting current work:
 - **Scoring verdict-threshold divergence** (`lib/scoring.ts` vs `scanner-service/src/index.ts`, 95/85/70/50 vs 90/70/50) is scheduled as the first plan of Phase 6 but is not a numbered v1 requirement. REQUIREMENTS.md may need an addition — see ROADMAP Coverage Notes.
 - **Blast radius:** nothing in this milestone may risk the existing scanner's email or scanning. It works and it earns. Phase 4 verification watches the public scanner's success rate during bulk runs.
 - **Overture data quality** is a proven risk here, not theoretical — prior research produced a 98% false-positive read before correction. Manual sample audit required in Phase 1.
+
+### Roadmap Evolution
+
+- Phase 4.1 inserted after Phase 4: Prospect Quality — category exclusion, gate split, batch size (URGENT)
 
 ## Deferred Items
 

@@ -203,6 +203,17 @@ Notes:
 - Blast radius: bulk-scanning strangers' sites from the same Railway IP that serves the live scanner risks WAF fingerprinting that would degrade the production product (Pitfall 2). Verification watches the public scanner's success rate alongside the bulk run — no shared degradation is a pass condition, not a nice-to-have.
 - Dispatch reuses `lib/scanner-client.ts` and the existing `full-async` endpoint. No new scanner-service endpoint.
 
+### Phase 04.1: Prospect Quality — category exclusion, gate split, batch size (INSERTED)
+
+**Goal:** [Urgent work - to be planned]
+**Requirements**: TBD
+**Depends on:** Phase 4
+**Plans:** 0 plans
+
+Plans:
+
+- [ ] TBD (run /gsd-plan-phase 04.1 to break down)
+
 ### Phase 5: Contact Extraction & Classification
 
 **Goal**: Each scanned prospect carries a contact address whose legal status is known and recorded
