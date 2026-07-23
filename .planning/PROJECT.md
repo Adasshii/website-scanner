@@ -254,6 +254,8 @@ This document evolves at phase transitions and milestone boundaries.
 ---
 *Phase 1 (Prospect Data Foundation & Import) complete 2026-07-18 — migrations 010–013 live in production, dedupe engine (domain identity + GERS sources, freeze-by-omission) tested 45/45, importer CLI with exact province boundaries and aggregator denylist passed the D-11 sample audit. IMP-01..07 validated. First real (writing) import remains a manual command.*
 
+*Phase 4 (Bulk Scan Queue) complete 2026-07-23 — migration 017 live, production cutover done (scan.adashi.io, 142 commits deployed), first real 4-prospect batch verified end to end. SCAN-01..07 + CMP-17 validated; SCAN-06 held 92.9% → 92.9% (0.0pp). Known operating constraint: Vercel Hobby limits crons to daily, so the drain runs once/day — BULK_BATCH_SIZE goes 2→10 in the prospect-quality mini-phase (pending todos: category exclusion, D-01 gate split, batch size).*
+
 *Last updated: 2026-07-17 after initialization and the five-dimension research pass
 (STACK, FEATURES, ARCHITECTURE, PITFALLS, LEGAL). Research contradicted two locked
 decisions: the Resend send path is dead, and the Tw art. 11.7 B2B exemption does not
