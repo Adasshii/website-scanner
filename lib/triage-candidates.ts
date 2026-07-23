@@ -20,6 +20,7 @@ export interface TriageCandidate {
 export interface ShortlistRow {
   id: string;
   domain: string;
+  category: string | null;
   triage_score: TriageScore;
   scan_released_at: string | null;
   scan_status: "queued" | "scanning" | "done" | "failed" | null;
@@ -53,13 +54,15 @@ export async function getTriageCandidates(
  * Every already-triaged row (any triage_score), for the admin shortlist
  * display — the UI sorts/filters worst-first and re-shuffles eligibility
  * against a live cutoff slider client-side (D-03/D-07), no re-query needed
- * per slide.
+ * per slide. Selects category so the UI can call isReleasable() directly
+ * without a second query (D-4.1-01/03/04) — excluded/unreachable rows stay
+ * visible in the shortlist, they are only barred from release.
  */
 export async function getShortlist(sb: SupabaseClient): Promise<ShortlistRow[]> {
   const { data, error } = await sb
     .from("prospects")
     .select(
-      "id, domain, triage_score, scan_released_at, scan_status, scan_attempts, scan_status_reason, latest_scan_id"
+      "id, domain, category, triage_score, scan_released_at, scan_status, scan_attempts, scan_status_reason, latest_scan_id"
     )
     .not("triage_score", "is", null);
   if (error) throw error;

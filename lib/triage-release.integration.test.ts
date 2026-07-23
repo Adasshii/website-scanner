@@ -57,6 +57,9 @@ async function seedTriaged(overrides?: {
   score?: number;
   gated?: boolean;
   scanReleasedAt?: string | null;
+  category?: string | null;
+  reachable?: boolean;
+  https?: boolean;
 }) {
   domainCounter += 1;
   const { data, error } = await sb
@@ -65,9 +68,12 @@ async function seedTriaged(overrides?: {
       domain: `triage-release-${domainCounter}.test`,
       country: "NL",
       campaign_tag: CAMPAIGN_TAG,
+      category: overrides?.category ?? null,
       triage_score: makeTriageScore({
         score: overrides?.score ?? 50,
         gated: overrides?.gated ?? false,
+        reachable: overrides?.reachable ?? true,
+        https: overrides?.https ?? true,
       }),
       triage_checked_at: new Date().toISOString(),
       scan_released_at: overrides?.scanReleasedAt ?? null,
@@ -133,5 +139,50 @@ describe("releaseWorstN / selectWorstN", () => {
 
     const released = await releaseWorstN(sb, { cutoff: 10, ceiling: 20 });
     expect(released).toEqual([]);
+  });
+
+  it("D-4.1-01: a reachable, below-cutoff, excluded-category prospect is NOT returned", async () => {
+    const excludedId = await seedTriaged({ score: 10, category: "restaurant" });
+    const eligibleId = await seedTriaged({ score: 20, category: null });
+
+    const eligible = await selectWorstN(sb, { cutoff: 50, ceiling: 20 });
+    expect(eligible.some((r) => r.id === excludedId)).toBe(false);
+    expect(eligible.some((r) => r.id === eligibleId)).toBe(true);
+  });
+
+  it("D-4.1-03: an unreachable prospect below cutoff is NOT returned even though gated===true", async () => {
+    const unreachableId = await seedTriaged({
+      score: 5,
+      gated: true,
+      reachable: false,
+      https: false,
+    });
+
+    const eligible = await selectWorstN(sb, { cutoff: 50, ceiling: 20 });
+    expect(eligible.some((r) => r.id === unreachableId)).toBe(false);
+  });
+
+  it("D-4.1-04: a reachable no-HTTPS prospect is returned and sorts ahead of a non-gated eligible prospect", async () => {
+    const noHttpsId = await seedTriaged({
+      score: 90, // above cutoff — only eligible via the no-HTTPS fast-track
+      gated: true,
+      reachable: true,
+      https: false,
+    });
+    const nonGatedId = await seedTriaged({ score: 20, gated: false, reachable: true, https: true });
+
+    const eligible = await selectWorstN(sb, { cutoff: 50, ceiling: 20 });
+    const noHttpsIdx = eligible.findIndex((r) => r.id === noHttpsId);
+    const nonGatedIdx = eligible.findIndex((r) => r.id === nonGatedId);
+    expect(noHttpsIdx).toBeGreaterThanOrEqual(0);
+    expect(nonGatedIdx).toBeGreaterThanOrEqual(0);
+    expect(noHttpsIdx).toBeLessThan(nonGatedIdx);
+  });
+
+  it("a null-category reachable prospect below cutoff IS returned (null is not excluded)", async () => {
+    const id = await seedTriaged({ score: 20, category: null });
+
+    const eligible = await selectWorstN(sb, { cutoff: 50, ceiling: 20 });
+    expect(eligible.some((r) => r.id === id)).toBe(true);
   });
 });

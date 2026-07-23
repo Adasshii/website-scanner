@@ -11,6 +11,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { TriageScore } from "@/types/triage";
 import { DEFAULT_CUTOFF, RELEASE_CEILING } from "@/lib/triage-constants";
+import { isReleasable } from "@/lib/triage-eligibility";
 
 export interface ReleaseOptions {
   cutoff?: number;
@@ -20,14 +21,17 @@ export interface ReleaseOptions {
 export interface ReleaseCandidate {
   id: string;
   triage_score: TriageScore;
+  category: string | null;
 }
 
 /**
  * Selects the worst-N eligible, un-released prospects, worst-first
  * (gated DESC, then score ASC), sliced to `ceiling`.
  *
- * Eligible = gated === true OR score <= cutoff (gated always eligible,
- * D-01), AND domain is not null, AND triage_score is not null, AND
+ * Eligible = isReleasable(row, cutoff) — the single releasability rule
+ * (D-4.1-01/03/04): unreachable and excluded-category rows are never
+ * eligible, no-HTTPS reachable rows are always eligible (gated fast-track).
+ * Also requires domain is not null, triage_score is not null, and
  * scan_released_at is null (D-06 — already-released prospects are never
  * re-selected).
  */
@@ -37,7 +41,7 @@ export async function selectWorstN(
 ): Promise<ReleaseCandidate[]> {
   const { data, error } = await sb
     .from("prospects")
-    .select("id, triage_score")
+    .select("id, triage_score, category")
     .not("domain", "is", null)
     .not("triage_score", "is", null)
     .is("scan_released_at", null);
@@ -45,13 +49,14 @@ export async function selectWorstN(
 
   const candidates = (data ?? []) as ReleaseCandidate[];
 
-  const eligible = candidates.filter(
-    (p) => p.triage_score.gated || p.triage_score.score <= cutoff
-  );
+  const eligible = candidates.filter((p) => isReleasable(p, cutoff));
 
+  // Post-filter, the eligible set is reachable-only (D-4.1-03), so
+  // gated===true among these rows means no-HTTPS (D-4.1-04) and still
+  // sorts first — the worst-first thesis, unaffected by the gate split.
   eligible.sort((a, b) => {
     if (a.triage_score.gated !== b.triage_score.gated) {
-      return a.triage_score.gated ? -1 : 1; // gated first
+      return a.triage_score.gated ? -1 : 1; // gated (no-https) first
     }
     return a.triage_score.score - b.triage_score.score; // then worst (lowest) first
   });
