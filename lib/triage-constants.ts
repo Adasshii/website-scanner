@@ -44,3 +44,32 @@ export const RESPONSE_TIME_HIGH_MS = 4000; // tunable default — responseMs > t
 export const RESPONSE_TIME_HIGH_DEDUCTION = 20; // tunable default
 export const RESPONSE_TIME_LOW_MS = 1500; // tunable default — responseMs > this (and <= high)
 export const RESPONSE_TIME_LOW_DEDUCTION = 10; // tunable default
+
+// ── Category exclusion (D-4.1-01/D-4.1-02) ─────────────────────────
+// Food-service is not a target vertical (low budget, reservation-driven —
+// not buyers of Adashi website rebuilds). Configurable list, never inline
+// strings at the call site (D-4.1-02) — geography/vertical are project
+// parameters. Values are Overture `categories.primary` strings (the exact
+// strings prospect-upsert.ts stores on prospects.category), matched
+// case-insensitively by lib/triage-eligibility.ts. Seeded with the Overture
+// "eat and drink" family; confirm against real data at Plan 02's checkpoint.
+export const EXCLUDED_CATEGORIES: readonly string[] = [
+  "restaurant",
+  "cafe",
+  "bar",
+  "pub",
+  "coffee_shop",
+  "fast_food_restaurant",
+  "bakery",
+  "bistro",
+  "brasserie",
+  "pizza_restaurant",
+  "cafeteria",
+  "food_court",
+  "ice_cream_shop",
+  "diner",
+  "wine_bar",
+  "tea_room",
+  "snack_bar",
+  "pancake_restaurant",
+];
