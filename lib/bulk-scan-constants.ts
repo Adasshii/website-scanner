@@ -15,7 +15,12 @@ export const BULK_USER_AGENT =
   "AdashiProspecting/1.0 (+https://adashi.io/contact) — outreach research crawler";
 
 // ── Batch arming & drain pacing (D-07, D-08, SCAN-06) ──────────────
-export const BULK_BATCH_SIZE = 2; // tunable default — rows claimed per cron tick
+// D-4.1-06: one daily 07:00 drain tick now claims up to 10 prospects (70/week,
+// above the 10–50/week target). 10 is also the server-side clamp in the
+// claim_next_scan_batch RPC (migration 017), so a higher value here is
+// pointless. Takes effect only after Joshua redeploys — npx vercel --prod
+// (Plan 02 ships it).
+export const BULK_BATCH_SIZE = 10; // tunable default — rows claimed per cron tick
 export const BULK_DISPATCH_CONCURRENCY = 2; // tunable default — the p-limit bound; equals MAX_TOTAL_FULL_SCANS - RESERVED_FOR_PUBLIC (scanner-service/src/capacity.ts)
 export const BULK_DISPATCH_SPACING_MS = 5000; // tunable default — inter-dispatch spacing within a tick, so a tick does not burst (SCAN-06 / Pitfall 2)
 export const BULK_ARM_CEILING = 20; // tunable default — hard cap on prospects one "Run batch" click can arm; mirrors RELEASE_CEILING (D-07)
