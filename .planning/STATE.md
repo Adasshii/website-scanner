@@ -6,7 +6,7 @@ current_phase: 5
 current_phase_name: Contact Extraction & Classification
 status: verifying
 stopped_at: Completed 04.1-01-PLAN.md
-last_updated: "2026-07-23T22:40:16.018Z"
+last_updated: "2026-07-23T22:41:59.281Z"
 last_activity: 2026-07-23
 last_activity_desc: Phase 04.1 complete, transitioned to Phase 5
 progress:
@@ -117,12 +117,13 @@ Recent decisions affecting current work:
 - [Phase 04.1-01]: isReleasable short-circuits unreachable rows to false; among reachable rows gated=true means no-HTTPS and is the fast-track (D-4.1-03/04)
 - [Phase 04.1-01]: Read-time filtering, no backfill/re-triage: excluded/unreachable rows stay visible in the shortlist, only barred from release; lib/triage-scorer.ts deliberately left unchanged
 - [Phase ?]: D-4.1-05: split conflated GATED pill into CRITICAL (reachable no-HTTPS) and UNREACHABLE (not reachable); admin eligible/critical counts wired to isReleasable, no divergent UI copy
+- [Phase 04.1]: 04.1 phase shipped to production (npx vercel --prod, 2026-07-24); no missing category strings found against real production data, EXCLUDED_CATEGORIES stands as committed
 
 ### Pending Todos
 
 1 pending:
 
-- Add `--category=random` import mode sampling from a configurable TARGET_CATEGORIES list — revises D-10, keeps imports bounded (`2026-07-24-random-import-from-target-categories.md`). Joshua confirms the seed vertical list before it locks.
+- Add random import mode: `--category=random` from TARGET_CATEGORIES AND `--region=random` from TARGET_REGIONS — revises D-10, keeps imports bounded (`2026-07-24-random-import-from-target-categories.md`). Joshua confirms both seed lists before they lock.
 
 The three prospect-quality todos were resolved by Phase 4.1 (moved to `.planning/todos/completed/`, 2026-07-24).
 

@@ -1,6 +1,6 @@
 ---
 created: 2026-07-24T09:30:00.000Z
-title: Add --category=random import mode sampling from TARGET_CATEGORIES
+title: Add random import mode — TARGET_CATEGORIES and TARGET_REGIONS sampling
 area: triage
 files:
   - scripts/import-prospects.ts
@@ -28,7 +28,15 @@ Revises D-10, keeps its spirit (bounded, deliberate imports):
 2. Accept `--category=random` (or `--mixed`) in scripts/import-prospects.ts:
    sample across TARGET_CATEGORIES instead of one fixed value. `--limit` still
    bounds the pull; EXCLUDED_CATEGORIES still guards release regardless.
-3. Explicit `--category=<value>` keeps working unchanged.
+3. Same for region (added 2026-07-24): `TARGET_REGIONS` in lib/triage-constants.ts
+   (the NL provinces Joshua wants to prospect — likely all twelve to start, still
+   configurable) and `--region=random` sampling from it. Region resolution
+   itself is untouched — the existing bbox pre-filter + ST_Within polygon check
+   (Phase 01-04) just receives the sampled name.
+4. Explicit `--category=<value>` and `--region=<value>` keep working unchanged.
+
+With both random, an import becomes one no-decision command:
+`npx tsx scripts/import-prospects.ts --country=NL --region=random --category=random --limit=50`
 
 Small feature; fits a /gsd-quick or a plan alongside Phase 5. Have Joshua
-confirm the seed list of target verticals before locking it.
+confirm the seed lists (target verticals AND target provinces) before locking.
