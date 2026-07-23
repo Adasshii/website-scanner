@@ -18,7 +18,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 1: Prospect Data Foundation & Import** - Overture businesses become a durable prospect list that survives re-import (completed 2026-07-18)
 - [x] **Phase 2: Compliance Spine** - Suppression, unsubscribe, and versioned legal basis exist before anything can be sent (completed 2026-07-19)
 - [x] **Phase 3: Triage & Shortlist** - Every prospect gets a cheap verdict; only the worst earn a full scan (completed 2026-07-20)
-- [ ] **Phase 4: Bulk Scan Queue** - Shortlisted prospects get real scan reports without harming the live public scanner
+- [x] **Phase 4: Bulk Scan Queue** - Shortlisted prospects get real scan reports without harming the live public scanner (completed 2026-07-23)
 - [ ] **Phase 5: Contact Extraction & Classification** - Each scanned prospect carries a contact address whose legal status is known
 - [ ] **Phase 6: Draft Generation & Approval Queue** - A drafted message Joshua is willing to send, backed by evidence he can check
 - [ ] **Phase 7: Lifecycle, Reporting & Retention** - The funnel reports what it did, and old data expires on its own
@@ -313,7 +313,7 @@ Phase 8 does not begin until the Parallel Track closes, regardless of numeric or
 | 1. Prospect Data Foundation & Import | 4/4 | Complete    | 2026-07-18 |
 | 2. Compliance Spine | 7/7 | Complete    | 2026-07-19 |
 | 3. Triage & Shortlist | 6/6 | Complete    | 2026-07-20 |
-| 4. Bulk Scan Queue | 6/6 | Complete   | 2026-07-23 |
+| 4. Bulk Scan Queue | 6/6 | Complete    | 2026-07-23 |
 | 5. Contact Extraction & Classification | 0/TBD | Not started | - |
 | 6. Draft Generation & Approval Queue | 0/TBD | Not started | - |
 | 7. Lifecycle, Reporting & Retention | 0/TBD | Not started | - |

@@ -35,13 +35,13 @@
 
 ### Scan
 
-- [ ] **SCAN-01**: Shortlisted prospects are queued for a full scan without exhausting scanner-service browser concurrency
-- [ ] **SCAN-02**: The scanner service rejects scan requests over its capacity rather than accepting them and timing out
-- [ ] **SCAN-03**: Each prospect carries a visible scan status (queued, scanning, done, failed)
-- [ ] **SCAN-04**: A failed prospect scan is skipped rather than retried indefinitely
-- [ ] **SCAN-05**: Bulk scanning respects robots.txt and identifies itself with an honest user-agent
-- [ ] **SCAN-06**: Bulk scanning is rate-limited so it cannot get the Railway IP blacklisted and degrade the live public scanner
-- [ ] **SCAN-07**: A prospect scan produces the same report artefact the public scanner already produces, reachable at a hosted URL
+- [x] **SCAN-01**: Shortlisted prospects are queued for a full scan without exhausting scanner-service browser concurrency
+- [x] **SCAN-02**: The scanner service rejects scan requests over its capacity rather than accepting them and timing out
+- [x] **SCAN-03**: Each prospect carries a visible scan status (queued, scanning, done, failed)
+- [x] **SCAN-04**: A failed prospect scan is skipped rather than retried indefinitely
+- [x] **SCAN-05**: Bulk scanning respects robots.txt and identifies itself with an honest user-agent
+- [x] **SCAN-06**: Bulk scanning is rate-limited so it cannot get the Railway IP blacklisted and degrade the live public scanner
+- [x] **SCAN-07**: A prospect scan produces the same report artefact the public scanner already produces, reachable at a hosted URL
 
 ### Contact
 
@@ -88,7 +88,7 @@
 - [ ] **CMP-14**: Retention expiry can delete or anonymise by config, not hardcoded
 - [ ] **CMP-15**: Suppression records are exempt from retention deletion and retained indefinitely, flagged explicitly in code so nobody silently changes it
 - [x] **CMP-16**: Legal-basis rules live in a per-country config table (`country_code`, `spam_law_regime`, `notes_url`), never hardcoded NL logic
-- [ ] **CMP-17**: The scan pipeline does not separately index, profile, or reuse incidental personal data (staff photos, named bios) captured in screenshots
+- [x] **CMP-17**: The scan pipeline does not separately index, profile, or reuse incidental personal data (staff photos, named bios) captured in screenshots
 
 ### Send — GATED
 
@@ -169,13 +169,13 @@ Populated during roadmap creation. See `.planning/ROADMAP.md` for phase detail.
 | TRI-07 | Phase 3 | Complete |
 | TRI-08 | Phase 3 | Complete |
 | TRI-09 | Phase 3 | Complete |
-| SCAN-01 | Phase 4 | Pending |
-| SCAN-02 | Phase 4 | Pending |
-| SCAN-03 | Phase 4 | Pending |
-| SCAN-04 | Phase 4 | Pending |
-| SCAN-05 | Phase 4 | Pending |
-| SCAN-06 | Phase 4 | Pending |
-| SCAN-07 | Phase 4 | Pending |
+| SCAN-01 | Phase 4 | Complete |
+| SCAN-02 | Phase 4 | Complete |
+| SCAN-03 | Phase 4 | Complete |
+| SCAN-04 | Phase 4 | Complete |
+| SCAN-05 | Phase 4 | Complete |
+| SCAN-06 | Phase 4 | Complete |
+| SCAN-07 | Phase 4 | Complete |
 | CON-01 | Phase 5 | Pending |
 | CON-02 | Phase 5 | Pending |
 | CON-03 | Phase 5 | Pending |
@@ -210,7 +210,7 @@ Populated during roadmap creation. See `.planning/ROADMAP.md` for phase detail.
 | CMP-14 | Phase 7 | Pending |
 | CMP-15 | Phase 7 | Pending |
 | CMP-16 | Phase 2 | Complete |
-| CMP-17 | Phase 4 | Pending |
+| CMP-17 | Phase 4 | Complete |
 | SND-01 | Phase 8 | Pending (gated) |
 | SND-02 | Phase 8 | Pending (gated) |
 | SND-03 | Phase 8 | Pending (gated) |
