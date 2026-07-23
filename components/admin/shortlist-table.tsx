@@ -3,6 +3,7 @@
 import { useState } from "react";
 import type { ShortlistRow } from "@/lib/triage-candidates";
 import { SignalChips } from "@/components/admin/signal-chips";
+import { isReleasable } from "@/lib/triage-eligibility";
 
 interface ShortlistTableProps {
   rows: ShortlistRow[];
@@ -23,8 +24,8 @@ function relativeDate(dateStr: string): string {
 }
 
 // Status pill tokens (queued/scanning/done/failed), same badge-token style
-// as the existing GATED pill. A null scan_status renders no pill — an
-// un-armed prospect has no queue state (SCAN-03).
+// as the CRITICAL/UNREACHABLE priority pills. A null scan_status renders no
+// pill — an un-armed prospect has no queue state (SCAN-03).
 const statusPillStyles = {
   queued: "bg-gray-100 text-gray-600 border-gray-200",
   scanning: "bg-blue-100 text-blue-700 border-blue-200",
@@ -114,8 +115,7 @@ export function ShortlistTable({ rows, cutoff, loading, secret, onRequeued }: Sh
     );
   }
 
-  const eligible = (row: ShortlistRow) => row.triage_score.gated || row.triage_score.score <= cutoff;
-  const eligibleCount = rows.filter((r) => !r.scan_released_at && eligible(r)).length;
+  const eligibleCount = rows.filter((r) => !r.scan_released_at && isReleasable(r, cutoff)).length;
   const hasQueueActivity = rows.some((r) => !!r.scan_released_at || r.scan_status !== null);
 
   // Only collapse to the empty state when there is truly nothing to show —
@@ -153,17 +153,28 @@ export function ShortlistTable({ rows, cutoff, loading, secret, onRequeued }: Sh
           {rows.map((row) => {
             const score = row.triage_score;
             const released = !!row.scan_released_at;
+            // Split the old conflated priority pill in two (D-4.1-03/04/05):
+            // reachable+no-HTTPS is the top-priority signal (CRITICAL, keeps
+            // the red-priority row treatment); unreachable is visible but
+            // not a target (UNREACHABLE, neutral/grey, no priority styling).
+            const isCritical = score.reachable && !score.https;
+            const isUnreachable = !score.reachable;
             return (
               <tr
                 key={row.id}
                 className={`border-b border-gray-50 hover:bg-gray-50/50 ${
-                  score.gated ? "border-l-4 border-red-400 bg-red-50/30" : ""
+                  isCritical ? "border-l-4 border-red-400 bg-red-50/30" : ""
                 } ${released ? "opacity-60" : ""}`}
               >
                 <td className="px-4 py-3">
-                  {score.gated && (
+                  {isCritical && (
                     <span className="inline-block text-xs font-semibold px-2 py-0.5 rounded-full border bg-red-100 text-red-700 border-red-200">
-                      GATED
+                      CRITICAL
+                    </span>
+                  )}
+                  {isUnreachable && (
+                    <span className="inline-block text-xs font-semibold px-2 py-0.5 rounded-full border bg-gray-100 text-gray-500 border-gray-200">
+                      UNREACHABLE
                     </span>
                   )}
                 </td>

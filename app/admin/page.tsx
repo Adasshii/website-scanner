@@ -9,6 +9,7 @@ import { ReleaseButton } from "@/components/admin/release-button";
 import { RunBatchButton } from "@/components/admin/run-batch-button";
 import type { ShortlistRow } from "@/lib/triage-candidates";
 import { DEFAULT_CUTOFF } from "@/lib/triage-constants";
+import { isReleasable } from "@/lib/triage-eligibility";
 
 interface Stats {
   totalScans: number;
@@ -397,18 +398,20 @@ function ShortlistTab({
   secret: string;
   onReleased: () => void;
 }) {
-  const gatedCount = rows.filter((r) => r.triage_score.gated).length;
+  // "Critical" = reachable no-HTTPS rows (the priority signal, D-4.1-05).
+  // Deliberately not isReleasable's `gated` boolean, which among reachable
+  // rows means the same thing but a food-service reachable no-HTTPS row
+  // would still count here (it's a priority signal, not a release count).
+  const criticalCount = rows.filter((r) => r.triage_score.reachable && !r.triage_score.https).length;
   const releasedCount = rows.filter((r) => r.scan_released_at).length;
-  const eligibleCount = rows.filter(
-    (r) => !r.scan_released_at && (r.triage_score.gated || r.triage_score.score <= cutoff)
-  ).length;
+  const eligibleCount = rows.filter((r) => !r.scan_released_at && isReleasable(r, cutoff)).length;
   const armableCount = rows.filter((r) => r.scan_released_at && r.scan_status === null).length;
 
   return (
     <div>
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
         <StatCard label="Total triaged" value={rows.length} />
-        <StatCard label="Gated" value={gatedCount} />
+        <StatCard label="Critical" value={criticalCount} />
         <StatCard label="Eligible now" value={eligibleCount} highlight />
         <StatCard label="Released" value={releasedCount} />
       </div>
