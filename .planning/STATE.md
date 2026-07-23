@@ -2,18 +2,18 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_phase: "04.1"
-current_phase_name: Prospect Quality
-status: planned
-stopped_at: Phase 4.1 planned — 2 plans checker-passed, ready for /gsd-execute-phase 04.1
-last_updated: "2026-07-23T22:00:02.146Z"
+current_phase: 04.1
+current_phase_name: prospect-quality
+status: executing
+stopped_at: Completed 04.1-01-PLAN.md
+last_updated: "2026-07-23T22:12:05.856Z"
 last_activity: 2026-07-23
-last_activity_desc: Phase 04 complete, transitioned to Phase 5
+last_activity_desc: Phase 04.1 execution started
 progress:
   total_phases: 9
   completed_phases: 4
-  total_plans: 23
-  completed_plans: 23
+  total_plans: 25
+  completed_plans: 24
   percent: 44
 ---
 
@@ -24,14 +24,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-17)
 
 **Core value:** Joshua opens the tool and finds businesses genuinely worth pitching, with the proof already written, so that outreach costs him minutes instead of hours.
-**Current focus:** Phase 04.1 — Prospect Quality (inserted before Phase 5)
+**Current focus:** Phase 04.1 — prospect-quality
 
 ## Current Position
 
-Phase: 04.1 — Prospect Quality (INSERTED)
-Plan: 0 of 2 executed (both planned, checker passed)
-Status: Planned — next: /gsd-execute-phase 04.1
-Last activity: 2026-07-23 — Phase 4.1 planned (category exclusion, gate split, batch size)
+Phase: 04.1 (prospect-quality) — EXECUTING
+Plan: 2 of 2
+Status: Ready to execute
+Last activity: 2026-07-23 — Phase 04.1 execution started
 
 Progress: [██████████] 100%
 
@@ -72,6 +72,7 @@ Progress: [██████████] 100%
 | Phase 03 P03 | 15min | 2 tasks | 3 files |
 | Phase 03 P04 | 10min | 2 tasks | 5 files |
 | Phase 03 P05 | 20min | 3 tasks | 6 files |
+| Phase 04.1 P01 | 15min | 3 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -110,6 +111,9 @@ Recent decisions affecting current work:
 - [Phase ?]: releaseWorstN is a thin two-step select-then-update wrapper (no new Postgres RPC) — correct at this project's human-triggered, single-tenant concurrency profile
 - [Phase 03]: getTriageCandidates()/getShortlist() are pure reads (D-07); the release manual smoke-test ran against local Supabase since production still lacks migration 016 (Plan 06's job)
 - [Phase 03]: Shortlist tab: server-side gated/score sort in the shortlist route, ReleaseButton takes secret as a prop, no next-intl on the admin surface (matches existing zero-i18n admin convention)
+- [Phase 04.1-01]: EXCLUDED_CATEGORIES is a configurable readonly string[] in triage-constants.ts, seeded with the Overture eat-and-drink family, matched case-insensitively
+- [Phase 04.1-01]: isReleasable short-circuits unreachable rows to false; among reachable rows gated=true means no-HTTPS and is the fast-track (D-4.1-03/04)
+- [Phase 04.1-01]: Read-time filtering, no backfill/re-triage: excluded/unreachable rows stay visible in the shortlist, only barred from release; lib/triage-scorer.ts deliberately left unchanged
 
 ### Pending Todos
 
@@ -140,6 +144,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-23T21:15:14.275Z
-Stopped at: Completed 04-06-PLAN.md — Phase 4 fully executed, awaiting verifier
+Last session: 2026-07-23T22:12:05.846Z
+Stopped at: Completed 04.1-01-PLAN.md
 Resume file: None
