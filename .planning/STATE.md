@@ -6,7 +6,7 @@ current_phase: 5
 current_phase_name: Contact Extraction & Classification
 status: verifying
 stopped_at: Completed 04.1-01-PLAN.md
-last_updated: "2026-07-23T22:35:23.671Z"
+last_updated: "2026-07-23T22:40:16.018Z"
 last_activity: 2026-07-23
 last_activity_desc: Phase 04.1 complete, transitioned to Phase 5
 progress:
@@ -74,6 +74,7 @@ Progress: [██████████] 100%
 | Phase 03 P04 | 10min | 2 tasks | 5 files |
 | Phase 03 P05 | 20min | 3 tasks | 6 files |
 | Phase 04.1 P01 | 15min | 3 tasks | 7 files |
+| Phase 04.1 P02 | 15min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -115,10 +116,15 @@ Recent decisions affecting current work:
 - [Phase 04.1-01]: EXCLUDED_CATEGORIES is a configurable readonly string[] in triage-constants.ts, seeded with the Overture eat-and-drink family, matched case-insensitively
 - [Phase 04.1-01]: isReleasable short-circuits unreachable rows to false; among reachable rows gated=true means no-HTTPS and is the fast-track (D-4.1-03/04)
 - [Phase 04.1-01]: Read-time filtering, no backfill/re-triage: excluded/unreachable rows stay visible in the shortlist, only barred from release; lib/triage-scorer.ts deliberately left unchanged
+- [Phase ?]: D-4.1-05: split conflated GATED pill into CRITICAL (reachable no-HTTPS) and UNREACHABLE (not reachable); admin eligible/critical counts wired to isReleasable, no divergent UI copy
 
 ### Pending Todos
 
-None — the three prospect-quality todos were resolved by Phase 4.1 (moved to `.planning/todos/completed/`, 2026-07-24).
+1 pending:
+
+- Add `--category=random` import mode sampling from a configurable TARGET_CATEGORIES list — revises D-10, keeps imports bounded (`2026-07-24-random-import-from-target-categories.md`). Joshua confirms the seed vertical list before it locks.
+
+The three prospect-quality todos were resolved by Phase 4.1 (moved to `.planning/todos/completed/`, 2026-07-24).
 
 **Open follow-up (not a todo):** after the first 07:00 drain tick at BULK_BATCH_SIZE=10, Joshua runs `npm run scanner-health -- --compare pre-04.1`; if the drop exceeds tolerance, open a follow-up to lower capacity constants.
 
