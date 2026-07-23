@@ -205,14 +205,15 @@ Notes:
 
 ### Phase 04.1: Prospect Quality — category exclusion, gate split, batch size (INSERTED)
 
-**Goal:** [Urgent work - to be planned]
-**Requirements**: TBD
+**Goal:** The shortlist feeds the pipeline the right businesses before Phase 5: food-service categories and unreachable sites are never releasable, no-HTTPS sites stay top priority, and one daily drain tick scans up to 10 prospects.
+**Requirements**: 3 captured todos (no numbered IDs) — exclude-food-service-categories, split-triage-gate-unreachable-vs-no-https, raise-bulk-batch-size-for-daily-cron
 **Depends on:** Phase 4
-**Plans:** 0 plans
+**Plans:** 2 plans
 
 Plans:
 
-- [ ] TBD (run /gsd-plan-phase 04.1 to break down)
+- [ ] 04.1-01-PLAN.md — Releasability engine: isReleasable predicate + EXCLUDED_CATEGORIES, wired into selectWorstN/getShortlist, BULK_BATCH_SIZE 2→10 (wave 1)
+- [ ] 04.1-02-PLAN.md — Shortlist UI: rename GATED→CRITICAL, unreachable visible-not-releasable, counts via isReleasable; ship to prod + verify (wave 2)
 
 ### Phase 5: Contact Extraction & Classification
 
