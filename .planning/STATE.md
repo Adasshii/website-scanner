@@ -4,17 +4,17 @@ milestone: v1.0
 milestone_name: milestone
 current_phase: 04
 current_phase_name: bulk-scan-queue
-status: executing
-stopped_at: Phase 4 planned
-last_updated: "2026-07-21T20:10:02.420Z"
-last_activity: 2026-07-21
-last_activity_desc: Phase 04 execution started
+status: verifying
+stopped_at: Phase 4 executed — awaiting verifier
+last_updated: "2026-07-23T21:15:14.283Z"
+last_activity: 2026-07-23
+last_activity_desc: Completed plan 04-06 — Phase 04 fully executed (6/6)
 progress:
   total_phases: 8
-  completed_phases: 3
+  completed_phases: 4
   total_plans: 23
-  completed_plans: 22
-  percent: 38
+  completed_plans: 23
+  percent: 50
 ---
 
 # Project State
@@ -28,12 +28,12 @@ See: .planning/PROJECT.md (updated 2026-07-17)
 
 ## Current Position
 
-Phase: 04 (bulk-scan-queue) — EXECUTING
+Phase: 04 (bulk-scan-queue) — VERIFYING
 Plan: 6 of 6
-Status: Ready to execute
-Last activity: 2026-07-21 — Phase 04 execution started
+Status: Phase complete — ready for verification
+Last activity: 2026-07-23 — Completed plan 04-06 (Phase 04 fully executed, 6/6)
 
-Progress: [░░░░░░░░░░] 0%
+Progress: [██████████] 100%
 
 ## Performance Metrics
 
@@ -113,6 +113,7 @@ Recent decisions affecting current work:
 ### Pending Todos
 
 2 pending (captured 2026-07-21 during Phase 4 cutover):
+
 - Exclude food-service categories at ingestion/triage (`2026-07-21-exclude-food-service-categories-at-triage.md`)
 - Split triage gate: unreachable not releasable, no-HTTPS stays prioritized, rename GATED label — revises D-01 (`2026-07-21-split-triage-gate-unreachable-vs-no-https.md`)
 
@@ -122,7 +123,6 @@ Recent decisions affecting current work:
 - **Scoring verdict-threshold divergence** (`lib/scoring.ts` vs `scanner-service/src/index.ts`, 95/85/70/50 vs 90/70/50) is scheduled as the first plan of Phase 6 but is not a numbered v1 requirement. REQUIREMENTS.md may need an addition — see ROADMAP Coverage Notes.
 - **Blast radius:** nothing in this milestone may risk the existing scanner's email or scanning. It works and it earns. Phase 4 verification watches the public scanner's success rate during bulk runs.
 - **Overture data quality** is a proven risk here, not theoretical — prior research produced a 98% false-positive read before correction. Manual sample audit required in Phase 1.
-- 04-06 Tasks 2-3 deferred by Joshua (2026-07-21): live push of migration 017 (MUST carry 04-03's MATERIALIZED CTE fix, already in the file) + E2E batch run with SCAN-06 baseline. Both are blocking human-verify checkpoints — run in a dedicated session. Health script is ready: npm run scanner-health -- --save phase04-baseline
 
 ## Deferred Items
 
@@ -134,6 +134,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-21T14:26:56.808Z
-Stopped at: Phase 4 context gathered
-Resume file: .planning/phases/04-bulk-scan-queue/04-CONTEXT.md
+Last session: 2026-07-23T21:15:14.275Z
+Stopped at: Completed 04-06-PLAN.md — Phase 4 fully executed, awaiting verifier
+Resume file: None

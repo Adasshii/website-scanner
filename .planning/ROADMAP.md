@@ -169,32 +169,32 @@ Notes:
   4. A prospect whose scan fails is skipped rather than retried indefinitely, and bulk scanning identifies itself honestly, respects robots.txt, and is rate-limited (SCAN-04, SCAN-05)
   5. Each scanned prospect has a report at a hosted URL identical in form to the public scanner's, and personal data caught incidentally in screenshots is not separately indexed, profiled, or reused (SCAN-07, CMP-17)
 
-**Plans**: 6 plans
+**Plans**: 6/6 plans complete
 
 Plans:
 **Wave 1**
 
-- [ ] 04-01-PLAN.md — Foundations: migration 017 (scan_status/attempts/reason + `claim_next_scan_batch` SKIP LOCKED RPC) + `lib/bulk-scan-constants.ts` + `scanner-service/src/capacity.ts` + p-limit declared (wave 1)
+- [x] 04-01-PLAN.md — Foundations: migration 017 (scan_status/attempts/reason + `claim_next_scan_batch` SKIP LOCKED RPC) + `lib/bulk-scan-constants.ts` + `scanner-service/src/capacity.ts` + p-limit declared (wave 1)
 
 **Wave 2** *(blocked on Wave 1)*
 
-- [ ] 04-02-PLAN.md — Scanner service: `full-async` 503 capacity refusal, bulk user-agent passthrough, CMP-17 no-profiling prompt + LIA record (wave 2)
+- [x] 04-02-PLAN.md — Scanner service: `full-async` 503 capacity refusal, bulk user-agent passthrough, CMP-17 no-profiling prompt + LIA record (wave 2)
 
 **Wave 3** *(blocked on Wave 2)*
 
-- [ ] 04-03-PLAN.md — Libraries: `lib/scan-queue.ts` (arm/claim/fail/requeue/reconcile) + `lib/bulk-scan-dispatch.ts` (robots pre-flight, SSRF, paced p-limit dispatch) + SKIP LOCKED overlap integration test (wave 3)
+- [x] 04-03-PLAN.md — Libraries: `lib/scan-queue.ts` (arm/claim/fail/requeue/reconcile) + `lib/bulk-scan-dispatch.ts` (robots pre-flight, SSRF, paced p-limit dispatch) + SKIP LOCKED overlap integration test (wave 3)
 
 **Wave 4** *(blocked on Wave 3)*
 
-- [ ] 04-04-PLAN.md — Routes: `/api/cron/drain-scan-queue` + vercel.json schedule, `/api/admin/run-batch`, `/api/admin/requeue-scan` (wave 4)
+- [x] 04-04-PLAN.md — Routes: `/api/cron/drain-scan-queue` + vercel.json schedule, `/api/admin/run-batch`, `/api/admin/requeue-scan` (wave 4)
 
 **Wave 5** *(blocked on Wave 4)*
 
-- [ ] 04-05-PLAN.md — Admin UI: Shortlist status column, report link, re-queue action, RunBatchButton (wave 5, human checkpoint)
+- [x] 04-05-PLAN.md — Admin UI: Shortlist status column, report link, re-queue action, RunBatchButton (wave 5, human checkpoint)
 
 **Wave 6** *(blocked on Wave 5)*
 
-- [ ] 04-06-PLAN.md — SCAN-06 health measurement script + [BLOCKING] apply migration 017 to live Supabase + end-to-end batch verification (wave 6, human gate)
+- [x] 04-06-PLAN.md — SCAN-06 health measurement script + [BLOCKING] apply migration 017 to live Supabase + end-to-end batch verification (wave 6, human gate)
 
 Notes:
 
@@ -313,7 +313,7 @@ Phase 8 does not begin until the Parallel Track closes, regardless of numeric or
 | 1. Prospect Data Foundation & Import | 4/4 | Complete    | 2026-07-18 |
 | 2. Compliance Spine | 7/7 | Complete    | 2026-07-19 |
 | 3. Triage & Shortlist | 6/6 | Complete    | 2026-07-20 |
-| 4. Bulk Scan Queue | 0/TBD | Not started | - |
+| 4. Bulk Scan Queue | 6/6 | Complete   | 2026-07-23 |
 | 5. Contact Extraction & Classification | 0/TBD | Not started | - |
 | 6. Draft Generation & Approval Queue | 0/TBD | Not started | - |
 | 7. Lifecycle, Reporting & Retention | 0/TBD | Not started | - |
