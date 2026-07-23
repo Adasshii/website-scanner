@@ -256,6 +256,8 @@ This document evolves at phase transitions and milestone boundaries.
 
 *Phase 4 (Bulk Scan Queue) complete 2026-07-23 — migration 017 live, production cutover done (scan.adashi.io, 142 commits deployed), first real 4-prospect batch verified end to end. SCAN-01..07 + CMP-17 validated; SCAN-06 held 92.9% → 92.9% (0.0pp). Known operating constraint: Vercel Hobby limits crons to daily, so the drain runs once/day — BULK_BATCH_SIZE goes 2→10 in the prospect-quality mini-phase (pending todos: category exclusion, D-01 gate split, batch size).*
 
+*Phase 4.1 (Prospect Quality, inserted) complete 2026-07-24 — verifier 9/9. `isReleasable` predicate is the single releasability rule (food-service categories and unreachable prospects can never be released; no-HTTPS stays fast-tracked), GATED pill renamed CRITICAL, BULK_BATCH_SIZE 2→10 for the daily drain. Deployed and live-verified. Open follow-up: post-tick `scanner-health --compare pre-04.1`.*
+
 *Last updated: 2026-07-17 after initialization and the five-dimension research pass
 (STACK, FEATURES, ARCHITECTURE, PITFALLS, LEGAL). Research contradicted two locked
 decisions: the Resend send path is dead, and the Tw art. 11.7 B2B exemption does not
