@@ -112,10 +112,11 @@ Recent decisions affecting current work:
 
 ### Pending Todos
 
-2 pending (captured 2026-07-21 during Phase 4 cutover):
+3 pending (captured during Phase 4 cutover/verification — together they form the prospect-quality mini-phase, planned before Phase 5):
 
 - Exclude food-service categories at ingestion/triage (`2026-07-21-exclude-food-service-categories-at-triage.md`)
 - Split triage gate: unreachable not releasable, no-HTTPS stays prioritized, rename GATED label — revises D-01 (`2026-07-21-split-triage-gate-unreachable-vs-no-https.md`)
+- Raise BULK_BATCH_SIZE 2→10 for the daily drain cadence (`2026-07-23-raise-bulk-batch-size-for-daily-cron.md`)
 
 ### Blockers/Concerns
 

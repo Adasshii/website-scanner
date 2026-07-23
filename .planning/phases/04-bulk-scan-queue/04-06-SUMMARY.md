@@ -81,6 +81,11 @@ Production was 142 commits behind at cutover. Deployed 2026-07-22 via `git push 
 - **Items:** (a) food-service category exclusion at ingestion/triage; (b) D-01 revision — unreachable prospects not releasable, no-HTTPS stays prioritized, rename the GATED label
 - **Impact:** Neither blocks this phase; both filed as pending todos in `.planning/todos/`.
 
+**2. [Rule 1 - infra deviation, disclosed post-verification] Vercel Hobby plan forced all sub-daily crons to daily (commit 96296d9)**
+- **Found during:** Phase verification (the deploy rejected sub-daily schedules; the fix commit was undocumented)
+- **What changed:** drain-scan-queue `*/10 * * * *` → `0 7 * * *` (once daily); send-pending-reports safety net `0 * * * *` → `0 8 * * *` (once daily). A 20-prospect batch at BULK_BATCH_SIZE=2 therefore drains in 10 days, not under two hours as plan 04-04's arithmetic implies.
+- **Resolution (Joshua, 2026-07-23):** (a) stay on Hobby; raise `BULK_BATCH_SIZE` from 2 to 10 (the server-side claim clamp) so one daily tick scans 10 prospects — 70/week, above the 10–50/week target; SCAN-06 measured 0.0pp public-scanner impact at the current settings. Filed as a pending todo, ships with the prospect-quality mini-phase (needs redeploy). (b) The daily email safety net is accepted — it only catches missed report emails; the primary send path is unaffected.
+
 No other deviations — tasks executed as planned.
 
 ## Self-Check: PASSED
