@@ -2,19 +2,19 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_phase: 04.1
-current_phase_name: prospect-quality
-status: executing
+current_phase: 5
+current_phase_name: Contact Extraction & Classification
+status: verifying
 stopped_at: Completed 04.1-01-PLAN.md
-last_updated: "2026-07-23T22:12:05.856Z"
+last_updated: "2026-07-23T22:35:23.671Z"
 last_activity: 2026-07-23
-last_activity_desc: Phase 04.1 execution started
+last_activity_desc: Phase 04.1 complete, transitioned to Phase 5
 progress:
   total_phases: 9
-  completed_phases: 4
+  completed_phases: 5
   total_plans: 25
-  completed_plans: 24
-  percent: 44
+  completed_plans: 25
+  percent: 56
 ---
 
 # Project State
@@ -28,10 +28,10 @@ See: .planning/PROJECT.md (updated 2026-07-17)
 
 ## Current Position
 
-Phase: 04.1 (prospect-quality) — EXECUTING
-Plan: 2 of 2
-Status: Ready to execute
-Last activity: 2026-07-23 — Phase 04.1 execution started
+Phase: 5 — Contact Extraction & Classification
+Plan: Not started
+Status: Phase complete — ready for verification
+Last activity: 2026-07-23 — Phase 04.1 complete, transitioned to Phase 5
 
 Progress: [██████████] 100%
 
@@ -39,7 +39,7 @@ Progress: [██████████] 100%
 
 **Velocity:**
 
-- Total plans completed: 23
+- Total plans completed: 25
 - Average duration: —
 - Total execution time: —
 
@@ -51,6 +51,7 @@ Progress: [██████████] 100%
 | 02 | 7 | - | - |
 | 3 | 6 | - | - |
 | 04 | 6 | - | - |
+| 04.1 | 2 | - | - |
 
 **Recent Trend:**
 
@@ -117,11 +118,9 @@ Recent decisions affecting current work:
 
 ### Pending Todos
 
-3 pending (captured during Phase 4 cutover/verification — together they form the prospect-quality mini-phase, planned before Phase 5):
+None — the three prospect-quality todos were resolved by Phase 4.1 (moved to `.planning/todos/completed/`, 2026-07-24).
 
-- Exclude food-service categories at ingestion/triage (`2026-07-21-exclude-food-service-categories-at-triage.md`)
-- Split triage gate: unreachable not releasable, no-HTTPS stays prioritized, rename GATED label — revises D-01 (`2026-07-21-split-triage-gate-unreachable-vs-no-https.md`)
-- Raise BULK_BATCH_SIZE 2→10 for the daily drain cadence (`2026-07-23-raise-bulk-batch-size-for-daily-cron.md`)
+**Open follow-up (not a todo):** after the first 07:00 drain tick at BULK_BATCH_SIZE=10, Joshua runs `npm run scanner-health -- --compare pre-04.1`; if the drop exceeds tolerance, open a follow-up to lower capacity constants.
 
 ### Blockers/Concerns
 
