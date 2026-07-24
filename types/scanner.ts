@@ -120,6 +120,25 @@ export interface PageData {
   schemaTypes?: string[];
   /** Number of JSON-LD script blocks that failed to parse */
   schemaInvalidCount?: number;
+  /**
+   * Raw contact material harvested by scanner-service extractPageData() (plan
+   * 05-02) and parsed by lib/contact-extraction.ts aggregateContacts(). Kept
+   * optional so legacy scans persisted in scans.pages before this field
+   * existed remain valid — the aggregator treats absence as no candidates.
+   * Node-side parsing keeps the browser context a thin harvester (no
+   * cfemail/regex logic crossing the boundary).
+   */
+  contactExtraction?: ContactExtraction;
+}
+
+/** Raw contact material harvested from a single page, pre-parsing. */
+export interface ContactExtraction {
+  /** Raw href values from mailto anchors */
+  mailtoHrefs: string[];
+  /** Raw data-cfemail attribute values (Cloudflare email obfuscation) */
+  cfemailTokens: string[];
+  /** Bounded visible page text scanned for contact patterns */
+  contactText: string;
 }
 
 export interface CoreWebVitals {
@@ -403,6 +422,10 @@ export interface ProspectRow {
   latest_scan_id: string | null;
   contact_email: string | null;
   contact_email_type: string | null;
+  /** Defaults to false (CON-06); migration 018 */
+  commercial_contact_invited: boolean;
+  /** yes|no|unknown, defaults to unknown (CON-07); migration 018 */
+  sole_proprietorship: string;
   created_at: string;
   updated_at: string;
 }
