@@ -159,6 +159,12 @@ export function ShortlistTable({ rows, cutoff, loading, secret, onRequeued }: Sh
             // not a target (UNREACHABLE, neutral/grey, no priority styling).
             const isCritical = score.reachable && !score.https;
             const isUnreachable = !score.reachable;
+            // NAMED-PERSON: only a contact (found via reconcileInFlightScans'
+            // derivation) is a named person, not a generic/role address —
+            // flags for manual review. Visibility only (CON-05); keeping
+            // named-person prospects out of the default outreach flow is
+            // Phase 6's job.
+            const isNamedPerson = row.contact_email_type === "named-person";
             return (
               <tr
                 key={row.id}
@@ -175,6 +181,11 @@ export function ShortlistTable({ rows, cutoff, loading, secret, onRequeued }: Sh
                   {isUnreachable && (
                     <span className="inline-block text-xs font-semibold px-2 py-0.5 rounded-full border bg-gray-100 text-gray-500 border-gray-200">
                       UNREACHABLE
+                    </span>
+                  )}
+                  {isNamedPerson && (
+                    <span className="inline-block text-xs font-semibold px-2 py-0.5 rounded-full border bg-orange-100 text-orange-700 border-orange-200">
+                      NAMED-PERSON
                     </span>
                   )}
                 </td>

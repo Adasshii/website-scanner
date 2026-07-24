@@ -27,6 +27,7 @@ export interface ShortlistRow {
   scan_attempts: number;
   scan_status_reason: string | null;
   latest_scan_id: string | null;
+  contact_email_type: string | null;
 }
 
 /**
@@ -62,7 +63,7 @@ export async function getShortlist(sb: SupabaseClient): Promise<ShortlistRow[]> 
   const { data, error } = await sb
     .from("prospects")
     .select(
-      "id, domain, category, triage_score, scan_released_at, scan_status, scan_attempts, scan_status_reason, latest_scan_id"
+      "id, domain, category, triage_score, scan_released_at, scan_status, scan_attempts, scan_status_reason, latest_scan_id, contact_email_type"
     )
     .not("triage_score", "is", null);
   if (error) throw error;
