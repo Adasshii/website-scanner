@@ -45,10 +45,10 @@
 
 ### Contact
 
-- [ ] **CON-01**: A contact email is extracted from the prospect's own website during the existing scan, without a second crawl
-- [ ] **CON-02**: Extraction handles `mailto:` links and body-text addresses, including Cloudflare `data-cfemail` obfuscation
+- [x] **CON-01**: A contact email is extracted from the prospect's own website during the existing scan, without a second crawl
+- [x] **CON-02**: Extraction handles `mailto:` links and body-text addresses, including Cloudflare `data-cfemail` obfuscation
 - [x] **CON-03**: Every extracted address is classified as `generic` (info@, contact@, sales@, hello@) or `named-person`, and the classification is stored on the prospect
-- [ ] **CON-04**: Generic addresses are preferred over named-person addresses when both exist
+- [x] **CON-04**: Generic addresses are preferred over named-person addresses when both exist
 - [ ] **CON-05**: A prospect whose only address is `named-person` is flagged for manual review and never enters the default outreach flow automatically
 - [x] **CON-06**: The system records whether the source page invited commercial contact at that address, defaulting to "no" when absent
 - [x] **CON-07**: A prospect identified as a sole proprietorship (eenmanszaak) has its generic address treated as personal data
@@ -176,10 +176,10 @@ Populated during roadmap creation. See `.planning/ROADMAP.md` for phase detail.
 | SCAN-05 | Phase 4 | Complete |
 | SCAN-06 | Phase 4 | Complete |
 | SCAN-07 | Phase 4 | Complete |
-| CON-01 | Phase 5 | Pending |
-| CON-02 | Phase 5 | Pending |
+| CON-01 | Phase 5 | Complete |
+| CON-02 | Phase 5 | Complete |
 | CON-03 | Phase 5 | Complete |
-| CON-04 | Phase 5 | Pending |
+| CON-04 | Phase 5 | Complete |
 | CON-05 | Phase 5 | Pending |
 | CON-06 | Phase 5 | Complete |
 | CON-07 | Phase 5 | Complete |
