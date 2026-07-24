@@ -138,16 +138,26 @@ describe("requeueProspect (human requeue, SCAN-04)", () => {
 });
 
 describe("reconcileInFlightScans", () => {
-  it("maps a completed scan to done and a failed scan to failed with its error_message as reason", async () => {
+  it("derives contact fields for a NULL-contact done prospect and maps a failed scan to failed with its error_message as reason", async () => {
     const inFlight = [
-      { id: "p-done", latest_scan_id: "s-done" },
-      { id: "p-failed", latest_scan_id: "s-failed" },
-      { id: "p-scanning", latest_scan_id: "s-scanning" },
+      { id: "p-done", latest_scan_id: "s-done", domain: "acme.nl", contact_email: null },
+      { id: "p-failed", latest_scan_id: "s-failed", domain: "other.nl", contact_email: null },
+      { id: "p-scanning", latest_scan_id: "s-scanning", domain: "third.nl", contact_email: null },
     ];
     const scans = [
-      { id: "s-done", status: "completed", error_message: null },
-      { id: "s-failed", status: "failed", error_message: "timed out" },
-      { id: "s-scanning", status: "scanning", error_message: null },
+      {
+        id: "s-done",
+        status: "completed",
+        error_message: null,
+        pages: [
+          {
+            url: "https://acme.nl/contact",
+            data: { contactExtraction: { mailtoHrefs: ["mailto:info@acme.nl"], cfemailTokens: [], contactText: "" } },
+          },
+        ],
+      },
+      { id: "s-failed", status: "failed", error_message: "timed out", pages: [] },
+      { id: "s-scanning", status: "scanning", error_message: null, pages: [] },
     ];
     const { sb, builders } = makeSupabaseMock([
       { data: inFlight, error: null }, // prospects select
@@ -162,11 +172,32 @@ describe("reconcileInFlightScans", () => {
     expect(result.failed).toEqual(["p-failed"]);
     // "scanning" row is untouched: only two update-builders created after the two selects.
     expect(builders.length).toBe(4);
-    expect(builders[2].update).toHaveBeenCalledWith({ scan_status: "done" });
+    expect(builders[2].update).toHaveBeenCalledWith({
+      scan_status: "done",
+      contact_email: "info@acme.nl",
+      contact_email_type: "generic",
+      commercial_contact_invited: false,
+      sole_proprietorship: "unknown",
+    });
     expect(builders[3].update).toHaveBeenCalledWith({
       scan_status: "failed",
       scan_status_reason: "timed out",
     });
+  });
+
+  it("writes scan_status only for a done prospect that already has a contact_email (fill-only-when-null)", async () => {
+    const inFlight = [{ id: "p-has-contact", latest_scan_id: "s-done", domain: "acme.nl", contact_email: "existing@keep.nl" }];
+    const scans = [{ id: "s-done", status: "completed", error_message: null, pages: [] }];
+    const { sb, builders } = makeSupabaseMock([
+      { data: inFlight, error: null },
+      { data: scans, error: null },
+      { error: null },
+    ]);
+
+    const result = await reconcileInFlightScans(sb);
+
+    expect(result.done).toEqual(["p-has-contact"]);
+    expect(builders[2].update).toHaveBeenCalledWith({ scan_status: "done" });
   });
 
   it("ignores scanning prospects with no latest_scan_id and returns early with no update calls", async () => {
