@@ -2,18 +2,18 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_phase: 5
-current_phase_name: Contact Extraction & Classification
-status: planned
-stopped_at: Phase 5 planned — 4 plans checker-passed, ready for /gsd-execute-phase 5
-last_updated: "2026-07-23T22:46:39.916Z"
-last_activity: 2026-07-23
-last_activity_desc: Phase 04.1 complete, transitioned to Phase 5
+current_phase: 05
+current_phase_name: contact-extraction-classification
+status: executing
+stopped_at: Completed 05-01-PLAN.md
+last_updated: "2026-07-24T16:47:16.580Z"
+last_activity: 2026-07-24
+last_activity_desc: Phase 05 execution started
 progress:
   total_phases: 9
   completed_phases: 5
-  total_plans: 25
-  completed_plans: 25
+  total_plans: 29
+  completed_plans: 26
   percent: 56
 ---
 
@@ -24,14 +24,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-17)
 
 **Core value:** Joshua opens the tool and finds businesses genuinely worth pitching, with the proof already written, so that outreach costs him minutes instead of hours.
-**Current focus:** Phase 05 — Contact Extraction & Classification
+**Current focus:** Phase 05 — contact-extraction-classification
 
 ## Current Position
 
-Phase: 5 — Contact Extraction & Classification
-Plan: 0 of 4 executed (4 planned, checker passed all 10 dimensions)
-Status: Planned — next: /gsd-execute-phase 5
-Last activity: 2026-07-24 — Phase 5 planned (context + research + 4 plans)
+Phase: 05 (contact-extraction-classification) — EXECUTING
+Plan: 2 of 4
+Status: Ready to execute
+Last activity: 2026-07-24 — Phase 05 execution started
 
 Progress: [██████████] 100%
 
@@ -75,6 +75,7 @@ Progress: [██████████] 100%
 | Phase 03 P05 | 20min | 3 tasks | 6 files |
 | Phase 04.1 P01 | 15min | 3 tasks | 7 files |
 | Phase 04.1 P02 | 15min | 2 tasks | 2 files |
+| Phase 05 P01 | 15min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -118,6 +119,8 @@ Recent decisions affecting current work:
 - [Phase 04.1-01]: Read-time filtering, no backfill/re-triage: excluded/unreachable rows stay visible in the shortlist, only barred from release; lib/triage-scorer.ts deliberately left unchanged
 - [Phase ?]: D-4.1-05: split conflated GATED pill into CRITICAL (reachable no-HTTPS) and UNREACHABLE (not reachable); admin eligible/critical counts wired to isReleasable, no divergent UI copy
 - [Phase 04.1]: 04.1 phase shipped to production (npx vercel --prod, 2026-07-24); no missing category strings found against real production data, EXCLUDED_CATEGORIES stands as committed
+- [Phase 05]: CHECK constraint on contact_email_type added via guarded do $$ / pg_constraint existence check (no ADD CONSTRAINT IF NOT EXISTS in Postgres); verified idempotent by re-running the file twice
+- [Phase 05]: ContactExtraction holds only raw material (mailtoHrefs, cfemailTokens, contactText) — no parsing/classification fields, keeping the browser extractor a thin harvester
 
 ### Pending Todos
 
@@ -150,6 +153,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-23T22:46:39.898Z
-Stopped at: Completed 04.1-02-PLAN.md
+Last session: 2026-07-24T16:47:16.571Z
+Stopped at: Completed 05-01-PLAN.md
 Resume file: None
