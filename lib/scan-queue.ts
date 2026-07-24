@@ -15,6 +15,8 @@
 // on update-only intent (Pitfall 3, same reasoning as lib/triage-release.ts).
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { BULK_ARM_CEILING, BULK_BATCH_SIZE } from "@/lib/bulk-scan-constants";
+import { aggregateContacts } from "@/lib/contact-extraction";
+import type { PageResult } from "@/types/scanner";
 
 export interface ClaimedProspect {
   id: string;
@@ -141,24 +143,40 @@ export async function requeueProspect(sb: SupabaseClient, id: string): Promise<v
  * Ignores prospects in 'scanning' with no latest_scan_id (claimed within
  * the current tick, not yet dispatched — dispatchClaimedProspects sets
  * latest_scan_id, so this join has nothing to reconcile yet).
+ *
+ * Phase 5 (CON-01/CON-04/CON-05): this is also the ONLY writer of contact
+ * fields. On the done transition, a prospect whose contact_email is still
+ * NULL gets contact_email/contact_email_type/commercial_contact_invited/
+ * sole_proprietorship derived from its own completed scan's `pages` via
+ * aggregateContacts() — no second fetch, the row is already selected here.
+ * A prospect that already has a contact_email is written scan_status-only:
+ * fill-only-when-null, so a re-scan can never clobber a value a human may
+ * already be reviewing (orchestrator re-scan directive). Keeping
+ * named-person prospects out of the outreach flow is Phase 6's job
+ * (CON-05 enforcement), not this function's.
  */
 export async function reconcileInFlightScans(
   sb: SupabaseClient
 ): Promise<{ done: string[]; failed: string[] }> {
   const { data: inFlight, error: inFlightError } = await sb
     .from("prospects")
-    .select("id, latest_scan_id")
+    .select("id, latest_scan_id, domain, contact_email")
     .eq("scan_status", "scanning")
     .not("latest_scan_id", "is", null);
   if (inFlightError) throw inFlightError;
 
-  const rows = (inFlight ?? []) as { id: string; latest_scan_id: string }[];
+  const rows = (inFlight ?? []) as {
+    id: string;
+    latest_scan_id: string;
+    domain: string | null;
+    contact_email: string | null;
+  }[];
   if (rows.length === 0) return { done: [], failed: [] };
 
   const scanIds = rows.map((r) => r.latest_scan_id);
   const { data: scans, error: scansError } = await sb
     .from("scans")
-    .select("id, status, error_message")
+    .select("id, status, error_message, pages")
     .in("id", scanIds);
   if (scansError) throw scansError;
 
@@ -180,8 +198,26 @@ export async function reconcileInFlightScans(
     // status === "scanning" (still in flight) leaves the prospect untouched.
   }
 
-  if (doneIds.length > 0) {
-    const { error } = await sb.from("prospects").update({ scan_status: "done" }).in("id", doneIds);
+  for (const id of doneIds) {
+    const row = rows.find((r) => r.id === id)!;
+    if (row.contact_email) {
+      // Already has a contact — fill-only-when-null, never overwrite.
+      const { error } = await sb.from("prospects").update({ scan_status: "done" }).eq("id", id);
+      if (error) throw error;
+      continue;
+    }
+    const scan = scanById.get(row.latest_scan_id)!;
+    const contact = aggregateContacts((scan.pages as PageResult[] | null) ?? [], row.domain);
+    const { error } = await sb
+      .from("prospects")
+      .update({
+        scan_status: "done",
+        contact_email: contact.contactEmail,
+        contact_email_type: contact.contactEmailType,
+        commercial_contact_invited: contact.commercialContactInvited,
+        sole_proprietorship: contact.soleProprietorship,
+      })
+      .eq("id", id);
     if (error) throw error;
   }
 
