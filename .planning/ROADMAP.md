@@ -228,7 +228,24 @@ Plans:
   4. A prospect whose only address is a named person is flagged for manual review and stays out of the default outreach flow (CON-05)
   5. Each prospect records whether its source page invited commercial contact (defaulting to no) and whether it is a sole proprietorship whose generic address is therefore personal data (CON-06, CON-07)
 
-**Plans**: TBD (est. 3-4)
+**Plans**: 4 plans
+
+Plans:
+**Wave 1**
+
+- [ ] 05-01-PLAN.md — Foundation: migration 018 (contact_email_type CHECK + commercial_contact_invited + sole_proprietorship) + local apply + shared types (ContactExtraction, PageData.contactExtraction, ProspectRow columns) (wave 1)
+
+**Wave 2** *(blocked on Wave 1)*
+
+- [ ] 05-02-PLAN.md — Pure `lib/contact-extraction.ts` (decode/parse/classify/detect/aggregate) + unit tests + extractor harvest of raw contact material (mailto/cfemail/text) (wave 2)
+
+**Wave 3** *(blocked on Wave 2)*
+
+- [ ] 05-03-PLAN.md — Wire aggregateContacts into `reconcileInFlightScans` on the done transition (fill-only-when-null) + local-Supabase integration cases (wave 3)
+
+**Wave 4** *(blocked on Wave 3)*
+
+- [ ] 05-04-PLAN.md — Shortlist NAMED-PERSON pill + [BLOCKING] live migration 018 + Railway + Vercel deploys + real-batch verification (wave 4, human gate)
 
 Notes:
 
@@ -326,7 +343,7 @@ Phase 8 does not begin until the Parallel Track closes, regardless of numeric or
 | 2. Compliance Spine | 7/7 | Complete    | 2026-07-19 |
 | 3. Triage & Shortlist | 6/6 | Complete    | 2026-07-20 |
 | 4. Bulk Scan Queue | 6/6 | Complete    | 2026-07-23 |
-| 5. Contact Extraction & Classification | 0/TBD | Not started | - |
+| 5. Contact Extraction & Classification | 0/4 | Not started | - |
 | 6. Draft Generation & Approval Queue | 0/TBD | Not started | - |
 | 7. Lifecycle, Reporting & Retention | 0/TBD | Not started | - |
 | 8. Send — GATED | 0/TBD | Blocked (send-path decision) | - |
