@@ -127,7 +127,7 @@ Recent decisions affecting current work:
 
 The three prospect-quality todos were resolved by Phase 4.1 (moved to `.planning/todos/completed/`, 2026-07-24).
 
-**Open follow-up (not a todo):** after the first 07:00 drain tick at BULK_BATCH_SIZE=10, Joshua runs `npm run scanner-health -- --compare pre-04.1`; if the drop exceeds tolerance, open a follow-up to lower capacity constants.
+**Open follow-up (not a todo):** SCAN-06 monitoring is currently data-starved — the public scanner's 14-day window holds ~1 scan, no `pre-04.1` baseline was ever captured (unrecoverable), and the 2026-07-23 "92.9%" checkpoint figures cannot have come from this window. Anchor reading committed: `scan-health/post-04.1.json` (0/1, 2026-07-24). Once real public traffic returns to the window, compare against the anchor; a >5pp drop during bulk activity means lowering capacity constants. The enforced guardrails (capacity ceiling + reserved public headroom, 503 refusal, single-attempt cap) protect the public scanner regardless of the metric.
 
 ### Blockers/Concerns
 
