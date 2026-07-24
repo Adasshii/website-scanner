@@ -245,6 +245,22 @@ export async function extractPageData(
     const hasContactText = emailPattern.test(visibleText) || phonePattern.test(visibleText);
     const hasContactInfo = hasContactLink || hasContactText;
 
+    // Contact extraction harvest (Phase 5, CON-01/CON-02) — raw material
+    // only, riding this SAME page.evaluate (D-5-R1: no second fetch, no new
+    // navigation). Decoding/parsing/classification happens Node-side in
+    // lib/contact-extraction.ts — code can't cross the browser/Node
+    // boundary by reference, so this stays a thin harvester. Bounded counts
+    // (50) and text length (50k) guard against a pathological page
+    // (Security V5/DoS).
+    const mailtoHrefs = Array.from(doc.querySelectorAll('a[href^="mailto:"]'))
+      .slice(0, 50)
+      .map((a) => a.getAttribute("href") || "");
+    const cfemailTokens = Array.from(doc.querySelectorAll("[data-cfemail]"))
+      .slice(0, 50)
+      .map((el) => el.getAttribute("data-cfemail") || "");
+    const contactText = visibleText.slice(0, 50_000);
+    const contactExtraction = { mailtoHrefs, cfemailTokens, contactText };
+
     // Fold line — the scanner renders at a fixed viewport, so innerHeight is the fold.
     const foldY = window.innerHeight || 720;
     const viewportArea = (window.innerWidth || 1280) * foldY;
@@ -354,6 +370,7 @@ export async function extractPageData(
       hasCookieBanner,
       cookieBannerBlocksFold,
       pageSize,
+      contactExtraction,
     };
   }, baseUrl.origin);
 
