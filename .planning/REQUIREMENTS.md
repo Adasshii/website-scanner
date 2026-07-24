@@ -49,7 +49,7 @@
 - [x] **CON-02**: Extraction handles `mailto:` links and body-text addresses, including Cloudflare `data-cfemail` obfuscation
 - [x] **CON-03**: Every extracted address is classified as `generic` (info@, contact@, sales@, hello@) or `named-person`, and the classification is stored on the prospect
 - [x] **CON-04**: Generic addresses are preferred over named-person addresses when both exist
-- [ ] **CON-05**: A prospect whose only address is `named-person` is flagged for manual review and never enters the default outreach flow automatically
+- [x] **CON-05**: A prospect whose only address is `named-person` is flagged for manual review and never enters the default outreach flow automatically
 - [x] **CON-06**: The system records whether the source page invited commercial contact at that address, defaulting to "no" when absent
 - [x] **CON-07**: A prospect identified as a sole proprietorship (eenmanszaak) has its generic address treated as personal data
 
@@ -180,7 +180,7 @@ Populated during roadmap creation. See `.planning/ROADMAP.md` for phase detail.
 | CON-02 | Phase 5 | Complete |
 | CON-03 | Phase 5 | Complete |
 | CON-04 | Phase 5 | Complete |
-| CON-05 | Phase 5 | Pending |
+| CON-05 | Phase 5 | Complete |
 | CON-06 | Phase 5 | Complete |
 | CON-07 | Phase 5 | Complete |
 | DRA-01 | Phase 6 | Pending |
