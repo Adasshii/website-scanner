@@ -162,7 +162,8 @@ describe("reconcileInFlightScans", () => {
     const { sb, builders } = makeSupabaseMock([
       { data: inFlight, error: null }, // prospects select
       { data: scans, error: null }, // scans select
-      { error: null }, // done update
+      { error: null }, // done: scan_status update (unconditional)
+      { error: null }, // done: contact-field update (guarded by .is contact_email null)
       { error: null }, // failed update
     ]);
 
@@ -170,16 +171,18 @@ describe("reconcileInFlightScans", () => {
 
     expect(result.done).toEqual(["p-done"]);
     expect(result.failed).toEqual(["p-failed"]);
-    // "scanning" row is untouched: only two update-builders created after the two selects.
-    expect(builders.length).toBe(4);
-    expect(builders[2].update).toHaveBeenCalledWith({
-      scan_status: "done",
+    // "scanning" row is untouched: two update-builders for p-done (status,
+    // then guarded contact-field write) + one for p-failed, after the two selects.
+    expect(builders.length).toBe(5);
+    expect(builders[2].update).toHaveBeenCalledWith({ scan_status: "done" });
+    expect(builders[3].update).toHaveBeenCalledWith({
       contact_email: "info@acme.nl",
       contact_email_type: "generic",
       commercial_contact_invited: false,
       sole_proprietorship: "unknown",
     });
-    expect(builders[3].update).toHaveBeenCalledWith({
+    expect(builders[3].is).toHaveBeenCalledWith("contact_email", null);
+    expect(builders[4].update).toHaveBeenCalledWith({
       scan_status: "failed",
       scan_status_reason: "timed out",
     });

@@ -200,24 +200,31 @@ export async function reconcileInFlightScans(
 
   for (const id of doneIds) {
     const row = rows.find((r) => r.id === id)!;
+    // scan_status always advances, unconditionally — the contact-field write
+    // below is separately guarded at the DB level so a lost race there can
+    // never strand the prospect in "scanning".
+    const { error: statusError } = await sb.from("prospects").update({ scan_status: "done" }).eq("id", id);
+    if (statusError) throw statusError;
+
     if (row.contact_email) {
-      // Already has a contact — fill-only-when-null, never overwrite.
-      const { error } = await sb.from("prospects").update({ scan_status: "done" }).eq("id", id);
-      if (error) throw error;
+      // Already had a contact as of the SELECT above — skip deriving one.
       continue;
     }
     const scan = scanById.get(row.latest_scan_id)!;
     const contact = aggregateContacts((scan.pages as PageResult[] | null) ?? [], row.domain);
+    // fill-only-when-null enforced structurally: `.is("contact_email", null)`
+    // makes this a no-op if something else set contact_email since the
+    // SELECT above, instead of relying on the stale in-memory snapshot.
     const { error } = await sb
       .from("prospects")
       .update({
-        scan_status: "done",
         contact_email: contact.contactEmail,
         contact_email_type: contact.contactEmailType,
         commercial_contact_invited: contact.commercialContactInvited,
         sole_proprietorship: contact.soleProprietorship,
       })
-      .eq("id", id);
+      .eq("id", id)
+      .is("contact_email", null);
     if (error) throw error;
   }
 
