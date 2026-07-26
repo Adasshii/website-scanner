@@ -163,6 +163,7 @@ describe("reconcileInFlightScans", () => {
       { data: inFlight, error: null }, // prospects select
       { data: scans, error: null }, // scans select
       { error: null }, // done: scan_status update (unconditional)
+      { error: null }, // done: commercial_contact_invited/sole_proprietorship update (unconditional)
       { error: null }, // done: contact-field update (guarded by .is contact_email null)
       { error: null }, // failed update
     ]);
@@ -171,36 +172,58 @@ describe("reconcileInFlightScans", () => {
 
     expect(result.done).toEqual(["p-done"]);
     expect(result.failed).toEqual(["p-failed"]);
-    // "scanning" row is untouched: two update-builders for p-done (status,
-    // then guarded contact-field write) + one for p-failed, after the two selects.
-    expect(builders.length).toBe(5);
+    // "scanning" row is untouched: three update-builders for p-done (status,
+    // signals, guarded contact-field write) + one for p-failed, after the two selects.
+    expect(builders.length).toBe(6);
     expect(builders[2].update).toHaveBeenCalledWith({ scan_status: "done" });
     expect(builders[3].update).toHaveBeenCalledWith({
-      contact_email: "info@acme.nl",
-      contact_email_type: "generic",
       commercial_contact_invited: false,
       sole_proprietorship: "unknown",
     });
-    expect(builders[3].is).toHaveBeenCalledWith("contact_email", null);
     expect(builders[4].update).toHaveBeenCalledWith({
+      contact_email: "info@acme.nl",
+      contact_email_type: "generic",
+    });
+    expect(builders[4].is).toHaveBeenCalledWith("contact_email", null);
+    expect(builders[5].update).toHaveBeenCalledWith({
       scan_status: "failed",
       scan_status_reason: "timed out",
     });
   });
 
-  it("writes scan_status only for a done prospect that already has a contact_email (fill-only-when-null)", async () => {
+  it("still derives commercial_contact_invited/sole_proprietorship for a done prospect that already has a contact_email (fill-only-when-null protects contact_email only)", async () => {
     const inFlight = [{ id: "p-has-contact", latest_scan_id: "s-done", domain: "acme.nl", contact_email: "existing@keep.nl" }];
-    const scans = [{ id: "s-done", status: "completed", error_message: null, pages: [] }];
+    const scans = [
+      {
+        id: "s-done",
+        status: "completed",
+        error_message: null,
+        pages: [
+          {
+            url: "https://acme.nl",
+            data: { contactExtraction: { mailtoHrefs: [], cfemailTokens: [], contactText: "Wij zijn een eenmanszaak" } },
+          },
+        ],
+      },
+    ];
     const { sb, builders } = makeSupabaseMock([
       { data: inFlight, error: null },
       { data: scans, error: null },
-      { error: null },
+      { error: null }, // status update
+      { error: null }, // signals update
     ]);
 
     const result = await reconcileInFlightScans(sb);
 
     expect(result.done).toEqual(["p-has-contact"]);
+    // Only two updates: status, then the independent signals. No third
+    // (contact-field) update — contact_email was already set.
+    expect(builders.length).toBe(4);
     expect(builders[2].update).toHaveBeenCalledWith({ scan_status: "done" });
+    expect(builders[3].update).toHaveBeenCalledWith({
+      commercial_contact_invited: false,
+      sole_proprietorship: "yes",
+    });
   });
 
   it("ignores scanning prospects with no latest_scan_id and returns early with no update calls", async () => {

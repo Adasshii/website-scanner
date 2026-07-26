@@ -206,12 +206,27 @@ export async function reconcileInFlightScans(
     const { error: statusError } = await sb.from("prospects").update({ scan_status: "done" }).eq("id", id);
     if (statusError) throw statusError;
 
+    const scan = scanById.get(row.latest_scan_id)!;
+    const contact = aggregateContacts((scan.pages as PageResult[] | null) ?? [], row.domain);
+
+    // commercial_contact_invited/sole_proprietorship are page-content signals,
+    // independent of which address ends up as contact_email — always (re)derive
+    // them from this scan's pages, even for a prospect that already had a
+    // contact_email (e.g. from the Phase 1 import), so CON-06/CON-07 apply to
+    // every scanned prospect, not just newly-discovered-contact ones.
+    const { error: signalsError } = await sb
+      .from("prospects")
+      .update({
+        commercial_contact_invited: contact.commercialContactInvited,
+        sole_proprietorship: contact.soleProprietorship,
+      })
+      .eq("id", id);
+    if (signalsError) throw signalsError;
+
     if (row.contact_email) {
       // Already had a contact as of the SELECT above — skip deriving one.
       continue;
     }
-    const scan = scanById.get(row.latest_scan_id)!;
-    const contact = aggregateContacts((scan.pages as PageResult[] | null) ?? [], row.domain);
     // fill-only-when-null enforced structurally: `.is("contact_email", null)`
     // makes this a no-op if something else set contact_email since the
     // SELECT above, instead of relying on the stale in-memory snapshot.
@@ -220,8 +235,6 @@ export async function reconcileInFlightScans(
       .update({
         contact_email: contact.contactEmail,
         contact_email_type: contact.contactEmailType,
-        commercial_contact_invited: contact.commercialContactInvited,
-        sole_proprietorship: contact.soleProprietorship,
       })
       .eq("id", id)
       .is("contact_email", null);
