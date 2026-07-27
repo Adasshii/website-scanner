@@ -14,8 +14,10 @@ updated: 2026-07-27T00:50:00Z
 
 ### 1. NAMED-PERSON pill live render
 expected: An orange/amber NAMED-PERSON pill appears in the priority cell on the live Shortlist for a prospect whose only extracted address classified as named-person, visually distinct from CRITICAL (red) and UNREACHABLE (grey), with no row-priority border treatment added.
-result: skipped
-reason: No named-person-only prospect has appeared in the live batch yet — this can't be manufactured on demand, it depends on which real scanned businesses only expose a named-person address. The classification logic itself is already covered by 23 unit tests (lib/contact-extraction.test.ts) and 4 integration tests (lib/scan-drain.integration.test.ts). Revisit informally once a real example surfaces.
+result: pass
+evidence: Verified 2026-07-27 against the LIVE deployed Shortlist (scan.adashi.io), not a fixture or mock. `contact_email_type` was temporarily set to 'named-person' on favrolijk.nl in production (confirmed applied via `update ... returning`), the Shortlist was refreshed, and the orange NAMED-PERSON pill rendered in the left priority cell — visually distinct from CRITICAL (red) and UNREACHABLE (grey), with no row-priority border treatment, exactly as specified. Test data was reverted to 'generic' (its true extracted value) immediately after.
+note: The real-world case (a prospect whose ONLY discovered address is a named person) still hasn't occurred naturally in a live batch — but that's a data-availability observation, not an untested code path. The render path itself is now confirmed end-to-end in production; classification logic is covered by 23 unit tests + 4 integration tests.
+cosmetic: The pill wraps to two lines ("NAMED-" / "PERSON") in the narrow priority column. Non-blocking; consider `whitespace-nowrap` or a shorter label.
 
 ### 2. Remaining batch drain
 expected: Each of the remaining ~10 of 11 physiotherapy prospects (queued at 05-04 checkpoint close) reaches scan_status='done' or a confirmed 'failed' with a real reason, and the done ones show the four contact fields consistent with their site's actual content.
@@ -30,12 +32,12 @@ decision: Accepted as known limitations for now (2026-07-27). Rationale: low-fre
 ## Summary
 
 total: 3
-passed: 2
+passed: 3
 issues: 0
 pending: 0
-skipped: 1
+skipped: 0
 blocked: 0
 
 ## Gaps
 
-[none — the one skip has a documented reason, not a defect]
+[none]
