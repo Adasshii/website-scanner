@@ -5,8 +5,8 @@ milestone_name: milestone
 current_phase: 6
 current_phase_name: Draft Generation & Approval Queue
 status: verifying
-stopped_at: Phase 6 context gathered
-last_updated: "2026-07-27T17:01:31.789Z"
+stopped_at: Phase 6 UI-SPEC approved
+last_updated: "2026-07-27T17:21:10.301Z"
 last_activity: 2026-07-27
 last_activity_desc: Phase 05 complete, transitioned to Phase 6
 progress:
@@ -162,6 +162,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-27T17:01:31.776Z
-Stopped at: Phase 6 context gathered
-Resume file: .planning/phases/06-draft-generation-approval-queue/06-CONTEXT.md
+Last session: 2026-07-27T17:21:10.290Z
+Stopped at: Phase 6 UI-SPEC approved
+Resume file: .planning/phases/06-draft-generation-approval-queue/06-UI-SPEC.md
