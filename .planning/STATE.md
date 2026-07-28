@@ -2,18 +2,18 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_phase: 6
-current_phase_name: Draft Generation & Approval Queue
+current_phase: 06
+current_phase_name: draft-generation-approval-queue
 status: executing
 stopped_at: Phase 6 UI-SPEC approved
-last_updated: "2026-07-28T07:22:38.728Z"
-last_activity: 2026-07-27
-last_activity_desc: Phase 05 complete, transitioned to Phase 6
+last_updated: "2026-07-28T09:13:07.600Z"
+last_activity: 2026-07-28
+last_activity_desc: Phase 06 execution started
 progress:
   total_phases: 9
   completed_phases: 6
-  total_plans: 29
-  completed_plans: 29
+  total_plans: 37
+  completed_plans: 30
   percent: 67
 ---
 
@@ -24,14 +24,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-17)
 
 **Core value:** Joshua opens the tool and finds businesses genuinely worth pitching, with the proof already written, so that outreach costs him minutes instead of hours.
-**Current focus:** Phase 05 — contact-extraction-classification
+**Current focus:** Phase 06 — draft-generation-approval-queue
 
 ## Current Position
 
-Phase: 6 — Draft Generation & Approval Queue
-Plan: Not started
+Phase: 06 (draft-generation-approval-queue) — EXECUTING
+Plan: 2 of 8
 Status: Ready to execute
-Last activity: 2026-07-27 — Phase 05 complete, transitioned to Phase 6
+Last activity: 2026-07-28 — Phase 06 execution started
 
 Progress: [██████████] 100%
 
@@ -80,6 +80,7 @@ Progress: [██████████] 100%
 | Phase 05 P02 | 6min | 2 tasks | 3 files |
 | Phase 05 P03 | 25min | 2 tasks | 3 files |
 | Phase 05 P04 | ~2 days (checkpoint-gated) | 2 tasks | 2 files |
+| Phase 06 P01 | 15min | 3 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -130,6 +131,8 @@ Recent decisions affecting current work:
 - [Phase ?]: lib/scan-queue.test.ts updated alongside Task 1 (Rule 1) since it asserted the pre-change update payload
 - [Phase 05-04]: CON-05 delivered as visibility-only (pill); outreach-flow enforcement deferred to Phase 6 since no automated outreach flow exists yet
 - [Phase 05-04]: Migration 018 applied via Supabase Dashboard SQL Editor (not supabase db push), matching existing project convention
+- [Phase ?]: [Phase 06-01]: Ported scanner service's live 90/70/50 verdict bands into lib/scoring.ts (not the reverse) since lib/scoring.ts was confirmed dead code; production report copy unchanged (DRA-06/D-6-R4)
+- [Phase ?]: [Phase 06-01]: Added @/* -> ../* path alias to scanner-service/tsconfig.json (Rule 3 auto-fix) so lib/scoring.ts's own @/types/scanner import resolves under the service's tsconfig build
 
 ### Pending Todos
 
@@ -162,6 +165,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-27T17:21:10.290Z
+Last session: 2026-07-28T09:12:26.755Z
 Stopped at: Phase 6 UI-SPEC approved
 Resume file: .planning/phases/06-draft-generation-approval-queue/06-UI-SPEC.md
