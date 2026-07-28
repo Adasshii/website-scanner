@@ -8,6 +8,7 @@ import {
   appendArticle14Notice,
   buildDraftPrompt,
   buildDraftSubject,
+  parseDraftResponse,
   type DraftPromptInput,
 } from "@/lib/draft-prompt";
 import type { CitableMetric } from "@/lib/draft-metric-selector";
@@ -133,5 +134,101 @@ describe("buildDraftSubject", () => {
     expect(en).toContain("praktijkjansen.nl");
     expect(nl).toContain("praktijkjansen.nl");
     expect(en).not.toBe(nl);
+  });
+});
+
+// ── Post-review revision (2026-07-28): Joshua judged the pitch weak. ────
+// Change A: rewritten ROLE/STRUCTURE/TONE/HARD LIMITS/EXAMPLE/OUTPUT
+// CONTRACT prompt shape.
+
+describe("buildDraftPrompt — rewritten pitch (Change A)", () => {
+  it("contains the ROLE, STRUCTURE, TONE, HARD LIMITS, REQUIRED FIGURE, REPORT LINK, EXAMPLE and OUTPUT CONTRACT sections", () => {
+    const prompt = buildDraftPrompt(baseInput());
+    expect(prompt).toContain("ROLE");
+    expect(prompt).toContain("STRUCTURE");
+    expect(prompt).toContain("TONE");
+    expect(prompt).toContain("HARD LIMITS");
+    expect(prompt).toContain("Body is 70 to 120 words.");
+    expect(prompt).toContain("REQUIRED FIGURE");
+    expect(prompt).toContain("REPORT LINK");
+    expect(prompt).toContain("EXAMPLE");
+    expect(prompt).toContain("OUTPUT CONTRACT");
+  });
+
+  it("selects the nl example for locale nl and the en example otherwise, with real literal values and no unfilled placeholder tokens", () => {
+    const nlPrompt = buildDraftPrompt(baseInput({ locale: "nl" }));
+    const enPrompt = buildDraftPrompt(baseInput({ locale: "en" }));
+    expect(nlPrompt).toContain("Fysio Van Dijk");
+    expect(enPrompt).toContain("Van Dijk Physio");
+    expect(nlPrompt).not.toContain("Van Dijk Physio");
+    expect(enPrompt).not.toContain("Fysio Van Dijk");
+    expect(nlPrompt).not.toMatch(/\{[a-zA-Z]/);
+    expect(enPrompt).not.toMatch(/\{[a-zA-Z]/);
+  });
+
+  it("ends the output contract with the SUBJECT/BODY response shape instruction", () => {
+    const prompt = buildDraftPrompt(baseInput());
+    expect(prompt).toMatch(/SUBJECT:[\s\S]*BODY:/);
+  });
+});
+
+// Change C: the prompt names one finding, never a joined list.
+
+describe("buildDraftPrompt — single finding (Change C)", () => {
+  it("names only the first topIssueTitle in the finding line", () => {
+    const prompt = buildDraftPrompt(
+      baseInput({ topIssueTitles: ["Missing alt text", "Slow load time", "No HTTPS"] })
+    );
+    expect(prompt).toContain("The finding to write about: Missing alt text.");
+    expect(prompt).not.toContain("Slow load time");
+    expect(prompt).not.toContain("No HTTPS");
+  });
+
+  it("omits the finding sentence entirely when topIssueTitles is empty, rather than emitting a placeholder", () => {
+    const prompt = buildDraftPrompt(baseInput({ topIssueTitles: [] }));
+    expect(prompt).not.toContain("The finding to write about");
+    expect(prompt).not.toContain("(none listed)");
+  });
+});
+
+// Change B: the model authors the subject line; parseDraftResponse parses
+// it, with a buildDraftSubject() fallback.
+
+describe("parseDraftResponse", () => {
+  it("parses SUBJECT and BODY labels case-insensitively, trimming whitespace", () => {
+    const raw = "subject:  Your site is slow\nbody:\n  Hi there.\n  More text.  ";
+    const result = parseDraftResponse(raw, "example.com", "en");
+    expect(result.subject).toBe("Your site is slow");
+    expect(result.body).toBe("Hi there.\n  More text.");
+  });
+
+  it("falls back to buildDraftSubject when the subject is missing, empty, or implausibly long", () => {
+    const domain = "example.com";
+    const fallback = buildDraftSubject(domain, "en");
+    expect(parseDraftResponse("BODY:\nJust a body.", domain, "en").subject).toBe(fallback);
+    expect(parseDraftResponse("SUBJECT:   \nBODY:\nJust a body.", domain, "en").subject).toBe(fallback);
+    const longSubject = "S".repeat(130);
+    expect(
+      parseDraftResponse(`SUBJECT: ${longSubject}\nBODY:\nJust a body.`, domain, "en").subject
+    ).toBe(fallback);
+  });
+
+  it("treats the entire raw response as the body when no BODY label is present, using the fallback subject", () => {
+    const raw = "Just a plain response with no labels at all, mentioning colons: like this.";
+    const result = parseDraftResponse(raw, "example.com", "nl");
+    expect(result.body).toBe(raw);
+    expect(result.subject).toBe(buildDraftSubject("example.com", "nl"));
+  });
+
+  it("strips a parsed subject line out of the body when no BODY label is found", () => {
+    const raw = "SUBJECT: Something\nJust prose with no body label.";
+    const result = parseDraftResponse(raw, "example.com", "en");
+    expect(result.body).toBe("Just prose with no body label.");
+    expect(result.subject).toBe(buildDraftSubject("example.com", "en"));
+  });
+
+  it("never throws and never returns an empty subject", () => {
+    expect(() => parseDraftResponse("", "example.com", "en")).not.toThrow();
+    expect(parseDraftResponse("", "example.com", "en").subject.length).toBeGreaterThan(0);
   });
 });
