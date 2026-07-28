@@ -279,11 +279,11 @@ const REPORT_URL_SENTINEL = " RESOLVED_REPORT_URL ";
 /**
  * DRA-03, code-owned link (2026-07-28): a live generation asked the model to
  * reproduce a 36-character UUID verbatim and it corrupted one character,
- * producing a dead link in the body plus a correct one appended by the old
- * repair path below. Asking any model to retype a UUID exactly will fail
- * some percentage of the time, so the model no longer handles the URL at
- * all — buildDraftPrompt's REPORT LINK section asks it to write the
- * [RAPPORT] token instead.
+ * producing a dead link in the body plus a correct one appended by
+ * draft-generator.ts's old repair path (now replaced by this function).
+ * Asking any model to retype a UUID exactly will fail some percentage of
+ * the time, so the model no longer handles the URL at all — buildDraftPrompt's
+ * REPORT LINK section asks it to write the [RAPPORT] token instead.
  *
  * This function is the other half of that contract, in three steps:
  *   1. Substitute every [RAPPORT] token with a sentinel standing in for the
