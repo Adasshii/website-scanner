@@ -45,6 +45,11 @@ async function patchOutreach(
   }
 }
 
+/** Same shape the removed native dialogs used to build: "Failed to {action}[: {detail}]." */
+function failureMessage(action: string, result: { error?: string }): string {
+  return `Failed to ${action}${result.error ? `: ${result.error}` : ""}.`;
+}
+
 /**
  * The expanded review panel (D-6-02): one draft, editable on the left with
  * scan evidence on the right. Every action here addresses row.id alone and
@@ -58,6 +63,13 @@ export function OutreachRowPanel({ row, secret, onRefetch }: OutreachRowPanelPro
   const [regenerating, setRegenerating] = useState(false);
   const [approving, setApproving] = useState(false);
   const [rejecting, setRejecting] = useState(false);
+  // Rendered inline with role="alert", replacing the native dialogs these
+  // actions used to call — the in-app browser suppresses those silently,
+  // which is exactly what hid the GEMINI_API_KEY config failure behind an
+  // apparently-dead Regenerate button. Component unmounts on collapse or
+  // when a different row expands (OutreachTable renders this conditionally,
+  // keyed per row), so this always starts cleared for a fresh row.
+  const [actionError, setActionError] = useState<string | null>(null);
 
   // Re-sync the edit buffer whenever the underlying row changes (e.g. after
   // a successful regenerate, or a refetch following another action).
@@ -79,8 +91,12 @@ export function OutreachRowPanel({ row, secret, onRefetch }: OutreachRowPanelPro
       body: fullBody,
     });
     setSaving(false);
-    if (result.ok) onRefetch();
-    else alert(`Failed to save edit${result.error ? `: ${result.error}` : ""}.`);
+    if (result.ok) {
+      setActionError(null);
+      onRefetch();
+    } else {
+      setActionError(failureMessage("save edit", result));
+    }
   }
 
   async function handleRegenerate() {
@@ -91,16 +107,24 @@ export function OutreachRowPanel({ row, secret, onRefetch }: OutreachRowPanelPro
     setRegenerating(true);
     const result = await patchOutreach(secret, { id: row.id, action: "regenerate" });
     setRegenerating(false);
-    if (result.ok) onRefetch();
-    else alert(`Failed to regenerate draft${result.error ? `: ${result.error}` : ""}.`);
+    if (result.ok) {
+      setActionError(null);
+      onRefetch();
+    } else {
+      setActionError(failureMessage("regenerate draft", result));
+    }
   }
 
   async function handleApprove() {
     setApproving(true);
     const result = await patchOutreach(secret, { id: row.id, action: "approve" });
     setApproving(false);
-    if (result.ok) onRefetch();
-    else alert(`Failed to approve draft${result.error ? `: ${result.error}` : ""}.`);
+    if (result.ok) {
+      setActionError(null);
+      onRefetch();
+    } else {
+      setActionError(failureMessage("approve draft", result));
+    }
   }
 
   async function handleReject() {
@@ -111,8 +135,12 @@ export function OutreachRowPanel({ row, secret, onRefetch }: OutreachRowPanelPro
     setRejecting(true);
     const result = await patchOutreach(secret, { id: row.id, action: "reject" });
     setRejecting(false);
-    if (result.ok) onRefetch();
-    else alert(`Failed to reject prospect${result.error ? `: ${result.error}` : ""}.`);
+    if (result.ok) {
+      setActionError(null);
+      onRefetch();
+    } else {
+      setActionError(failureMessage("reject prospect", result));
+    }
   }
 
   const scoreColor =
@@ -149,6 +177,15 @@ export function OutreachRowPanel({ row, secret, onRefetch }: OutreachRowPanelPro
           <p className="text-xs text-gray-400 mt-0.5">Draft wording - pending counsel review</p>
           <p className="text-sm text-gray-600 mt-2">{noticeFor(row.locale)}</p>
         </div>
+
+        {/* Inline failure state (replaces the four native dialogs these
+            actions used to call) — same banner style app/admin/page.tsx's
+            top-level error uses. */}
+        {actionError && (
+          <div role="alert" className="mt-3 rounded-xl bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
+            {actionError}
+          </div>
+        )}
 
         <div className="flex items-center justify-between gap-3 mt-4">
           <div className="flex items-center gap-3">
