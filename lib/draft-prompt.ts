@@ -64,7 +64,7 @@ STRUCTURE — plain sentences in this order, no headings, no lists
 1. Open with "Hi," alone on its own line, then a blank line, then the body starts.
 2. One specific, true observation about their site. One finding, never several.
 3. What it costs them, in plain terms: visitors leaving, enquiries not arriving, being hard to find.
-4. The report link, once, as evidence they can check for themselves.
+4. Write the token [RAPPORT] once, at the point in the sentence where the report link belongs, as evidence they can check for themselves.
 5. One low-friction ask: a short reply, or fifteen minutes. Offer, do not push.
 
 TONE
@@ -77,7 +77,8 @@ HARD LIMITS
 - Use only the finding given below. Never invent one.
 - Never promise rankings, revenue figures, or guarantees.
 - Exactly one call to action.
-- No greeting placeholders like [Name]. No sign-off or signature: the system adds it.
+- No greeting placeholders like [Name]. The one permitted placeholder token is [RAPPORT], written exactly once, where the report link belongs — never write a URL of your own, anywhere.
+- No sign-off or signature: the system adds it.
 - Do not write any privacy notice, legal disclosure, data-source explanation or unsubscribe text. The system appends that afterwards; yours would duplicate or contradict it.`;
 
 /**
@@ -92,14 +93,14 @@ SUBJECT: Your site is slow on mobile
 BODY:
 Hi,
 
-I took a look at Van Dijk Physio. The largest image on your homepage takes 6.4 seconds to appear. Most mobile visitors leave after three seconds, so you are probably losing enquiries before anyone sees what you offer. I put the full findings together for you here: https://scan.adashi.io/report/a1b2c3. If it looks useful, let me know and I will walk you through it in fifteen minutes. No obligation.`;
+I took a look at Van Dijk Physio. The largest image on your homepage takes 6.4 seconds to appear. Most mobile visitors leave after three seconds, so you are probably losing enquiries before anyone sees what you offer. I put the full findings together for you here: [RAPPORT]. If it looks useful, let me know and I will walk you through it in fifteen minutes. No obligation.`;
 
 const EXAMPLE_NL = `EXAMPLE
 SUBJECT: Je site laadt traag op mobiel
 BODY:
 Hi,
 
-Ik keek even naar Fysio Van Dijk. De grootste afbeelding op je homepage is pas na 6,4 seconden zichtbaar. De meeste bezoekers op mobiel haken na drie seconden af, dus je verliest waarschijnlijk aanvragen voordat iemand je aanbod ziet. Ik heb de volledige bevindingen voor je op een rij gezet: https://scan.adashi.io/report/a1b2c3. Als het nuttig lijkt, laat het weten, dan loop ik er in een kwartier met je doorheen. Geen verplichting.`;
+Ik keek even naar Fysio Van Dijk. De grootste afbeelding op je homepage is pas na 6,4 seconden zichtbaar. De meeste bezoekers op mobiel haken na drie seconden af, dus je verliest waarschijnlijk aanvragen voordat iemand je aanbod ziet. Ik heb de volledige bevindingen voor je op een rij gezet: [RAPPORT]. Als het nuttig lijkt, laat het weten, dan loop ik er in een kwartier met je doorheen. Geen verplichting.`;
 
 const OUTPUT_CONTRACT = `OUTPUT CONTRACT
 Return exactly this shape and nothing else:
@@ -144,6 +145,13 @@ export interface DraftPromptInput {
   verdict: string;
   /** Resolved by the caller (lib/i18n-helpers.ts) — this module never reads scans.issues_alt directly. */
   topIssueTitles: string[];
+  /**
+   * Kept on the input shape for caller convenience (draft-generator.ts
+   * already has it in scope building this object) even though buildDraftPrompt
+   * no longer puts it in the prompt text (code-owned link, 2026-07-28): the
+   * model writes the [RAPPORT] token instead, and resolveReportLink() below
+   * substitutes this same value back in after generation.
+   */
   reportUrl: string;
 }
 
@@ -165,9 +173,14 @@ REGISTER: Address the reader informally, as je / jij / jouw. Never use the forma
  * unchanged; only this one line narrows to the first entry. Omits the
  * finding sentence entirely when the array is empty, rather than emitting a
  * placeholder like "(none listed)".
+ *
+ * Code-owned link (2026-07-28): `input.reportUrl` is intentionally unused
+ * here — the model never sees the real URL, only the [RAPPORT] token (see
+ * REPORT LINK below). resolveReportLink() is what actually uses reportUrl,
+ * after generation.
  */
 export function buildDraftPrompt(input: DraftPromptInput): string {
-  const { businessName, domain, locale, metric, verdict, topIssueTitles, reportUrl } = input;
+  const { businessName, domain, locale, metric, verdict, topIssueTitles } = input;
   const languageDirective = locale === "nl" ? `\n\n${LANGUAGE_DIRECTIVE_NL}` : "";
   const topIssueLine =
     topIssueTitles.length > 0 ? `\nThe finding to write about: ${topIssueTitles[0]}.` : "";
@@ -182,7 +195,7 @@ REQUIRED FIGURE
 ${metric.displayText}. Reproduce this exact figure, "${metric.displayValue}", character for character, somewhere in the body. Never round it, restate it in other units, or paraphrase the number away.
 
 REPORT LINK
-Include this exact URL once: ${reportUrl}
+Do not write a URL of your own, anywhere in the body. Write the exact token [RAPPORT] once, at the point in the sentence where the link belongs. [RAPPORT] is the ONE permitted placeholder token; the system replaces it with the real link afterward.
 
 ${example}
 
@@ -244,4 +257,52 @@ export function parseDraftResponse(
     /\r|\n/.test(parsedSubject);
 
   return { subject: isImplausible ? fallbackSubject : parsedSubject, body };
+}
+
+// ── Report-link resolution (2026-07-28 post-review revision) ────────────
+
+/** The one placeholder token buildDraftPrompt's REPORT LINK section permits the model to write. */
+const REPORT_LINK_TOKEN = "[RAPPORT]";
+
+/** Matches any http(s) URL so a hallucinated or corrupted one can be stripped before it reaches a draft. */
+const ANY_URL_RE = /https?:\/\/\S+/g;
+
+/**
+ * Placeholder used only inside resolveReportLink's own scope, never seen by
+ * a model or a caller — protects the freshly substituted reportUrl from
+ * ANY_URL_RE below, which (being a greedy \S+ match) would otherwise also
+ * swallow trailing punctuation like the period after a URL and treat the
+ * result as "some other URL" not equal to reportUrl.
+ */
+const REPORT_URL_SENTINEL = " RESOLVED_REPORT_URL ";
+
+/**
+ * DRA-03, code-owned link (2026-07-28): a live generation asked the model to
+ * reproduce a 36-character UUID verbatim and it corrupted one character,
+ * producing a dead link in the body plus a correct one appended by the old
+ * repair path below. Asking any model to retype a UUID exactly will fail
+ * some percentage of the time, so the model no longer handles the URL at
+ * all — buildDraftPrompt's REPORT LINK section asks it to write the
+ * [RAPPORT] token instead.
+ *
+ * This function is the other half of that contract, in three steps:
+ *   1. Substitute every [RAPPORT] token with a sentinel standing in for the
+ *      real reportUrl (not the URL itself yet — see step 3).
+ *   2. Strip any OTHER http(s) URL still present in the body: a hallucinated
+ *      or corrupted link the model wrote despite the instruction.
+ *   3. Swap the sentinel back for the real reportUrl, then — preserving
+ *      DRA-03's original repair guarantee — append reportUrl once if it is
+ *      still absent after all of the above.
+ * The sentinel indirection in steps 1/3 (rather than substituting reportUrl
+ * directly before stripping) exists because step 2's URL regex is greedy: it
+ * would otherwise swallow trailing punctuation right after a freshly
+ * substituted reportUrl and strip it as "some other URL". Pure: no I/O,
+ * never throws.
+ */
+export function resolveReportLink(body: string, reportUrl: string): string {
+  const withSentinel = body.split(REPORT_LINK_TOKEN).join(REPORT_URL_SENTINEL);
+  const stripped = withSentinel.replace(ANY_URL_RE, "");
+  const resolved = stripped.split(REPORT_URL_SENTINEL).join(reportUrl);
+  if (resolved.includes(reportUrl)) return resolved;
+  return `${resolved.trim()}\n\n${reportUrl}`;
 }

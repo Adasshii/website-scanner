@@ -9,9 +9,10 @@
  *   - lib/draft-metric-selector.ts's selectCitableMetric() for the DRA-02
  *     evidence number the model must reproduce verbatim.
  *   - lib/draft-prompt.ts's buildDraftPrompt / parseDraftResponse /
- *     appendArticle14Notice / localeForCountry for the D-6-10 pitch, the
- *     model-authored subject (parsed with a buildDraftSubject() fallback,
- *     2026-07-28 Change B), and the D-6-12 legal notice.
+ *     resolveReportLink / appendArticle14Notice / localeForCountry for the
+ *     D-6-10 pitch, the model-authored subject (parsed with a
+ *     buildDraftSubject() fallback, 2026-07-28 Change B), the DRA-03
+ *     code-owned report link (2026-07-28), and the D-6-12 legal notice.
  *   - lib/scoring.ts's computeVerdict() (DRA-06), the one consolidated
  *     verdict source.
  *   - lib/i18n-helpers.ts's applyIssuesAlt() so a Dutch draft never quotes
@@ -29,6 +30,7 @@ import { selectCitableMetric } from "@/lib/draft-metric-selector";
 import {
   buildDraftPrompt,
   parseDraftResponse,
+  resolveReportLink,
   appendArticle14Notice,
   localeForCountry,
   type Locale,
@@ -246,10 +248,13 @@ export async function generateDraft(
   // the contract or produces something implausible.
   const parsed = parseDraftResponse(raw, prospect.domain, locale);
 
-  // Report link: unlike the number above, a missing link IS repairable, so
-  // this path fixes rather than rejects — deliberately asymmetric with the
-  // guard above.
-  const body = parsed.body.includes(reportUrl) ? parsed.body : `${parsed.body}\n\n${reportUrl}`;
+  // Report link (2026-07-28, code-owned link): the model never handles the
+  // URL, only the [RAPPORT] token. resolveReportLink() substitutes the real
+  // reportUrl for that token, strips any other URL the model wrote anyway
+  // (hallucinated or corrupted), and — unlike the verbatim guard above,
+  // deliberately asymmetric — repairs by appending reportUrl if it's still
+  // absent, rather than rejecting the draft.
+  const body = resolveReportLink(parsed.body, reportUrl);
 
   return {
     subject: parsed.subject,
