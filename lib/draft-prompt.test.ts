@@ -119,7 +119,7 @@ describe("buildDraftPrompt", () => {
   it("bans the model from writing any URL of its own, while permitting the [RAPPORT] token", () => {
     const prompt = buildDraftPrompt(baseInput());
     expect(prompt.toLowerCase()).toMatch(/do not write a url|never write a url|no url of your own/);
-    expect(prompt).toMatch(/\[RAPPORT\].*permitted|permitted.*\[RAPPORT\]/is);
+    expect(prompt).toMatch(/\[RAPPORT\][\s\S]*permitted|permitted[\s\S]*\[RAPPORT\]/i);
   });
 
   it("contains the Dutch language directive for locale nl but not for locale en", () => {
