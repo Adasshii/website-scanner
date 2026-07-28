@@ -63,14 +63,17 @@ export interface GeneratedDraft {
 }
 
 /**
- * Same production host lib/email.ts falls back to (that module's site-URL
- * env var default). Read as a literal constant here rather than via that
- * env var, so this module keeps zero references to any client-exposed
- * environment variable name — the only environment variable this module
- * ever reads is the server-only Gemini API key. This repo has never
- * overridden that public default in practice, so the two hosts cannot drift.
+ * Same expression lib/email.ts uses, so a report link in a draft and the same
+ * link in an email can never point at different hosts. Read from the env var
+ * rather than hardcoded: hardcoding made the link unusable outside production,
+ * which blocked the cited-number check (06-07 Task 3, check 4) locally.
+ *
+ * This is the site's own public URL, not a credential — the client-exposed-env
+ * concern this module guards against is the Gemini key (T-06-KEY), which is
+ * read only via the server-only GEMINI_API_KEY below.
  */
-const REPORT_BASE_URL = "https://scan.adashi.io";
+const REPORT_BASE_URL =
+  process.env.NEXT_PUBLIC_SITE_URL || "https://scan.adashi.io";
 
 /** DRA-03: always code-constructed from BASE_URL + the scan id, never a URL taken from scanned page content. */
 export function buildReportUrl(scanId: string): string {
