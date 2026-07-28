@@ -76,10 +76,14 @@ and the channel is still undecided. Lifecycle state transitions are Phase 7.
   A second threshold means two places to tune and two places to get wrong.
 
 ### Draft content, tone & language
-- **D-6-09: Draft locale follows the prospect's country config.** `prospects.country_code`
-  (IMP-06) maps to a locale; one draft in that language. NL prospects get Dutch. Honours
-  the standing no-hardcoded-geography constraint and follows the CMP-16 per-country
-  config precedent, without generating a second-language version that will never be sent.
+- **D-6-09: Draft locale follows the prospect's country config.** `prospects.country`
+  (ISO2, e.g. `"NL"` — from IMP-06) maps to a locale; one draft in that language. NL
+  prospects get Dutch. Honours the standing no-hardcoded-geography constraint and follows
+  the CMP-16 per-country config precedent, without generating a second-language version
+  that will never be sent. *(Column name corrected 2026-07-28 during Phase 6 research —
+  this document previously said `country_code`, which does not exist. The decision is
+  unchanged; only the column reference was wrong. No country→locale map exists yet, so
+  the mapping is new work, not a read of an existing field.)*
 - **D-6-10: The cold-outreach tone brief lives in a versioned prompt file in the repo.**
   Tone brief, the DRA-04 helpful-not-insulting guardrails, and the Article 14 text in one
   reviewable place. The prompt is the product here; git history becomes the record of how
