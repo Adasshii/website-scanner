@@ -6,14 +6,14 @@ current_phase: 06
 current_phase_name: draft-generation-approval-queue
 status: executing
 stopped_at: Phase 6 UI-SPEC approved
-last_updated: "2026-07-28T09:23:14.700Z"
+last_updated: "2026-07-28T09:34:14.690Z"
 last_activity: 2026-07-28
 last_activity_desc: Phase 06 execution started
 progress:
   total_phases: 9
   completed_phases: 6
   total_plans: 37
-  completed_plans: 31
+  completed_plans: 32
   percent: 67
 ---
 
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-07-17)
 ## Current Position
 
 Phase: 06 (draft-generation-approval-queue) — EXECUTING
-Plan: 3 of 8
+Plan: 4 of 8
 Status: Ready to execute
 Last activity: 2026-07-28 — Phase 06 execution started
 
@@ -82,6 +82,7 @@ Progress: [██████████] 100%
 | Phase 05 P04 | ~2 days (checkpoint-gated) | 2 tasks | 2 files |
 | Phase 06 P01 | 15min | 3 tasks | 4 files |
 | Phase 06-draft-generation-approval-queue P03 | 25min | 2 tasks | 4 files |
+| Phase 06 P04 | 8min | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -137,6 +138,9 @@ Recent decisions affecting current work:
 - [Phase 06-03]: selectCitableMetric only compares category scores actually present (security/design optional) rather than defaulting an absent score to 0
 - [Phase 06-03]: TONE_BRIEF and CONTROLLER_CONTACT_EMAIL literal-copy VOICE_DIRECTIVE and FROM_EMAIL rather than importing across the Vercel/Railway boundary or reading process.env
 - [Phase 06-03]: Article 14 notices reference the controller contact address, not a hosted LIA/privacy URL (open Phase 8 dependency)
+- [Phase 06-04]: buildReportUrl() hardcodes lib/email.ts's fallback host as a literal instead of reading NEXT_PUBLIC_SITE_URL, so the module keeps zero client-exposed env-var-name references (its own acceptance grep gate required this)
+- [Phase 06-04]: Locale resolved from prospect.country only, never scan.locale -- bulk scans default locale to en and put the true target language in issues_alt (RESEARCH Pitfall 4)
+- [Phase 06-04]: Top issue titles localized via lib/i18n-helpers.ts's applyIssuesAlt() before reaching the prompt builder (RESEARCH Pitfall 7)
 
 ### Pending Todos
 
@@ -169,6 +173,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-28T09:22:27.481Z
+Last session: 2026-07-28T09:33:31.720Z
 Stopped at: Phase 6 UI-SPEC approved
 Resume file: .planning/phases/06-draft-generation-approval-queue/06-UI-SPEC.md

@@ -55,9 +55,9 @@
 
 ### Draft
 
-- [ ] **DRA-01**: Each shortlisted prospect gets a drafted outreach message generated from its own full scan findings
+- [x] **DRA-01**: Each shortlisted prospect gets a drafted outreach message generated from its own full scan findings
 - [x] **DRA-02**: The draft cites a specific, checkable number from that prospect's scan, not a generic personalisation line
-- [ ] **DRA-03**: The draft links to that prospect's hosted scan report as proof rather than restating it
+- [x] **DRA-03**: The draft links to that prospect's hosted scan report as proof rather than restating it
 - [x] **DRA-04**: Draft tone is written to land as helpful rather than as an insult about someone's website
 - [x] **DRA-05**: The first-contact template programmatically includes the Article 14 notice; it is not left to per-send manual drafting
 - [x] **DRA-06**: The verdict shown in the prospect list, the hosted scan report, and the drafted email is the same verdict for the same scan (one verdict-threshold function, exported from `lib/scoring.ts`)
@@ -183,9 +183,9 @@ Populated during roadmap creation. See `.planning/ROADMAP.md` for phase detail.
 | CON-05 | Phase 5 | Complete |
 | CON-06 | Phase 5 | Complete |
 | CON-07 | Phase 5 | Complete |
-| DRA-01 | Phase 6 | Pending |
+| DRA-01 | Phase 6 | Complete |
 | DRA-02 | Phase 6 | Complete |
-| DRA-03 | Phase 6 | Pending |
+| DRA-03 | Phase 6 | Complete |
 | DRA-04 | Phase 6 | Complete |
 | DRA-05 | Phase 6 | Complete |
 | DRA-06 | Phase 6 | Complete |
