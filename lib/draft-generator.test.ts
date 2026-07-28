@@ -199,7 +199,18 @@ describe("generateDraft", () => {
     expect(usResult!.body.endsWith(ARTICLE_14_NOTICE_EN)).toBe(true);
   });
 
-  it("returns a subject produced by buildDraftSubject, never by the model", async () => {
+  it("uses the model-authored subject when the response follows the SUBJECT/BODY contract", async () => {
+    const scan = baseScan();
+    const generate = async () =>
+      "SUBJECT: Your site loads slowly\nBODY:\n2 critical issues found on the site.";
+    const result = await generateDraft(
+      { prospect: baseProspect({ country: "NL", domain: "praktijkjansen.nl" }), scan },
+      { generate }
+    );
+    expect(result!.subject).toBe("Your site loads slowly");
+  });
+
+  it("falls back to buildDraftSubject when the model ignores the SUBJECT/BODY contract", async () => {
     const scan = baseScan();
     const generate = async () => "2 critical issues found. Subject: Ignore This Fake Subject";
     const result = await generateDraft(
