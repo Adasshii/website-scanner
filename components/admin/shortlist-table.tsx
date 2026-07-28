@@ -98,6 +98,56 @@ function RequeueButton({
   );
 }
 
+/**
+ * Manual draft-generation action (06-08) — covers both D-6-06 (named-person
+ * prospects the automatic scan-complete path deliberately skips) and the
+ * silent-failure recovery case (a generic-email prospect whose automatic
+ * generation never produced a row and therefore never appears in the
+ * Outreach tab). Modelled on RequeueButton: link-style, disabled and
+ * relabelled while in flight, posts to the existing admin outreach route.
+ */
+function GenerateDraftButton({
+  prospectId,
+  secret,
+  onRequeued,
+}: {
+  prospectId: string;
+  secret: string;
+  onRequeued: () => void;
+}) {
+  const [generating, setGenerating] = useState(false);
+
+  async function handleClick() {
+    setGenerating(true);
+    try {
+      const res = await fetch("/api/admin/outreach", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-admin-secret": secret },
+        body: JSON.stringify({ prospectId }),
+      });
+      if (res.ok) {
+        onRequeued();
+      } else {
+        alert("Failed to generate draft.");
+      }
+    } catch {
+      alert("Failed to generate draft.");
+    } finally {
+      setGenerating(false);
+    }
+  }
+
+  return (
+    <button
+      onClick={handleClick}
+      disabled={generating}
+      className="text-xs text-adashi-blue hover:underline font-medium disabled:opacity-50"
+    >
+      {generating ? "Generating..." : "Generate draft"}
+    </button>
+  );
+}
+
 export function ShortlistTable({ rows, cutoff, loading, secret, onRequeued }: ShortlistTableProps) {
   if (loading) {
     return <div className="p-12 text-center text-gray-400">Loading...</div>;
@@ -165,6 +215,12 @@ export function ShortlistTable({ rows, cutoff, loading, secret, onRequeued }: Sh
             // named-person prospects out of the default outreach flow is
             // Phase 6's job.
             const isNamedPerson = row.contact_email_type === "named-person";
+            // 06-08: offered only where it can succeed — a completed scan, a
+            // contact email, and no existing draft. Covers both the
+            // named-person skip (D-6-06) and a silently failed automatic
+            // generation (RESEARCH open question 1) with one control.
+            const canGenerateDraft =
+              row.scan_status === "done" && row.has_contact_email && !row.has_outreach_draft;
             return (
               <tr
                 key={row.id}
@@ -187,6 +243,11 @@ export function ShortlistTable({ rows, cutoff, loading, secret, onRequeued }: Sh
                     <span className="inline-block text-xs font-semibold px-2 py-0.5 rounded-full border bg-orange-100 text-orange-700 border-orange-200">
                       NAMED-PERSON
                     </span>
+                  )}
+                  {canGenerateDraft && (
+                    <div className="mt-1">
+                      <GenerateDraftButton prospectId={row.id} secret={secret} onRequeued={onRequeued} />
+                    </div>
                   )}
                 </td>
                 <td className="px-4 py-3">
