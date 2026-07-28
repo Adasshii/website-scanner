@@ -19,7 +19,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 2: Compliance Spine** - Suppression, unsubscribe, and versioned legal basis exist before anything can be sent (completed 2026-07-19)
 - [x] **Phase 3: Triage & Shortlist** - Every prospect gets a cheap verdict; only the worst earn a full scan (completed 2026-07-20)
 - [x] **Phase 4: Bulk Scan Queue** - Shortlisted prospects get real scan reports without harming the live public scanner (completed 2026-07-23)
-- [ ] **Phase 5: Contact Extraction & Classification** - Each scanned prospect carries a contact address whose legal status is known
+- [x] **Phase 5: Contact Extraction & Classification** - Each scanned prospect carries a contact address whose legal status is known (completed 2026-07-27)
 - [ ] **Phase 6: Draft Generation & Approval Queue** - A drafted message Joshua is willing to send, backed by evidence he can check
 - [ ] **Phase 7: Lifecycle, Reporting & Retention** - The funnel reports what it did, and old data expires on its own
 - [ ] **Phase 8: Send — GATED** - An approved message reaches a business through a channel that permits it, with proof of why
@@ -266,8 +266,26 @@ Notes:
   4. The first-contact template carries the Article 14 notice without anyone adding it by hand (DRA-05)
   5. Joshua reads every draft with its scan evidence beside it, edits inline, approves one at a time, or rejects the prospect outright — and finds no bulk-approve action anywhere (QUE-01, QUE-02, QUE-03, QUE-04, QUE-05)
 
-**Plans**: TBD (est. 4-5)
+**Plans**: 8 plans (5 waves)
+
+Plans:
+- [ ] 06-01-PLAN.md — DRA-06 verdict consolidation: one `computeVerdict()` in `lib/scoring.ts`, imported by the scanner service (wave 1)
+- [ ] 06-02-PLAN.md — Blocking manual prerequisites: `GEMINI_API_KEY` for the Next.js runtime, live `lifecycle_state = 'rejected'` constraint check (wave 1, non-autonomous)
+- [ ] 06-03-PLAN.md — Versioned prompt file (tone brief, Article 14 notice EN+NL, locale map, subject template) and the citable-metric selector (wave 2)
+- [ ] 06-04-PLAN.md — `generateDraft()`: Gemini call from Next.js, verbatim-metric guard, report link, notice append (wave 3)
+- [ ] 06-05-PLAN.md — Scan-complete prospect branch and eligibility gate, placed before the email guard (wave 4)
+- [ ] 06-06-PLAN.md — Outreach queue library and admin API: list, edit, approve, reject, regenerate, manual generate (wave 4)
+- [ ] 06-07-PLAN.md — Outreach admin tab: single-open expandable review panel with evidence pane (wave 5, non-autonomous)
+- [ ] 06-08-PLAN.md — Shortlist "Generate draft" affordance for named-person and failed-generation prospects (wave 5)
+
 **UI hint**: yes
+
+**Schema note (added at plan time, 2026-07-28):** this phase authors NO migration file. `outreach_messages`
+(migration 012) already carries the full status enum plus `approved_by`/`approved_at`, and
+`prospects.lifecycle_state` (migration 010) already carries the unused `'rejected'` value D-6-15 needs.
+06-02 verifies the live constraint by hand in the Supabase dashboard SQL Editor rather than applying
+new DDL. Phase 7 (TRK-01/02) owns the lifecycle state machine and must not reintroduce a parallel
+reject flag or overwrite this value in a generic status-advance sweep.
 
 **DRA-06 — scoring verdict-threshold fix (first plan of this phase):**
 
@@ -343,7 +361,7 @@ Phase 8 does not begin until the Parallel Track closes, regardless of numeric or
 | 2. Compliance Spine | 7/7 | Complete    | 2026-07-19 |
 | 3. Triage & Shortlist | 6/6 | Complete    | 2026-07-20 |
 | 4. Bulk Scan Queue | 6/6 | Complete    | 2026-07-23 |
-| 5. Contact Extraction & Classification | 4/4 | Verifying (human_needed) | - |
+| 5. Contact Extraction & Classification | 4/4 | Complete    | 2026-07-27 |
 | 6. Draft Generation & Approval Queue | 0/TBD | Not started | - |
 | 7. Lifecycle, Reporting & Retention | 0/TBD | Not started | - |
 | 8. Send — GATED | 0/TBD | Blocked (send-path decision) | - |
