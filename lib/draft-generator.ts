@@ -8,9 +8,10 @@
  * Composes 06-01/06-03's pure modules and never reimplements their logic:
  *   - lib/draft-metric-selector.ts's selectCitableMetric() for the DRA-02
  *     evidence number the model must reproduce verbatim.
- *   - lib/draft-prompt.ts's buildDraftPrompt / buildDraftSubject /
- *     appendArticle14Notice / localeForCountry for the D-6-10 pitch and the
- *     D-6-12 legal notice.
+ *   - lib/draft-prompt.ts's buildDraftPrompt / parseDraftResponse /
+ *     appendArticle14Notice / localeForCountry for the D-6-10 pitch, the
+ *     model-authored subject (parsed with a buildDraftSubject() fallback,
+ *     2026-07-28 Change B), and the D-6-12 legal notice.
  *   - lib/scoring.ts's computeVerdict() (DRA-06), the one consolidated
  *     verdict source.
  *   - lib/i18n-helpers.ts's applyIssuesAlt() so a Dutch draft never quotes
@@ -27,7 +28,7 @@ import type { ScanScores, ScanSummary, PageResult, IssuesAlt } from "@/types/sca
 import { selectCitableMetric } from "@/lib/draft-metric-selector";
 import {
   buildDraftPrompt,
-  buildDraftSubject,
+  parseDraftResponse,
   appendArticle14Notice,
   localeForCountry,
   type Locale,
@@ -147,10 +148,12 @@ function resolveTopIssueTitles(
  * issues_alt); localize the top
  * issue titles; compute the one true verdict (DRA-06); pick the DRA-02
  * evidence number (no evidence, no draft); build and send the prompt;
- * verify the number survived verbatim (DRA-02, fails closed — unrepairable)
- * and the report link is present exactly once (DRA-03, repaired if
- * missing); append the Article 14 notice (DRA-05) so no caller can produce
- * a draft without it. Never throws.
+ * verify the number survived verbatim (DRA-02, fails closed — unrepairable);
+ * parse the model's own subject/body out of the raw response, falling back
+ * to the code-templated subject when the model ignores the contract
+ * (2026-07-28 Change B); make sure the report link is present exactly once
+ * (DRA-03, repaired if missing); append the Article 14 notice (DRA-05) so no
+ * caller can produce a draft without it. Never throws.
  */
 export async function generateDraft(
   input: DraftInput,
@@ -203,6 +206,8 @@ export async function generateDraft(
   // Verbatim guard (DRA-02): a wrong number is unrepairable in code, so a
   // paraphrased/rounded figure is treated exactly like a generation
   // failure. Regenerate (D-6-14) is the recovery path, not a repair here.
+  // Checked against the raw response (before SUBJECT/BODY parsing) so a
+  // figure the model dropped into the subject line still counts.
   if (!raw.includes(metric.displayValue)) {
     console.error(
       `[draft] verbatim guard failed for scan ${scan.id}: model output did not reproduce "${metric.displayValue}"`
@@ -210,13 +215,19 @@ export async function generateDraft(
     return null;
   }
 
+  // 2026-07-28 (Change B): the model authors its own subject line per the
+  // prompt's OUTPUT CONTRACT; parseDraftResponse() extracts it, falling
+  // back to the code-templated buildDraftSubject() when the model ignores
+  // the contract or produces something implausible.
+  const parsed = parseDraftResponse(raw, prospect.domain, locale);
+
   // Report link: unlike the number above, a missing link IS repairable, so
   // this path fixes rather than rejects — deliberately asymmetric with the
   // guard above.
-  const body = raw.includes(reportUrl) ? raw : `${raw}\n\n${reportUrl}`;
+  const body = parsed.body.includes(reportUrl) ? parsed.body : `${parsed.body}\n\n${reportUrl}`;
 
   return {
-    subject: buildDraftSubject(prospect.domain, locale),
+    subject: parsed.subject,
     body: appendArticle14Notice(body, locale),
   };
 }

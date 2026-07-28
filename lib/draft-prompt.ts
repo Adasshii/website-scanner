@@ -176,9 +176,58 @@ ${OUTPUT_CONTRACT}`;
 }
 
 /**
- * Code template, no model call. RESEARCH open question 2: templating the
- * subject line keeps the verbatim-figure problem confined to the body.
+ * Code template fallback, no model call. Used directly by
+ * parseDraftResponse() below whenever the model's own subject is missing or
+ * implausible, and by callers that need a subject with no raw model output
+ * at all.
  */
 export function buildDraftSubject(domain: string, locale: Locale): string {
   return locale === "nl" ? `Snelle observatie over ${domain}` : `A quick observation about ${domain}`;
+}
+
+// ── D-6-04 (Change B, 2026-07-28): model-authored subject, code fallback ─
+
+/** Longer than this reads as the model dumping prose into the subject line, not a real subject. */
+const MAX_PLAUSIBLE_SUBJECT_LENGTH = 120;
+
+const SUBJECT_LINE_RE = /^[ \t]*subject:[ \t]*(.*)$/im;
+const BODY_LABEL_RE = /^[ \t]*body:[ \t]*\n?([\s\S]*)$/im;
+
+/**
+ * Parses the OUTPUT CONTRACT's `SUBJECT: <line>` / `BODY:\n<rest>` shape out
+ * of a raw model response. Tolerant: case-insensitive labels, leading
+ * whitespace/blank lines, and a body that spans many lines and may itself
+ * contain colons.
+ *
+ * Falls back to buildDraftSubject(domain, locale) whenever the parsed
+ * subject is missing, empty after trimming, or implausible (too long, or
+ * spanning multiple lines). If no BODY: label is found at all, the entire
+ * raw response (minus any parsed subject line) becomes the body and the
+ * fallback subject is used — a model that ignores the contract must still
+ * produce a usable draft. Pure: no I/O, never throws.
+ */
+export function parseDraftResponse(
+  raw: string,
+  domain: string,
+  locale: Locale
+): { subject: string; body: string } {
+  const fallbackSubject = buildDraftSubject(domain, locale);
+  const subjectMatch = raw.match(SUBJECT_LINE_RE);
+  const bodyMatch = raw.match(BODY_LABEL_RE);
+
+  if (!bodyMatch) {
+    const body = subjectMatch
+      ? raw.slice((subjectMatch.index ?? 0) + subjectMatch[0].length)
+      : raw;
+    return { subject: fallbackSubject, body: body.trim() };
+  }
+
+  const body = bodyMatch[1].trim();
+  const parsedSubject = subjectMatch ? subjectMatch[1].trim() : "";
+  const isImplausible =
+    parsedSubject.length === 0 ||
+    parsedSubject.length > MAX_PLAUSIBLE_SUBJECT_LENGTH ||
+    /\r|\n/.test(parsedSubject);
+
+  return { subject: isImplausible ? fallbackSubject : parsedSubject, body };
 }
