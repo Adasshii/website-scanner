@@ -16,6 +16,7 @@
   },
   "dependencies": {
     "@duckdb/node-api": "^1.5.4-r.1",
+    "@google/generative-ai": "^0.24.1",
     "@supabase/supabase-js": "^2.99.3",
     "next": "14.2.35",
     "next-intl": "^4.13.0",
