@@ -13,6 +13,17 @@
  * page is an open Phase 8 dependency (see 06-03-SUMMARY.md), so the notices
  * point the reader at the controller contact address instead of a URL.
  *
+ * Post-review revision (2026-07-28): Joshua read the first real generated
+ * drafts and judged the pitch weak. The prior TONE_BRIEF was prohibition-
+ * heavy (a banned-word list and a length ceiling) with no stated goal, no
+ * worked example, and no explained cost to the reader for ignoring the
+ * email. buildDraftPrompt() was rewritten to a ROLE / STRUCTURE / TONE /
+ * HARD LIMITS / EXAMPLE / OUTPUT CONTRACT shape, and the model now authors
+ * its own subject line (parsed by parseDraftResponse(), with a
+ * buildDraftSubject() fallback) instead of always receiving a templated
+ * one. See 06-03-SUMMARY.md and 06-04-SUMMARY.md Deviations for the full
+ * record.
+ *
  * Pure module: no Supabase client, no fetch, no environment reads. The
  * builder here composes text only — it never calls Gemini itself
  * (that is lib/draft-generator.ts, 06-04).
@@ -41,20 +52,55 @@ export function localeForCountry(country: string | null | undefined): Locale {
 // ── D-6-10 / DRA-04: tone brief ─────────────────────────────────────────
 
 /**
- * Layered on top of the same voice rules scanner-service/src/ai.ts already
- * enforces (VOICE_DIRECTIVE) — the banned-word list below is copied from
- * that constant rather than invented fresh, so the two prompts do not drift
- * on wording that already works.
+ * ROLE + STRUCTURE + TONE + HARD LIMITS: the fixed, input-independent part
+ * of the prompt (2026-07-28 post-review rewrite). Kept as one exported
+ * constant, as before, so a caller (and this file's own tests) can still
+ * assert its exact text is present verbatim in the composed prompt.
  */
-export const TONE_BRIEF = `TONE — write as one specific person, Joshua from Adashi, writing directly to one specific person at the business being addressed. This is cold outreach: name what the scan measured on the reader's own site, never judge the business or its owner. Never imply the reader is incompetent, that the site is embarrassing, or that they should feel bad about it. Offer the hosted scan report as evidence the reader can check for themselves, not as a threat or an ultimatum. Keep the message under roughly 150 words. No em dashes: use commas, colons, or periods instead. No marketing filler, no exclamation marks, no bullet lists: plain sentences only. No closing hard sell, no "act now", no artificial urgency.
+export const TONE_BRIEF = `ROLE
+You are Joshua, founder of Adashi, a web design and automation studio. You are writing one short cold email to one business owner, based on a scan of their own website. Your only goal is to earn a reply or a short call. Never try to close the sale in the email.
 
-NEVER use these words or phrases: delve, tapestry, realm, landscape (metaphorical), journey (metaphorical), testament, cornerstone, bedrock, pivotal, underscore (as verb), showcase, meticulous, intricate, enduring, bolster, foster, garner, vibrant, robust, enhance, highlight (meaning emphasize), crucial, transformative, groundbreaking, innovative, cutting-edge, state-of-the-art, seamless, multifaceted, nuanced (without substance), comprehensive (as filler), significant (as filler), substantial (as filler), unprecedented, unparalleled, leverage (as verb)
-- truly, certainly, absolutely, undoubtedly, remarkably, incredibly, particularly, especially, indeed
-- "It is worth noting that", "It is important to note that", "Notably", "Importantly", "In today's fast-paced/digital world", "At the end of the day"
-- "exciting", "powerful", "industry-leading", "world-class", "best-in-class", "game-changing"
-- Filler transitions: Additionally, Furthermore, Moreover, Nevertheless, Consequently, In conclusion, To summarize, Moving forward
-- Vague attribution: "some say", "many believe", "experts suggest". Either name the source or own the claim.
-- Hollow framing: "reflecting the broader trend of", "underscoring the importance of", "a milestone in"`;
+STRUCTURE — plain sentences in this order, no headings, no lists
+1. One specific, true observation about their site. One finding, never several.
+2. What it costs them, in plain terms: visitors leaving, enquiries not arriving, being hard to find.
+3. The report link, once, as evidence they can check for themselves.
+4. One low-friction ask: a short reply, or fifteen minutes. Offer, do not push.
+
+TONE
+Warm, direct, human. A helpful peer, not a salesperson. Confident and honest: say what the scan measured, never exaggerate. Never judge the business or its owner, never imply the reader is incompetent or should feel bad. Short sentences, one idea each. No em dashes: use commas, colons or periods. No exclamation marks, no bullet lists, no marketing filler, no artificial urgency, no closing hard sell. You are selling a website that brings them customers, not one that looks nice.
+
+Never use: game-changing, cutting-edge, transform, unlock, boost, leverage, seamless, robust, comprehensive, delve, journey, landscape, showcase, crucial, truly, absolutely, "it is worth noting", "in today's digital world".
+
+HARD LIMITS
+- Body is 70 to 120 words.
+- Use only the finding given below. Never invent one.
+- Never promise rankings, revenue figures, or guarantees.
+- Exactly one call to action.
+- No greeting placeholders like [Name]. No sign-off or signature: the system adds it.
+- Do not write any privacy notice, legal disclosure, data-source explanation or unsubscribe text. The system appends that afterwards; yours would duplicate or contradict it.`;
+
+/**
+ * Rendered with real literal values (2026-07-28 rewrite's worked example),
+ * so the model sees shape, not a fill-in-the-blank template — the HARD
+ * LIMITS above already forbid inventing findings, so this teaches form
+ * only. Deliberately unrounded ("6.4" / "6,4") to model the verbatim-figure
+ * rule rather than contradict it. No sign-off line: the system appends one.
+ */
+const EXAMPLE_EN = `EXAMPLE
+SUBJECT: Your site is slow on mobile
+BODY:
+Hi, I took a look at Van Dijk Physio. The largest image on your homepage takes 6.4 seconds to appear. Most mobile visitors leave after three seconds, so you are probably losing enquiries before anyone sees what you offer. I put the full findings together for you here: https://scan.adashi.io/report/a1b2c3. If it looks useful, let me know and I will walk you through it in fifteen minutes. No obligation.`;
+
+const EXAMPLE_NL = `EXAMPLE
+SUBJECT: Je site laadt traag op mobiel
+BODY:
+Hoi, ik keek even naar Fysio Van Dijk. De grootste afbeelding op je homepage is pas na 6,4 seconden zichtbaar. De meeste bezoekers op mobiel haken na drie seconden af, dus je verliest waarschijnlijk aanvragen voordat iemand je aanbod ziet. Ik heb de volledige bevindingen voor je op een rij gezet: https://scan.adashi.io/report/a1b2c3. Als het nuttig lijkt, laat het weten, dan loop ik er in een kwartier met je doorheen. Geen verplichting.`;
+
+const OUTPUT_CONTRACT = `OUTPUT CONTRACT
+Return exactly this shape and nothing else:
+SUBJECT: one line, at most six words, specific, no hype, no clickbait
+BODY:
+the body text`;
 
 // ── D-6-12 / DRA-05: Article 14 notice, drafted from LIA-v1 §4 ─────────
 
@@ -99,26 +145,34 @@ export interface DraftPromptInput {
 const LANGUAGE_DIRECTIVE_NL = `LANGUAGE: Respond entirely in natural Dutch (Nederlands). Use clear, direct business Dutch, no jargon, no Anglicisms where a Dutch word fits naturally. Do not translate "Adashi" or other brand names.`;
 
 /**
- * Composes, in order: the tone brief, the Dutch language directive (nl
- * only), the business context, the required figure with an instruction to
- * reproduce it exactly, the report URL, and the output contract. Never
- * includes the Article 14 notice text — that is appended by code after
- * generation (D-6-12), never requested from the model.
+ * Composes, in order: the tone brief (ROLE/STRUCTURE/TONE/HARD LIMITS), the
+ * Dutch language directive (nl only), the business context, the required
+ * figure with an instruction to reproduce it exactly, the report URL, the
+ * locale-selected worked example, and the output contract. Never includes
+ * the Article 14 notice text — that is appended by code after generation
+ * (D-6-12), never requested from the model.
  */
 export function buildDraftPrompt(input: DraftPromptInput): string {
   const { businessName, domain, locale, metric, verdict, topIssueTitles, reportUrl } = input;
   const languageDirective = locale === "nl" ? `\n\n${LANGUAGE_DIRECTIVE_NL}` : "";
   const issuesList = topIssueTitles.length > 0 ? topIssueTitles.join("; ") : "(none listed)";
+  const topIssueLine = `\nThe finding to write about: ${issuesList}.`;
+  const example = locale === "nl" ? EXAMPLE_NL : EXAMPLE_EN;
 
   return `${TONE_BRIEF}${languageDirective}
 
-BUSINESS CONTEXT: You are writing to ${businessName} (${domain}). A scan of their website produced this verdict: "${verdict}". The top issues found: ${issuesList}.
+BUSINESS CONTEXT
+You are writing to ${businessName} (${domain}). The scan verdict: "${verdict}".${topIssueLine}
 
-REQUIRED FIGURE: ${metric.displayText}. You must reproduce this exact figure, "${metric.displayValue}", character for character somewhere in the message. Never round it, restate it in different units, or paraphrase the number away.
+REQUIRED FIGURE
+${metric.displayText}. Reproduce this exact figure, "${metric.displayValue}", character for character, somewhere in the body. Never round it, restate it in other units, or paraphrase the number away.
 
-REPORT LINK: Include this exact URL exactly once in the message, so the reader can verify every claim themselves: ${reportUrl}
+REPORT LINK
+Include this exact URL once: ${reportUrl}
 
-OUTPUT CONTRACT: Write the plain text body of the email only. No subject line, no markdown formatting, no greeting placeholder tokens like "[Name]". Do not write any privacy notice, legal disclosure, data-source explanation, or unsubscribe instructions of your own: that text is added afterward by the system, and writing your own would duplicate or contradict it.`;
+${example}
+
+${OUTPUT_CONTRACT}`;
 }
 
 /**
