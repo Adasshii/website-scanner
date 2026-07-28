@@ -98,25 +98,50 @@ const MODEL_NAME = "gemini-2.5-flash";
 
 /**
  * Default Gemini call. Follows scanner-service/src/ai.ts's withTimeoutLocal
- * convention exactly (plain Promise.race + .catch fallback), not the SDK's
- * own request-timeout option, so failure behaviour matches every other AI
- * call site in this codebase.
+ * convention exactly (plain Promise.race), not the SDK's own request-timeout
+ * option, so failure behaviour matches every other AI call site in this
+ * codebase — but unlike a bare .catch(() => fallback), each of the three
+ * failure shapes (no key, timeout, thrown error) logs its own distinct line
+ * before returning null, so a config problem (missing GEMINI_API_KEY) is
+ * never indistinguishable from a live API failure in the server log again
+ * (found during 06 manual verification: all three collapsed into the same
+ * "empty generation result" line).
+ *
+ * Exported (only) so its three failure branches are directly unit-testable
+ * against a mocked @google/generative-ai — the DraftDeps.generate seam
+ * bypasses this function entirely, so it's the only way to test them.
  */
-async function defaultGeminiGenerate(prompt: string): Promise<string | null> {
+export async function defaultGeminiGenerate(prompt: string): Promise<string | null> {
   const ai = getClient();
-  if (!ai) return null;
+  if (!ai) {
+    console.error(
+      `[draft] GEMINI_API_KEY is not set in this runtime, so no draft can be generated`
+    );
+    return null;
+  }
 
   const model = ai.getGenerativeModel({ model: MODEL_NAME });
+  const TIMED_OUT = Symbol("draft-generate-timeout");
 
-  const withTimeoutLocal = <T>(p: Promise<T>, fallback: T): Promise<T> => {
-    return Promise.race<T>([
-      p,
-      new Promise<T>((resolve) => setTimeout(() => resolve(fallback), GENERATE_TIMEOUT_MS)),
-    ]).catch(() => fallback);
-  };
+  let raced: Awaited<ReturnType<typeof model.generateContent>> | typeof TIMED_OUT;
+  try {
+    raced = await Promise.race([
+      model.generateContent(prompt),
+      new Promise<typeof TIMED_OUT>((resolve) =>
+        setTimeout(() => resolve(TIMED_OUT), GENERATE_TIMEOUT_MS)
+      ),
+    ]);
+  } catch (err) {
+    console.error(`[draft] Gemini call threw: ${err instanceof Error ? err.message : String(err)}`);
+    return null;
+  }
 
-  const result = await withTimeoutLocal(model.generateContent(prompt), null);
-  return result ? result.response.text().trim() : null;
+  if (raced === TIMED_OUT) {
+    console.error(`[draft] Gemini call timed out after ${GENERATE_TIMEOUT_MS}ms`);
+    return null;
+  }
+
+  return raced.response.text().trim();
 }
 
 // ── Locale-correct top issue titles (RESEARCH Pitfall 7) ────────────────

@@ -1,11 +1,24 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
 import {
   generateDraft,
+  defaultGeminiGenerate,
   buildReportUrl,
   type DraftInput,
 } from "@/lib/draft-generator";
 import { ARTICLE_14_NOTICE_EN, ARTICLE_14_NOTICE_NL, buildDraftSubject } from "@/lib/draft-prompt";
 import type { ScanScores, ScanSummary, PageResult, PageData } from "@/types/scanner";
+
+// Controllable per-test — configured via mockGetGenerativeModel.mockReturnValueOnce(...)
+// in each defaultGeminiGenerate test below. vi.hoisted so it exists before the
+// hoisted vi.mock factory runs.
+const { mockGetGenerativeModel } = vi.hoisted(() => ({
+  mockGetGenerativeModel: vi.fn(),
+}));
+vi.mock("@google/generative-ai", () => ({
+  GoogleGenerativeAI: class {
+    getGenerativeModel = mockGetGenerativeModel;
+  },
+}));
 
 // ── Fixture helpers ─────────────────────────────────────────────────────
 // Style mirrors lib/draft-metric-selector.test.ts / lib/contact-extraction.test.ts:
@@ -222,5 +235,50 @@ describe("generateDraft", () => {
 
   it("runs with no network access and no GEMINI_API_KEY present in the environment", () => {
     expect(process.env.GEMINI_API_KEY).toBeUndefined();
+  });
+});
+
+// ── defaultGeminiGenerate: the three failure shapes must be distinguishable ──
+// (2026-07-28 fix) — the DraftDeps.generate seam bypasses this function
+// entirely (every test above injects its own `generate`), so this is the
+// only way to unit-test its no-key / thrown / timeout log lines directly.
+describe("defaultGeminiGenerate", () => {
+  afterEach(() => {
+    delete process.env.GEMINI_API_KEY;
+    vi.useRealTimers();
+    vi.restoreAllMocks();
+  });
+
+  it("logs the missing-key reason specifically and returns null, without calling the SDK", async () => {
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    const result = await defaultGeminiGenerate("prompt");
+    expect(result).toBeNull();
+    expect(mockGetGenerativeModel).not.toHaveBeenCalled();
+    expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining("GEMINI_API_KEY is not set"));
+  });
+
+  it("logs the thrown error's message (not silently swallowed) and returns null", async () => {
+    process.env.GEMINI_API_KEY = "test-key-not-a-real-secret";
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    mockGetGenerativeModel.mockReturnValueOnce({
+      generateContent: vi.fn().mockRejectedValue(new Error("quota exceeded")),
+    });
+    const result = await defaultGeminiGenerate("prompt");
+    expect(result).toBeNull();
+    expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining("Gemini call threw: quota exceeded"));
+  });
+
+  it("logs that it timed out, and after how long, when the call never resolves", async () => {
+    process.env.GEMINI_API_KEY = "test-key-not-a-real-secret";
+    vi.useFakeTimers();
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    mockGetGenerativeModel.mockReturnValueOnce({
+      generateContent: vi.fn().mockReturnValue(new Promise(() => {})), // never resolves
+    });
+    const pending = defaultGeminiGenerate("prompt");
+    await vi.advanceTimersByTimeAsync(45000);
+    const result = await pending;
+    expect(result).toBeNull();
+    expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining("timed out after 45000ms"));
   });
 });
