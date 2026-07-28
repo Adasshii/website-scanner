@@ -11,6 +11,7 @@ const REQUIRED_VARS = [
   "SCANNER_SERVICE_URL",
   "SCANNER_API_KEY",
   "RESEND_API_KEY",
+  "GEMINI_API_KEY",
 ];
 
 export async function GET() {
