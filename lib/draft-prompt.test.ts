@@ -9,6 +9,7 @@ import {
   buildDraftPrompt,
   buildDraftSubject,
   parseDraftResponse,
+  resolveReportLink,
   type DraftPromptInput,
 } from "@/lib/draft-prompt";
 import type { CitableMetric } from "@/lib/draft-metric-selector";
@@ -94,13 +95,31 @@ describe("appendArticle14Notice", () => {
 });
 
 describe("buildDraftPrompt", () => {
-  it("contains the tone brief, the metric's displayText and displayValue, and the report URL", () => {
+  it("contains the tone brief and the metric's displayText and displayValue", () => {
     const input = baseInput();
     const prompt = buildDraftPrompt(input);
     expect(prompt).toContain(TONE_BRIEF);
     expect(prompt).toContain(input.metric.displayText);
     expect(prompt).toContain(input.metric.displayValue);
-    expect(prompt).toContain(input.reportUrl);
+  });
+
+  // Change B (2026-07-28): code owns the link now. The model never sees or
+  // writes the real reportUrl — it writes the [RAPPORT] token instead, and
+  // draft-prompt.ts's resolveReportLink() substitutes the real URL after
+  // generation. Asking a model to reproduce a 36-character UUID verbatim
+  // fails some percentage of the time (a live draft corrupted one), so the
+  // requirement is removed rather than repaired again.
+  it("never puts the literal reportUrl in the prompt, and instructs the model to write [RAPPORT] instead", () => {
+    const input = baseInput();
+    const prompt = buildDraftPrompt(input);
+    expect(prompt).not.toContain(input.reportUrl);
+    expect(prompt).toContain("[RAPPORT]");
+  });
+
+  it("bans the model from writing any URL of its own, while permitting the [RAPPORT] token", () => {
+    const prompt = buildDraftPrompt(baseInput());
+    expect(prompt.toLowerCase()).toMatch(/do not write a url|never write a url|no url of your own/);
+    expect(prompt).toMatch(/\[RAPPORT\].*permitted|permitted.*\[RAPPORT\]/is);
   });
 
   it("contains the Dutch language directive for locale nl but not for locale en", () => {
@@ -172,6 +191,37 @@ describe("buildDraftPrompt — rewritten pitch (Change A)", () => {
   });
 });
 
+// 2026-07-28 real-draft review — Change A: pin the Dutch register to
+// informal "je", and pin the greeting to "Hi,". The live generation drifted
+// to formal "u" and dropped the greeting entirely because only the worked
+// example implied either.
+
+describe("buildDraftPrompt — informal register and greeting (Change A)", () => {
+  it("instructs the Dutch prompt to use informal je/jij/jouw and never formal u/uw/uzelf", () => {
+    const nlPrompt = buildDraftPrompt(baseInput({ locale: "nl" }));
+    expect(nlPrompt).toMatch(/\bje\b.*\bjij\b.*\bjouw\b|\bje\b\/\s*.jij.\s*\/\s*.jouw/i);
+    expect(nlPrompt.toLowerCase()).toMatch(/never.*\bu\b.*\buw\b.*\buzelf\b|never use the formal/);
+  });
+
+  it("does not add a register instruction to the English prompt", () => {
+    const enPrompt = buildDraftPrompt(baseInput({ locale: "en" }));
+    expect(enPrompt).not.toMatch(/jij|jouw|uzelf/i);
+  });
+
+  it("instructs every draft to open with 'Hi,' alone on its own line, then a blank line, then the body", () => {
+    const prompt = buildDraftPrompt(baseInput());
+    expect(prompt).toMatch(/open with ["']?Hi,["']?.*own line/i);
+    expect(prompt).toMatch(/blank line/i);
+  });
+
+  it("both worked examples open the body with 'Hi,' on its own line followed by a blank line", () => {
+    const nlPrompt = buildDraftPrompt(baseInput({ locale: "nl" }));
+    const enPrompt = buildDraftPrompt(baseInput({ locale: "en" }));
+    expect(nlPrompt).toMatch(/BODY:\nHi,\n\n\S/);
+    expect(enPrompt).toMatch(/BODY:\nHi,\n\n\S/);
+  });
+});
+
 // Change C: the prompt names one finding, never a joined list.
 
 describe("buildDraftPrompt — single finding (Change C)", () => {
@@ -230,5 +280,44 @@ describe("parseDraftResponse", () => {
   it("never throws and never returns an empty subject", () => {
     expect(() => parseDraftResponse("", "example.com", "en")).not.toThrow();
     expect(parseDraftResponse("", "example.com", "en").subject.length).toBeGreaterThan(0);
+  });
+});
+
+// 2026-07-28 real-draft review — Change B: code owns the link. The model
+// writes the [RAPPORT] token, never a URL. resolveReportLink() substitutes
+// the real reportUrl, strips any other http(s) URL the model wrote (a
+// hallucinated or corrupted link must never survive), and — DRA-03's
+// existing repair guarantee — appends reportUrl if it's absent after all
+// that. All three DRA-03 paths: token present, token absent, corrupted URL.
+
+describe("resolveReportLink", () => {
+  const reportUrl = "https://scan.adashi.io/report/279550e2-f9a6-4f16-9aff-db70216c07e3";
+
+  it("substitutes the [RAPPORT] token with the real reportUrl", () => {
+    const body = "Here are the findings: [RAPPORT]. Let me know what you think.";
+    const result = resolveReportLink(body, reportUrl);
+    expect(result).toBe(`Here are the findings: ${reportUrl}. Let me know what you think.`);
+    expect(result.split(reportUrl).length - 1).toBe(1);
+  });
+
+  it("appends the reportUrl once when the token is absent", () => {
+    const body = "Here are the findings, worth a look.";
+    const result = resolveReportLink(body, reportUrl);
+    expect(result).toBe(`${body}\n\n${reportUrl}`);
+    expect(result.split(reportUrl).length - 1).toBe(1);
+  });
+
+  it("strips a corrupted or hallucinated URL the model wrote and appends the real reportUrl exactly once", () => {
+    const corrupted = "https://scan.adashi.io/report/279550e2-f9a6-4f16-9aff-db70216oc07e3";
+    const body = `Here are the findings: ${corrupted}. Let me know what you think.`;
+    const result = resolveReportLink(body, reportUrl);
+    expect(result).not.toContain(corrupted);
+    expect(result.split(reportUrl).length - 1).toBe(1);
+  });
+
+  it("never leaves the reportUrl itself stripped after token substitution", () => {
+    const body = "[RAPPORT]";
+    const result = resolveReportLink(body, reportUrl);
+    expect(result).toBe(reportUrl);
   });
 });
