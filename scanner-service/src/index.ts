@@ -18,6 +18,7 @@ import { uploadScreenshot } from "./screenshots";
 import type { ScanRequest, PageResult, ScanScores, ScanSummary, Issue, IssueSeverity, ScreenshotInfo } from "../../types/scanner";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { isAtCapacity, CAPACITY_RETRY_AFTER_SECONDS } from "./capacity";
+import { computeVerdict } from "@shared-lib/scoring";
 
 /** Race a promise against a timer; resolve to `fallback` if it times out */
 function withTimeout<T>(promise: Promise<T>, ms: number, fallback: T): Promise<T> {
@@ -713,9 +714,9 @@ function buildSummary(pages: PageResult[]): ScanSummary {
     }
   }
 
-  // Generate a plain-language verdict
+  // Generate a plain-language verdict (single source: lib/scoring.ts, DRA-06)
   const scores = pages.length === 1 ? pages[0].scores : aggregateScores(pages);
-  const verdict = generateVerdict(scores, criticalIssues);
+  const verdict = computeVerdict(scores, criticalIssues);
 
   return {
     totalPages: pages.length,
@@ -725,31 +726,6 @@ function buildSummary(pages: PageResult[]): ScanSummary {
     topIssues,
     verdict,
   };
-}
-
-function generateVerdict(scores: ScanScores, criticalCount: number): string {
-  if (scores.overall >= 90) {
-    return "Great job! Your website is well-built and performs strongly across all categories.";
-  }
-  if (scores.overall >= 70) {
-    const weakest = getWeakestCategory(scores);
-    return `Your website is in decent shape, but ${weakest} needs attention to reach its full potential.`;
-  }
-  if (scores.overall >= 50) {
-    return `Your website has several areas for improvement. Addressing the ${criticalCount > 0 ? "critical" : "major"} issues would make a real difference.`;
-  }
-  return "Your website has significant issues that are likely costing you visitors and search rankings. The good news: most fixes are straightforward.";
-}
-
-function getWeakestCategory(scores: ScanScores): string {
-  const categories = [
-    { name: "accessibility", score: scores.accessibility },
-    { name: "content quality", score: scores.content },
-    { name: "SEO", score: scores.seo },
-    { name: "performance", score: scores.performance },
-  ];
-  categories.sort((a, b) => a.score - b.score);
-  return categories[0].name;
 }
 
 // ── Server startup ─────────────────────────────────────────────────

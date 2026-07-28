@@ -13,9 +13,11 @@
     "declaration": true,
     "baseUrl": ".",
     "paths": {
-      "@shared/*": ["../types/*"]
+      "@shared/*": ["../types/*"],
+      "@shared-lib/*": ["../lib/*"],
+      "@/*": ["../*"]
     }
   },
-  "include": ["src/**/*", "../types/**/*"],
+  "include": ["src/**/*", "../types/**/*", "../lib/scoring.ts"],
   "exclude": ["node_modules", "dist"]
 }
