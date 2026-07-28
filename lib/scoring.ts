@@ -52,19 +52,7 @@ export function buildSummary(pages: PageResult[]): ScanSummary {
   }
 
   const scores = aggregateScores(pages);
-  let verdict: string;
-
-  if (scores.overall >= 95) {
-    verdict = "Excellent work — your website performs strongly across all categories.";
-  } else if (scores.overall >= 85) {
-    verdict = "Your website is performing well. A few targeted fixes could push it further.";
-  } else if (scores.overall >= 70) {
-    verdict = "You have a solid foundation. The issues below are worth addressing to improve conversions and reach.";
-  } else if (scores.overall >= 50) {
-    verdict = `There's clear room to grow. Addressing the ${criticalIssues > 0 ? "critical" : "major"} issues would make a real difference to visitors and search rankings.`;
-  } else {
-    verdict = "Your website has significant issues that are likely costing you visitors and credibility. The good news: most fixes are straightforward.";
-  }
+  const verdict = computeVerdict(scores, criticalIssues);
 
   return {
     totalPages: pages.length,
@@ -74,4 +62,34 @@ export function buildSummary(pages: PageResult[]): ScanSummary {
     topIssues,
     verdict,
   };
+}
+
+/**
+ * The single verdict-threshold source per DRA-06 / D-6-R4. The scanner
+ * service imports this rather than holding its own copy — see
+ * scanner-service/src/index.ts (@shared-lib/scoring).
+ */
+export function computeVerdict(scores: ScanScores, criticalCount: number): string {
+  if (scores.overall >= 90) {
+    return "Great job! Your website is well-built and performs strongly across all categories.";
+  }
+  if (scores.overall >= 70) {
+    const weakest = getWeakestCategory(scores);
+    return `Your website is in decent shape, but ${weakest} needs attention to reach its full potential.`;
+  }
+  if (scores.overall >= 50) {
+    return `Your website has several areas for improvement. Addressing the ${criticalCount > 0 ? "critical" : "major"} issues would make a real difference.`;
+  }
+  return "Your website has significant issues that are likely costing you visitors and search rankings. The good news: most fixes are straightforward.";
+}
+
+export function getWeakestCategory(scores: ScanScores): string {
+  const categories = [
+    { name: "accessibility", score: scores.accessibility },
+    { name: "content quality", score: scores.content },
+    { name: "SEO", score: scores.seo },
+    { name: "performance", score: scores.performance },
+  ];
+  categories.sort((a, b) => a.score - b.score);
+  return categories[0].name;
 }
