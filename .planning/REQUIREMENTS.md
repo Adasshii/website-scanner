@@ -64,9 +64,9 @@
 
 ### Approval Queue
 
-- [ ] **QUE-01**: Joshua can review every drafted message before anything is sent
-- [ ] **QUE-02**: Joshua can edit a draft's text inline before approving it
-- [ ] **QUE-03**: Joshua can reject a prospect outright from the queue
+- [x] **QUE-01**: Joshua can review every drafted message before anything is sent
+- [x] **QUE-02**: Joshua can edit a draft's text inline before approving it
+- [x] **QUE-03**: Joshua can reject a prospect outright from the queue
 - [ ] **QUE-04**: The scan evidence behind a draft is shown next to the draft during review
 - [ ] **QUE-05**: There is no bulk-approve action; approval is per-message by design
 
@@ -189,9 +189,9 @@ Populated during roadmap creation. See `.planning/ROADMAP.md` for phase detail.
 | DRA-04 | Phase 6 | Complete |
 | DRA-05 | Phase 6 | Complete |
 | DRA-06 | Phase 6 | Complete |
-| QUE-01 | Phase 6 | Pending |
-| QUE-02 | Phase 6 | Pending |
-| QUE-03 | Phase 6 | Pending |
+| QUE-01 | Phase 6 | Complete |
+| QUE-02 | Phase 6 | Complete |
+| QUE-03 | Phase 6 | Complete |
 | QUE-04 | Phase 6 | Pending |
 | QUE-05 | Phase 6 | Pending |
 | CMP-01 | Phase 2 | Complete |
