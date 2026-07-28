@@ -7,9 +7,13 @@ import { CutoffSlider } from "@/components/admin/cutoff-slider";
 import { ShortlistTable } from "@/components/admin/shortlist-table";
 import { ReleaseButton } from "@/components/admin/release-button";
 import { RunBatchButton } from "@/components/admin/run-batch-button";
+import { OutreachTable } from "@/components/admin/outreach-table";
 import type { ShortlistRow } from "@/lib/triage-candidates";
 import { DEFAULT_CUTOFF } from "@/lib/triage-constants";
 import { isReleasable } from "@/lib/triage-eligibility";
+import type { OutreachFilter, OutreachQueueRow } from "@/lib/outreach-queue";
+
+const OUTREACH_FILTERS: OutreachFilter[] = ["pending", "approved", "rejected"];
 
 interface Stats {
   totalScans: number;
@@ -51,7 +55,7 @@ interface LeadRow {
   emailStatuses: Array<{ email_type: string; status: string }>;
 }
 
-type Tab = "scans" | "leads" | "shortlist";
+type Tab = "scans" | "leads" | "shortlist" | "outreach";
 
 export default function AdminPage() {
   const router = useRouter();
@@ -69,6 +73,13 @@ export default function AdminPage() {
   const [shortlistRows, setShortlistRows] = useState<ShortlistRow[]>([]);
   const [shortlistLoading, setShortlistLoading] = useState(false);
   const [cutoff, setCutoff] = useState(DEFAULT_CUTOFF);
+  const [outreachRows, setOutreachRows] = useState<OutreachQueueRow[]>([]);
+  const [outreachLoading, setOutreachLoading] = useState(false);
+  const [outreachCounts, setOutreachCounts] = useState<{ pending: number; approved: number; rejected: number }>({
+    pending: 0,
+    approved: 0,
+    rejected: 0,
+  });
 
   // Restore secret from sessionStorage
   useEffect(() => {
@@ -148,14 +159,77 @@ export default function AdminPage() {
     }
   }, [secret]);
 
+  /**
+   * D-6-04's default (pending, worst-first) is already returned by the API
+   * per filter, but the tab's stat cards need all three counts at once. The
+   * existing GET route only returns one status group per call (06-06 is
+   * locked, no new backend surface here), so this fetches all three filters
+   * in parallel — three cheap Postgrest queries at this project's 10-50/week
+   * scale, matching the near-zero-cost constraint, rather than adding a new
+   * counts endpoint. Modelled on fetchShortlist for the secret header, 401
+   * handling and error-banner copy.
+   */
+  const fetchOutreach = useCallback(
+    async (filter: OutreachFilter = "pending") => {
+      setOutreachLoading(true);
+      setError("");
+
+      try {
+        const responses = await Promise.all(
+          OUTREACH_FILTERS.map((f) =>
+            fetch(`/api/admin/outreach?status=${f}`, { headers: { "x-admin-secret": secret } })
+          )
+        );
+
+        if (responses.some((res) => res.status === 401)) {
+          setAuthenticated(false);
+          setError("Invalid admin secret.");
+          setOutreachLoading(false);
+          return;
+        }
+        const failed = responses.find((res) => !res.ok);
+        if (failed) {
+          const body = await failed.json().catch(() => ({}));
+          setError(`Failed to fetch drafts${body.detail ? `: ${body.detail}` : ""}.`);
+          setOutreachLoading(false);
+          return;
+        }
+
+        const [pendingData, approvedData, rejectedData] = await Promise.all(
+          responses.map((res) => res.json())
+        );
+        const byFilter: Record<OutreachFilter, OutreachQueueRow[]> = {
+          pending: pendingData.rows,
+          approved: approvedData.rows,
+          rejected: rejectedData.rows,
+        };
+        setOutreachCounts({
+          pending: byFilter.pending.length,
+          approved: byFilter.approved.length,
+          rejected: byFilter.rejected.length,
+        });
+        setOutreachRows(byFilter[filter]);
+        setAuthenticated(true);
+        sessionStorage.setItem("admin_secret", secret);
+      } catch {
+        setError("Could not connect to server.");
+      } finally {
+        setOutreachLoading(false);
+      }
+    },
+    [secret]
+  );
+
   useEffect(() => {
     if (!authenticated) return;
     if (tab === "shortlist") {
       fetchShortlist();
+    } else if (tab === "outreach") {
+      fetchOutreach();
     } else {
       fetchData(tab, page);
     }
-  }, [authenticated, tab, page, fetchData, fetchShortlist]);
+  }, [authenticated, tab, page, fetchData, fetchShortlist, fetchOutreach]);
 
   function handleLogin(e: React.FormEvent) {
     e.preventDefault();
@@ -304,6 +378,12 @@ export default function AdminPage() {
           >
             Shortlist
           </TabButton>
+          <TabButton
+            active={tab === "outreach"}
+            onClick={() => handleTabChange("outreach")}
+          >
+            Outreach
+          </TabButton>
         </div>
 
         {/* Table */}
@@ -315,6 +395,14 @@ export default function AdminPage() {
             setCutoff={setCutoff}
             secret={secret}
             onReleased={fetchShortlist}
+          />
+        ) : tab === "outreach" ? (
+          <OutreachTable
+            rows={outreachRows}
+            loading={outreachLoading}
+            secret={secret}
+            counts={outreachCounts}
+            onRefetch={fetchOutreach}
           />
         ) : (
           <div className="bg-white rounded-2xl shadow-card overflow-hidden">
@@ -329,7 +417,7 @@ export default function AdminPage() {
         )}
 
         {/* Pagination */}
-        {tab !== "shortlist" && totalPages > 1 && (
+        {tab !== "shortlist" && tab !== "outreach" && totalPages > 1 && (
           <div className="flex items-center justify-center gap-2 mt-6">
             <button
               onClick={() => setPage((p) => Math.max(1, p - 1))}
