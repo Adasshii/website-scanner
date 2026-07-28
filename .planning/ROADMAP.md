@@ -269,12 +269,26 @@ Notes:
 **Plans**: 8 plans (5 waves)
 
 Plans:
+**Wave 1**
+
 - [ ] 06-01-PLAN.md — DRA-06 verdict consolidation: one `computeVerdict()` in `lib/scoring.ts`, imported by the scanner service (wave 1)
 - [ ] 06-02-PLAN.md — Blocking manual prerequisites: `GEMINI_API_KEY` for the Next.js runtime, live `lifecycle_state = 'rejected'` constraint check (wave 1, non-autonomous)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
 - [ ] 06-03-PLAN.md — Versioned prompt file (tone brief, Article 14 notice EN+NL, locale map, subject template) and the citable-metric selector (wave 2)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
 - [ ] 06-04-PLAN.md — `generateDraft()`: Gemini call from Next.js, verbatim-metric guard, report link, notice append (wave 3)
+
+**Wave 4** *(blocked on Wave 3 completion)*
+
 - [ ] 06-05-PLAN.md — Scan-complete prospect branch and eligibility gate, placed before the email guard (wave 4)
 - [ ] 06-06-PLAN.md — Outreach queue library and admin API: list, edit, approve, reject, regenerate, manual generate (wave 4)
+
+**Wave 5** *(blocked on Wave 4 completion)*
+
 - [ ] 06-07-PLAN.md — Outreach admin tab: single-open expandable review panel with evidence pane (wave 5, non-autonomous)
 - [ ] 06-08-PLAN.md — Shortlist "Generate draft" affordance for named-person and failed-generation prospects (wave 5)
 

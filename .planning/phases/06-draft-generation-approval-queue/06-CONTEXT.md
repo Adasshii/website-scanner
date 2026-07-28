@@ -52,8 +52,8 @@ and the channel is still undecided. Lifecycle state transitions are Phase 7.
   issues by impact — all already present in `scans.summary`, no new plumbing. Plus a
   link opening `/report/[scanId]` in a new tab for the full report. The specific number
   the draft cites (see D-6-11) is highlighted so verification is one glance.
-- **D-6-04: Default view is pending drafts only (`draft` or `edited`), worst score
-  first.** Matches the Shortlist's worst-is-most-qualified inversion. Approved and
+- **D-6-04: Default view is pending drafts only, worst score first.** Pending means status
+  `draft` or `edited`. Matches the Shortlist's worst-is-most-qualified inversion. Approved and
   rejected are reachable behind a status filter, out of the default view, so the tab
   always answers "what still needs me".
 
@@ -63,8 +63,8 @@ and the channel is still undecided. Lifecycle state transitions are Phase 7.
   the tab is opened. Matches the codebase's established fire-and-forget pattern. A
   generation failure simply leaves no draft row; regenerate (D-6-13) is the recovery
   path.
-- **D-6-06: Named-person-only prospects get no automatic draft, but manual generate
-  stays available.** CON-05 turns on the word "automatically": the scan-complete trigger
+- **D-6-06: Named-person-only prospects get no auto-draft; manual generate stays.** CON-05
+  turns on the word "automatically": the scan-complete trigger
   skips them so they never enter the pending queue on their own, they stay visible in
   the Shortlist behind the existing NAMED-PERSON pill, and an explicit per-prospect
   generate action lets Joshua clear one by judgement. Not dead-ended, not automatic.
