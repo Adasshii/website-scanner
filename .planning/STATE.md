@@ -5,15 +5,15 @@ milestone_name: milestone
 current_phase: 06
 current_phase_name: draft-generation-approval-queue
 status: executing
-stopped_at: Phase 6 UI-SPEC approved
-last_updated: "2026-07-28T09:58:16.373Z"
+stopped_at: Completed 06-08-PLAN.md
+last_updated: "2026-07-28T10:08:47.783Z"
 last_activity: 2026-07-28
 last_activity_desc: Phase 06 execution started
 progress:
   total_phases: 9
   completed_phases: 6
   total_plans: 37
-  completed_plans: 34
+  completed_plans: 35
   percent: 67
 ---
 
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-07-17)
 ## Current Position
 
 Phase: 06 (draft-generation-approval-queue) — EXECUTING
-Plan: 6 of 8
+Plan: 7 of 8
 Status: Ready to execute
 Last activity: 2026-07-28 — Phase 06 execution started
 
@@ -85,6 +85,7 @@ Progress: [██████████] 100%
 | Phase 06 P04 | 8min | 2 tasks | 4 files |
 | Phase 06 P05 | 7min | 2 tasks | 3 files |
 | Phase 06 P06 | 15min | 2 tasks | 3 files |
+| Phase 06 P08 | 20min | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -147,6 +148,8 @@ Recent decisions affecting current work:
 - [Phase 06]: 06-05: eligibility gates 1-7 all resolve to 'skipped'; only a null generateDraft() result (or an unexpected insert throw) resolves to 'failed'
 - [Phase ?]: [Phase 06-06]: rejectDraft reuses prospects.lifecycle_state='rejected' (migration 010, unused until now); approveDraft writes status/approved_by/approved_at only, never touching lifecycle_state
 - [Phase ?]: [Phase 06-06]: admin route auth check (x-admin-secret/ADMIN_SECRET) kept literal per-handler, not factored into a shared helper, matching the grep-gated shortlist-route convention
+- [Phase 06-08]: app/api/admin/shortlist/route.ts needed no change since it spreads ShortlistRow straight through; verified rather than assumed
+- [Phase 06-08]: No backfill script for pre-phase prospects -- the manual Generate draft button (required anyway by D-6-06) doubles as the backfill mechanism
 
 ### Pending Todos
 
@@ -179,6 +182,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-28T09:57:26.521Z
-Stopped at: Phase 6 UI-SPEC approved
-Resume file: .planning/phases/06-draft-generation-approval-queue/06-UI-SPEC.md
+Last session: 2026-07-28T10:08:47.649Z
+Stopped at: Completed 06-08-PLAN.md
+Resume file: None
