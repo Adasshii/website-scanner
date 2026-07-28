@@ -5,16 +5,15 @@ milestone_name: milestone
 current_phase: 06
 current_phase_name: draft-generation-approval-queue
 status: executing
-stopped_at: Completed 06-08-PLAN.md
-last_updated: "2026-07-28T10:08:47.783Z"
+stopped_at: Completed 06-02-PLAN.md
+last_updated: "2026-07-28T15:06:14.744Z"
 last_activity: 2026-07-28
 last_activity_desc: Phase 06 execution started
 progress:
-  total_phases: 9
+  total_phases: 7
   completed_phases: 6
   total_plans: 37
-  completed_plans: 35
-  percent: 67
+  completed_plans: 36
 ---
 
 # Project State
@@ -29,11 +28,11 @@ See: .planning/PROJECT.md (updated 2026-07-17)
 ## Current Position
 
 Phase: 06 (draft-generation-approval-queue) — EXECUTING
-Plan: 7 of 8
+Plan: 8 of 8
 Status: Ready to execute
 Last activity: 2026-07-28 — Phase 06 execution started
 
-Progress: [██████████] 100%
+Progress: [██████████] 97%
 
 ## Performance Metrics
 
@@ -86,6 +85,11 @@ Progress: [██████████] 100%
 | Phase 06 P05 | 7min | 2 tasks | 3 files |
 | Phase 06 P06 | 15min | 2 tasks | 3 files |
 | Phase 06 P08 | 20min | 2 tasks | 3 files |
+**Per-Plan Metrics:**
+
+| Plan | Duration | Tasks | Files |
+|------|----------|-------|-------|
+| Phase 06 P02 | 12min | 2 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -150,6 +154,8 @@ Recent decisions affecting current work:
 - [Phase ?]: [Phase 06-06]: admin route auth check (x-admin-secret/ADMIN_SECRET) kept literal per-handler, not factored into a shared helper, matching the grep-gated shortlist-route convention
 - [Phase 06-08]: app/api/admin/shortlist/route.ts needed no change since it spreads ShortlistRow straight through; verified rather than assumed
 - [Phase 06-08]: No backfill script for pre-phase prospects -- the manual Generate draft button (required anyway by D-6-06) doubles as the backfill mechanism
+- [Phase 06-02]: D-6-15 reuses prospects.lifecycle_state = 'rejected'; Phase 7 (TRK-01/02) owns the lifecycle state machine and must not reintroduce a parallel reject flag or overwrite this value in a generic status-advance sweep.
+- [Phase 06-02]: GEMINI_API_KEY provisioned server-side in .env.local (dev) and Vercel Production+Preview (prod) by Joshua; documented by name only (empty value) in .env.example.
 
 ### Pending Todos
 
@@ -182,6 +188,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-28T10:08:47.649Z
-Stopped at: Completed 06-08-PLAN.md
+Last session: 2026-07-28T15:06:14.730Z
+Stopped at: Completed 06-02-PLAN.md
 Resume file: None
