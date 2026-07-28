@@ -116,6 +116,17 @@ _Both tasks used the plan's exact TDD flow: RED confirmed via `Cannot find packa
 
 None - plan executed exactly as written. Both tasks' behavior specs, artifact lists, and acceptance-criteria grep gates were implemented and verified as specified.
 
+### Post-Completion Revision (2026-07-28)
+
+After this plan shipped, Joshua reviewed the first real generated drafts and judged the pitch weak. The problem was the prompt itself, not the plumbing around it: `TONE_BRIEF` was prohibition-heavy (a banned-word list and a rough word ceiling) with no stated goal for the email, no worked example of what a good one looks like, and no explained business consequence for the reader (why should they care that their site is slow?). A model given only "don't do X, Y, Z" has no positive target to aim at, so it drifted into a generic, listy pitch.
+
+Two follow-up changes, executed TDD (RED then GREEN), amend this plan directly rather than opening a new one, since both touch the exact files this plan created:
+
+- **Rewrote `buildDraftPrompt()`/`TONE_BRIEF`** into a ROLE / STRUCTURE / TONE / HARD LIMITS / BUSINESS CONTEXT / REQUIRED FIGURE / REPORT LINK / EXAMPLE / OUTPUT CONTRACT shape: an explicit goal ("earn a reply or a short call, never close the sale"), a four-sentence structure, and a locale-selected worked example rendered with real values. `feat(06-03): rewrite the cold-outreach pitch prompt`.
+- **Narrowed the prompt to one finding** instead of joining `topIssueTitles` with `; `: a laundry-list of issues was part of what made the pitch read weak and generic instead of specific. `DraftPromptInput.topIssueTitles` stays `string[]` and every caller is unchanged — `buildDraftPrompt` just uses `topIssueTitles[0]`, omitting the sentence entirely when the array is empty. `feat(06-03): give the prompt one finding instead of a list`.
+
+The DRA-02 verbatim-figure instruction and the DRA-05 privacy/legal/unsubscribe prohibition both survived the rewrite unchanged in substance (still present in HARD LIMITS and REQUIRED FIGURE). All prior tests plus new tests for the rewritten shape and the single-finding line pass; `lib/draft-prompt.ts` stays a pure module (no Supabase, no fetch, no `process.env` reads).
+
 ## Issues Encountered
 None.
 

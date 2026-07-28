@@ -144,6 +144,15 @@ _RED confirmed via `Cannot find package '@/lib/draft-generator'` module-resoluti
 - **Files modified:** `lib/draft-generator.ts`
 - **Commit:** `f4b4020`
 
+### Post-Completion Revision (2026-07-28)
+
+After this plan and 06-03 shipped, Joshua reviewed real generated drafts and judged the pitch weak (see 06-03-SUMMARY.md's post-completion note for the prompt-rewrite side of this same revision). The relevant change to this plan's code: previously `generateDraft()` always discarded the model's own words and returned the code-templated `buildDraftSubject()` result as the subject, no matter what the model wrote — the model never had a reason to write a good subject line since nothing it wrote was used.
+
+- **The model now authors the subject line.** 06-03's rewritten prompt asks for a `SUBJECT: <line>` / `BODY:\n<rest>` response (its OUTPUT CONTRACT). A new pure parser, `parseDraftResponse(raw, domain, locale)` in `lib/draft-prompt.ts`, extracts both parts: case-insensitive labels, tolerant of leading whitespace and a multi-line body. It falls back to `buildDraftSubject(domain, locale)` whenever the subject is missing, empty after trimming, or implausible (over 120 characters, or spanning multiple lines) — a model that ignores the contract still gets a decent subject. If no `BODY:` label is found at all, the entire raw response becomes the body (minus any parsed subject line) so no draft is ever lost to a non-conforming response. `feat(06-04): use the model-authored subject, with a code fallback`.
+- `generateDraft()` now calls `parseDraftResponse()` after the DRA-02 verbatim guard (checked against the full raw response, so a figure anywhere in it still counts) and applies `appendArticle14Notice()` to the parsed body only, never the subject.
+- No database change: `outreach_messages.draft_subject` already existed from 06-01/06-02; no new column, no `preview` field, no migration. Migration count stayed at 18.
+- Existing tests that exercised the old "subject is always templated" behavior with non-conforming raw responses (no `SUBJECT:`/`BODY:` labels) still pass unchanged, since those inputs correctly fall through `parseDraftResponse`'s no-BODY-label branch to the same fallback subject. One test was renamed and a new test added to explicitly cover the model-authored-subject path.
+
 ## Issues Encountered
 None beyond the deviation above.
 
