@@ -28,6 +28,14 @@ export interface ShortlistRow {
   scan_status_reason: string | null;
   latest_scan_id: string | null;
   contact_email_type: string | null;
+  /** Derived from contact_email (06-08) — the raw address never leaves this
+   * module; a data-minimisation choice, not a security boundary, since the
+   * admin payload only needs to know whether a manual draft can be sent. */
+  has_contact_email: boolean;
+  /** Derived from a follow-up outreach_messages lookup (06-08) — true once
+   * any row (any status) exists for the prospect, which is what hides the
+   * manual "Generate draft" action in the Shortlist. */
+  has_outreach_draft: boolean;
 }
 
 /**
@@ -58,14 +66,42 @@ export async function getTriageCandidates(
  * per slide. Selects category so the UI can call isReleasable() directly
  * without a second query (D-4.1-01/03/04) — excluded/unreachable rows stay
  * visible in the shortlist, they are only barred from release.
+ *
+ * 06-08: also derives has_contact_email (from contact_email, which is
+ * dropped from the returned row) and has_outreach_draft (a follow-up
+ * outreach_messages lookup, skipped entirely when no rows come back), so
+ * the Shortlist knows when its manual "Generate draft" action can succeed.
  */
 export async function getShortlist(sb: SupabaseClient): Promise<ShortlistRow[]> {
   const { data, error } = await sb
     .from("prospects")
     .select(
-      "id, domain, category, triage_score, scan_released_at, scan_status, scan_attempts, scan_status_reason, latest_scan_id, contact_email_type"
+      "id, domain, category, triage_score, scan_released_at, scan_status, scan_attempts, scan_status_reason, latest_scan_id, contact_email_type, contact_email"
     )
     .not("triage_score", "is", null);
   if (error) throw error;
-  return (data ?? []) as ShortlistRow[];
+  const rawRows = (data ?? []) as (ShortlistRow & { contact_email: string | null })[];
+
+  if (rawRows.length === 0) return [];
+
+  // One extra round trip at this project's volume (10-50/week) is the right
+  // trade against a view or a denormalised column (D-6-08 discretion note).
+  const { data: draftRows, error: draftError } = await sb
+    .from("outreach_messages")
+    .select("prospect_id")
+    .in(
+      "prospect_id",
+      rawRows.map((r) => r.id)
+    );
+  if (draftError) throw draftError;
+  const draftedIds = new Set((draftRows ?? []).map((r) => r.prospect_id as string));
+
+  return rawRows.map((row) => {
+    const { contact_email, ...rest } = row;
+    return {
+      ...rest,
+      has_contact_email: !!contact_email && contact_email.trim().length > 0,
+      has_outreach_draft: draftedIds.has(row.id),
+    };
+  });
 }

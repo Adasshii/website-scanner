@@ -57,6 +57,7 @@ async function seedProspect(overrides?: {
   domain?: string | null;
   triageScore?: TriageScore | null;
   scanReleasedAt?: string | null;
+  contactEmail?: string | null;
 }) {
   domainCounter += 1;
   const domain = overrides?.domain === undefined ? `triage-candidates-${domainCounter}.test` : overrides.domain;
@@ -70,11 +71,21 @@ async function seedProspect(overrides?: {
       triage_score: overrides?.triageScore ?? null,
       triage_checked_at: overrides?.triageScore ? new Date().toISOString() : null,
       scan_released_at: overrides?.scanReleasedAt ?? null,
+      contact_email: overrides?.contactEmail ?? null,
     })
     .select("id")
     .single();
   if (error) throw error;
   return data.id as string;
+}
+
+async function seedOutreachMessage(prospectId: string) {
+  const { error } = await sb.from("outreach_messages").insert({
+    prospect_id: prospectId,
+    draft_subject: "Test subject",
+    draft_body: "Test body",
+  });
+  if (error) throw error;
 }
 
 describe("getTriageCandidates", () => {
@@ -120,5 +131,40 @@ describe("getShortlist", () => {
     const ids = shortlist.map((r) => r.id);
     expect(ids).toContain(triagedId);
     expect(ids).not.toContain(untriagedId);
+  });
+
+  it("sets has_contact_email true for a non-empty address and false for null (06-08)", async () => {
+    const withEmailId = await seedProspect({
+      triageScore: makeTriageScore(),
+      contactEmail: "info@example.test",
+    });
+    const withoutEmailId = await seedProspect({ triageScore: makeTriageScore(), contactEmail: null });
+
+    const shortlist = await getShortlist(sb);
+    const withEmailRow = shortlist.find((r) => r.id === withEmailId);
+    const withoutEmailRow = shortlist.find((r) => r.id === withoutEmailId);
+    expect(withEmailRow?.has_contact_email).toBe(true);
+    expect(withoutEmailRow?.has_contact_email).toBe(false);
+  });
+
+  it("never returns the raw contact_email property (06-08 data minimisation)", async () => {
+    await seedProspect({ triageScore: makeTriageScore(), contactEmail: "info@example.test" });
+
+    const shortlist = await getShortlist(sb);
+    for (const row of shortlist) {
+      expect(row).not.toHaveProperty("contact_email");
+    }
+  });
+
+  it("sets has_outreach_draft true when any outreach_messages row exists, false otherwise (06-08)", async () => {
+    const withDraftId = await seedProspect({ triageScore: makeTriageScore() });
+    await seedOutreachMessage(withDraftId);
+    const withoutDraftId = await seedProspect({ triageScore: makeTriageScore() });
+
+    const shortlist = await getShortlist(sb);
+    const withDraftRow = shortlist.find((r) => r.id === withDraftId);
+    const withoutDraftRow = shortlist.find((r) => r.id === withoutDraftId);
+    expect(withDraftRow?.has_outreach_draft).toBe(true);
+    expect(withoutDraftRow?.has_outreach_draft).toBe(false);
   });
 });
