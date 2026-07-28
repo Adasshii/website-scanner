@@ -151,12 +151,19 @@ const LANGUAGE_DIRECTIVE_NL = `LANGUAGE: Respond entirely in natural Dutch (Nede
  * locale-selected worked example, and the output contract. Never includes
  * the Article 14 notice text — that is appended by code after generation
  * (D-6-12), never requested from the model.
+ *
+ * D-6-03 (Change C, 2026-07-28): names ONE finding, `topIssueTitles[0]`,
+ * never a joined list — a laundry-list of issues was part of what made the
+ * pitch read weak. `topIssueTitles` stays `string[]` and every caller stays
+ * unchanged; only this one line narrows to the first entry. Omits the
+ * finding sentence entirely when the array is empty, rather than emitting a
+ * placeholder like "(none listed)".
  */
 export function buildDraftPrompt(input: DraftPromptInput): string {
   const { businessName, domain, locale, metric, verdict, topIssueTitles, reportUrl } = input;
   const languageDirective = locale === "nl" ? `\n\n${LANGUAGE_DIRECTIVE_NL}` : "";
-  const issuesList = topIssueTitles.length > 0 ? topIssueTitles.join("; ") : "(none listed)";
-  const topIssueLine = `\nThe finding to write about: ${issuesList}.`;
+  const topIssueLine =
+    topIssueTitles.length > 0 ? `\nThe finding to write about: ${topIssueTitles[0]}.` : "";
   const example = locale === "nl" ? EXAMPLE_NL : EXAMPLE_EN;
 
   return `${TONE_BRIEF}${languageDirective}
