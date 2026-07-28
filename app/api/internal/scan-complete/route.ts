@@ -1,8 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase";
 import { sendReportReadyEmail, sendAdminNotificationEmail } from "@/lib/email";
+import { maybeGenerateDraftForProspectScan } from "@/lib/draft-on-scan-complete";
 
 export const runtime = "nodejs";
+// The scanner service aborts its own callback fetch after 10 seconds and
+// logs a failure line on its side if this function hasn't responded by
+// then — that is a separate budget on the CALLER's side and does not stop
+// this function from finishing its own work. Do not read that log line as
+// proof a draft failed to generate; maxDuration is this function's own
+// (much longer) budget.
+export const maxDuration = 60;
 
 /**
  * Called by the scanner service after a full scan completes.
@@ -27,12 +35,29 @@ export async function POST(request: NextRequest) {
     const supabase = createServerClient();
     const { data: scan, error } = await supabase
       .from("scans")
-      .select("id, email, domain, scores, summary, status, sales_brief, locale")
+      .select("id, email, domain, scores, summary, status, sales_brief, locale, prospect_id, pages")
       .eq("id", scanId)
       .single();
 
     if (error || !scan) {
       return NextResponse.json({ error: "Scan not found" }, { status: 404 });
+    }
+
+    // Prospect branch (D-6-05): must run BEFORE the readiness guard below,
+    // since every prospect scan row is inserted with no email address
+    // (RESEARCH Pitfall 2) — that guard would otherwise 400 every prospect
+    // scan before it ever reached draft generation. Awaited inline, not
+    // deferred past the response: Vercel's execution environment can freeze
+    // once a response has been returned, unlike the always-on Railway
+    // service. Wrapped so a rejected promise can never escape and fail this
+    // webhook (T-06-BLAST) — maybeGenerateDraftForProspectScan itself never
+    // throws, but this is defense in depth.
+    if (scan.prospect_id) {
+      const result = await maybeGenerateDraftForProspectScan(supabase, scan).catch((err) => {
+        console.error("[draft] unexpected throw from maybeGenerateDraftForProspectScan:", err);
+        return { outcome: "failed" as const, reason: "unexpected-throw" };
+      });
+      return NextResponse.json({ draft: result });
     }
 
     if (scan.status !== "completed" || !scan.email || !scan.scores || !scan.summary) {
