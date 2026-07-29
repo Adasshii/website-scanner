@@ -174,4 +174,83 @@ describe("selectCitableMetric", () => {
     expect(selectCitableMetric(null, baseSummary(), [basePage()], "en")).toBeNull();
     expect(selectCitableMetric(undefined, baseSummary(), [basePage()], "en")).toBeNull();
   });
+
+  // ── Register + plural coverage (fix 06-03) ──────────────────────────────
+  // The Dutch strings are handed to the model inside a prompt that instructs
+  // it to address the reader informally (je/jij/jouw) — see draft-prompt.ts
+  // REGISTER directive. A formal "Uw"/"uw" template hands the model a
+  // self-contradicting prompt. Separately, "kritiek(e) probleem/problemen"
+  // was machine-shaped; real singular/plural branches replace it in both
+  // locales.
+
+  it("never uses the formal Dutch register (Uw/uw) in any template", () => {
+    const pages = [basePage({ coreWebVitals: { lcp: 4300, cls: 0, fcp: 0, tbt: 0, si: 0 } })];
+
+    const nlLcp = selectCitableMetric(baseScores(), baseSummary(), pages, "nl")!;
+    expect(nlLcp.displayText).not.toMatch(/\bUw\b/);
+    expect(nlLcp.displayText).not.toMatch(/\buw\b/);
+
+    const plainPages = [basePage()];
+    const nlCriticalSingular = selectCitableMetric(
+      baseScores(),
+      baseSummary({ criticalIssues: 1 }),
+      plainPages,
+      "nl"
+    )!;
+    expect(nlCriticalSingular.displayText).not.toMatch(/\bUw\b/);
+    expect(nlCriticalSingular.displayText).not.toMatch(/\buw\b/);
+
+    const nlCriticalPlural = selectCitableMetric(
+      baseScores(),
+      baseSummary({ criticalIssues: 4 }),
+      plainPages,
+      "nl"
+    )!;
+    expect(nlCriticalPlural.displayText).not.toMatch(/\bUw\b/);
+    expect(nlCriticalPlural.displayText).not.toMatch(/\buw\b/);
+
+    const nlCategory = selectCitableMetric(
+      baseScores({ seo: 31 }),
+      baseSummary({ criticalIssues: 0 }),
+      plainPages,
+      "nl"
+    )!;
+    expect(nlCategory.displayText).not.toMatch(/\bUw\b/);
+    expect(nlCategory.displayText).not.toMatch(/\buw\b/);
+  });
+
+  it("uses real singular/plural branches for critical issues, not a slash form", () => {
+    const pages = [basePage()];
+
+    const enSingular = selectCitableMetric(baseScores(), baseSummary({ criticalIssues: 1 }), pages, "en")!;
+    expect(enSingular.displayText).toBe("The scan found 1 critical issue on your site");
+
+    const enPlural = selectCitableMetric(baseScores(), baseSummary({ criticalIssues: 4 }), pages, "en")!;
+    expect(enPlural.displayText).toBe("The scan found 4 critical issues on your site");
+
+    const nlSingular = selectCitableMetric(baseScores(), baseSummary({ criticalIssues: 1 }), pages, "nl")!;
+    expect(nlSingular.displayText).toBe("De scan vond 1 kritiek probleem op je site");
+
+    const nlPlural = selectCitableMetric(baseScores(), baseSummary({ criticalIssues: 4 }), pages, "nl")!;
+    expect(nlPlural.displayText).toBe("De scan vond 4 kritieke problemen op je site");
+
+    // Neither form contains the old machine-shaped parenthetical/slash pattern.
+    expect(enSingular.displayText).not.toMatch(/\(s\)/);
+    expect(enPlural.displayText).not.toMatch(/\(s\)/);
+    expect(nlSingular.displayText).not.toMatch(/\(e\)/);
+    expect(nlPlural.displayText).not.toMatch(/\//);
+  });
+
+  it("lcp displayText uses je (not uw) and still contains displayValue verbatim, in both locales", () => {
+    const pages = [basePage({ coreWebVitals: { lcp: 6400, cls: 0, fcp: 0, tbt: 0, si: 0 } })];
+
+    const en = selectCitableMetric(baseScores(), baseSummary(), pages, "en")!;
+    expect(en.displayValue).toBe("6.4");
+    expect(en.displayText).toContain("6.4");
+
+    const nl = selectCitableMetric(baseScores(), baseSummary(), pages, "nl")!;
+    expect(nl.displayValue).toBe("6,4");
+    expect(nl.displayText).toContain("6,4");
+    expect(nl.displayText).toMatch(/\bJe\b/);
+  });
 });
