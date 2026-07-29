@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { OutreachQueueRow } from "@/lib/outreach-queue";
 import { ARTICLE_14_NOTICE_EN, ARTICLE_14_NOTICE_NL, appendArticle14Notice } from "@/lib/draft-prompt";
 
@@ -71,12 +71,29 @@ export function OutreachRowPanel({ row, secret, onRefetch }: OutreachRowPanelPro
   // keyed per row), so this always starts cleared for a fresh row.
   const [actionError, setActionError] = useState<string | null>(null);
 
+  // In-DOM replacement for the two window.confirm() calls this panel used to
+  // make (regenerate-when-edited, reject). Only one of "regenerate" |
+  // "reject" | null at a time — there is no second field to get out of sync,
+  // so "only one confirmation open at once" is a type-level guarantee, not a
+  // rule to remember. State is local to this component instance, which
+  // OutreachTable unmounts on collapse and remounts fresh per row (Fragment
+  // keyed by row.id, conditional render), so a confirmation always clears
+  // when the row collapses or a different row expands (QUE-05).
+  const [confirmAction, setConfirmAction] = useState<"regenerate" | "reject" | null>(null);
+  const confirmDialogRef = useRef<HTMLDivElement>(null);
+
   // Re-sync the edit buffer whenever the underlying row changes (e.g. after
   // a successful regenerate, or a refetch following another action).
   useEffect(() => {
     setSubject(row.draftSubject ?? "");
     setBody(stripArticle14Notice(row.draftBody ?? "", row.locale));
   }, [row.id, row.draftSubject, row.draftBody, row.locale]);
+
+  // Move focus into the confirmation dialog the moment it renders, per the
+  // accessibility requirement (focus moved in on open).
+  useEffect(() => {
+    if (confirmAction) confirmDialogRef.current?.focus();
+  }, [confirmAction]);
 
   const strippedOriginalBody = stripArticle14Notice(row.draftBody ?? "", row.locale);
   const dirty = subject.trim() !== (row.draftSubject ?? "").trim() || body.trim() !== strippedOriginalBody.trim();
@@ -99,11 +116,7 @@ export function OutreachRowPanel({ row, secret, onRefetch }: OutreachRowPanelPro
     }
   }
 
-  async function handleRegenerate() {
-    if (row.status === "edited") {
-      const confirmed = window.confirm("Regenerate this draft? Your edits will be overwritten and lost.");
-      if (!confirmed) return;
-    }
+  async function performRegenerate() {
     setRegenerating(true);
     const result = await patchOutreach(secret, { id: row.id, action: "regenerate" });
     setRegenerating(false);
@@ -113,6 +126,14 @@ export function OutreachRowPanel({ row, secret, onRefetch }: OutreachRowPanelPro
     } else {
       setActionError(failureMessage("regenerate draft", result));
     }
+  }
+
+  function handleRegenerate() {
+    if (row.status === "edited") {
+      setConfirmAction("regenerate");
+      return;
+    }
+    void performRegenerate();
   }
 
   async function handleApprove() {
@@ -127,11 +148,7 @@ export function OutreachRowPanel({ row, secret, onRefetch }: OutreachRowPanelPro
     }
   }
 
-  async function handleReject() {
-    const confirmed = window.confirm(
-      `Reject ${row.domain}? They will not receive another draft unless you regenerate one manually. This does not add them to the suppression list.`
-    );
-    if (!confirmed) return;
+  async function performReject() {
     setRejecting(true);
     const result = await patchOutreach(secret, { id: row.id, action: "reject" });
     setRejecting(false);
@@ -141,6 +158,21 @@ export function OutreachRowPanel({ row, secret, onRefetch }: OutreachRowPanelPro
     } else {
       setActionError(failureMessage("reject prospect", result));
     }
+  }
+
+  function handleReject() {
+    setConfirmAction("reject");
+  }
+
+  function handleConfirmAction() {
+    const action = confirmAction;
+    setConfirmAction(null);
+    if (action === "regenerate") void performRegenerate();
+    if (action === "reject") void performReject();
+  }
+
+  function handleCancelConfirm() {
+    setConfirmAction(null);
   }
 
   const scoreColor =
@@ -184,6 +216,56 @@ export function OutreachRowPanel({ row, secret, onRefetch }: OutreachRowPanelPro
         {actionError && (
           <div role="alert" className="mt-3 rounded-xl bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
             {actionError}
+          </div>
+        )}
+
+        {/* In-DOM confirmation, replacing the two remaining window.confirm()
+            calls (regenerate-when-edited, reject). Styled as the reject
+            variant (red, matching the destructive button below) or the
+            regenerate variant (neutral gray, reusing the Article 14 block's
+            border-l-4/bg-gray-50 treatment) so the destructive action reads
+            as visually distinct per D-6-15 / the UI spec's reject-vs-delete
+            note. Copy is carried over verbatim from the removed
+            window.confirm() strings. */}
+        {confirmAction && (
+          <div
+            ref={confirmDialogRef}
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby="outreach-confirm-title"
+            tabIndex={-1}
+            onKeyDown={(e) => {
+              if (e.key === "Escape") handleCancelConfirm();
+            }}
+            className={`mt-3 rounded-r-lg border-l-4 px-4 py-3 text-sm outline-none ${
+              confirmAction === "reject"
+                ? "border-red-600 bg-red-50 text-red-700"
+                : "border-gray-300 bg-gray-50 text-gray-700"
+            }`}
+          >
+            <p id="outreach-confirm-title" className="font-medium">
+              {confirmAction === "regenerate"
+                ? "Regenerate this draft? Your edits will be overwritten and lost."
+                : `Reject ${row.domain}? They will not receive another draft unless you regenerate one manually. This does not add them to the suppression list.`}
+            </p>
+            <div className="flex items-center gap-3 mt-3">
+              <button
+                onClick={handleConfirmAction}
+                className={`font-semibold px-3 py-1.5 rounded-lg text-sm transition-colors text-white ${
+                  confirmAction === "reject"
+                    ? "bg-red-600 hover:bg-red-700"
+                    : "bg-adashi-blue hover:bg-adashi-science"
+                }`}
+              >
+                {confirmAction === "reject" ? "Reject prospect" : "Regenerate"}
+              </button>
+              <button
+                onClick={handleCancelConfirm}
+                className="text-sm font-medium text-gray-500 hover:text-gray-700 px-3 py-1.5"
+              >
+                Cancel
+              </button>
+            </div>
           </div>
         )}
 
