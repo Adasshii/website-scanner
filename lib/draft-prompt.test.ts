@@ -263,18 +263,35 @@ describe("parseDraftResponse", () => {
     ).toBe(fallback);
   });
 
-  it("treats the entire raw response as the body when no BODY label is present, using the fallback subject", () => {
+  it("Case 4 (neither label): treats the entire raw response as the body, using the fallback subject", () => {
     const raw = "Just a plain response with no labels at all, mentioning colons: like this.";
     const result = parseDraftResponse(raw, "example.com", "nl");
     expect(result.body).toBe(raw);
     expect(result.subject).toBe(buildDraftSubject("example.com", "nl"));
   });
 
-  it("strips a parsed subject line out of the body when no BODY label is found", () => {
+  // Case 2 — the regression this fix addresses (06-04): a valid model
+  // SUBJECT must survive even when no BODY: label is present. Ten live
+  // generations all produced a well-formed SUBJECT: line, yet 3/6 fell back
+  // to the templated subject solely because BODY: was missing. Subject and
+  // body are now resolved independently: the parsed subject is kept, and the
+  // subject line is still stripped out of the body so it never leaks in.
+  it("Case 2 (SUBJECT only, no BODY label): keeps the model's own subject and strips the subject line out of the body", () => {
     const raw = "SUBJECT: Something\nJust prose with no body label.";
     const result = parseDraftResponse(raw, "example.com", "en");
+    expect(result.subject).toBe("Something");
     expect(result.body).toBe("Just prose with no body label.");
+  });
+
+  // Case 5 — an implausible subject (too long) with no BODY label still
+  // falls back correctly, and the remainder of the raw response is used as
+  // the body unmodified once the bogus SUBJECT line is stripped.
+  it("Case 5 (implausible subject, no BODY label): falls back to the templated subject, body is the untouched remainder", () => {
+    const longSubject = "S".repeat(130);
+    const raw = `SUBJECT: ${longSubject}\nJust prose with no body label.`;
+    const result = parseDraftResponse(raw, "example.com", "en");
     expect(result.subject).toBe(buildDraftSubject("example.com", "en"));
+    expect(result.body).toBe("Just prose with no body label.");
   });
 
   it("never throws and never returns an empty subject", () => {

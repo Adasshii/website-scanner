@@ -226,12 +226,16 @@ const BODY_LABEL_RE = /^[ \t]*body:[ \t]*\n?([\s\S]*)$/im;
  * whitespace/blank lines, and a body that spans many lines and may itself
  * contain colons.
  *
- * Falls back to buildDraftSubject(domain, locale) whenever the parsed
- * subject is missing, empty after trimming, or implausible (too long, or
- * spanning multiple lines). If no BODY: label is found at all, the entire
- * raw response (minus any parsed subject line) becomes the body and the
- * fallback subject is used — a model that ignores the contract must still
- * produce a usable draft. Pure: no I/O, never throws.
+ * Subject and body are resolved INDEPENDENTLY of each other (fixed 2026-07-29
+ * after ten live generations showed 3/6 valid model subjects discarded
+ * because no BODY: label happened to be present — see 06-04-SUMMARY.md).
+ * A `SUBJECT:` line that parses to a non-empty, plausible value is used
+ * regardless of whether a `BODY:` label exists; it only falls back to
+ * buildDraftSubject(domain, locale) when missing, empty, or implausible
+ * (too long, or spanning multiple lines). The body never leaks that parsed
+ * subject line: when no BODY: label is found, the body is the raw response
+ * minus the matched SUBJECT: line; when neither label is found, the entire
+ * raw response is the body. Pure: no I/O, never throws.
  */
 export function parseDraftResponse(
   raw: string,
@@ -242,21 +246,21 @@ export function parseDraftResponse(
   const subjectMatch = raw.match(SUBJECT_LINE_RE);
   const bodyMatch = raw.match(BODY_LABEL_RE);
 
-  if (!bodyMatch) {
-    const body = subjectMatch
-      ? raw.slice((subjectMatch.index ?? 0) + subjectMatch[0].length)
-      : raw;
-    return { subject: fallbackSubject, body: body.trim() };
-  }
-
-  const body = bodyMatch[1].trim();
   const parsedSubject = subjectMatch ? subjectMatch[1].trim() : "";
   const isImplausible =
     parsedSubject.length === 0 ||
     parsedSubject.length > MAX_PLAUSIBLE_SUBJECT_LENGTH ||
     /\r|\n/.test(parsedSubject);
+  const subject = isImplausible ? fallbackSubject : parsedSubject;
 
-  return { subject: isImplausible ? fallbackSubject : parsedSubject, body };
+  if (!bodyMatch) {
+    const body = subjectMatch
+      ? raw.slice((subjectMatch.index ?? 0) + subjectMatch[0].length)
+      : raw;
+    return { subject, body: body.trim() };
+  }
+
+  return { subject, body: bodyMatch[1].trim() };
 }
 
 // ── Report-link resolution (2026-07-28 post-review revision) ────────────
