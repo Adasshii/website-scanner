@@ -37,12 +37,16 @@ const LCP_DEGRADED_THRESHOLD_MS = 2500;
 
 const LCP_TEXT: Record<Locale, (value: string) => string> = {
   en: (value) => `Your homepage takes ${value} seconds to become usable (Largest Contentful Paint)`,
-  nl: (value) => `Uw homepage doet ${value} seconden over de belangrijkste laadtijd (Largest Contentful Paint)`,
+  nl: (value) => `Je homepage doet ${value} seconden over de belangrijkste laadtijd (Largest Contentful Paint)`,
 };
 
+// Register: informal je/jouw only, matching the REGISTER directive in
+// draft-prompt.ts — the model must not be handed a self-contradicting
+// prompt. Plurals are real singular/plural branches, not a slash form; the
+// value arrives as the bare numeral string, so branch on "1" exactly.
 const CRITICAL_ISSUES_TEXT: Record<Locale, (value: string) => string> = {
-  en: (value) => `The scan found ${value} critical issue(s) on your site`,
-  nl: (value) => `De scan vond ${value} kritiek(e) probleem/problemen op uw site`,
+  en: (value) => (value === "1" ? "The scan found 1 critical issue on your site" : `The scan found ${value} critical issues on your site`),
+  nl: (value) => (value === "1" ? "De scan vond 1 kritiek probleem op je site" : `De scan vond ${value} kritieke problemen op je site`),
 };
 
 type CategoryKey = "accessibility" | "content" | "seo" | "performance" | "security" | "design";
@@ -68,7 +72,7 @@ const CATEGORY_NAMES: Record<Locale, Record<CategoryKey, string>> = {
 
 const CATEGORY_SCORE_TEXT: Record<Locale, (categoryName: string, value: string) => string> = {
   en: (categoryName, value) => `Your ${categoryName} score is ${value} out of 100`,
-  nl: (categoryName, value) => `Uw score voor ${categoryName} is ${value} van de 100`,
+  nl: (categoryName, value) => `Je score voor ${categoryName} is ${value} van de 100`,
 };
 
 function formatLcpSeconds(lcpMs: number, locale: Locale): string {
