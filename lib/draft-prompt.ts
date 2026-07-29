@@ -79,7 +79,8 @@ HARD LIMITS
 - Exactly one call to action.
 - No greeting placeholders like [Name]. The one permitted placeholder token is [RAPPORT], written exactly once, where the report link belongs — never write a URL of your own, anywhere.
 - No sign-off or signature: the system adds it.
-- Do not write any privacy notice, legal disclosure, data-source explanation or unsubscribe text. The system appends that afterwards; yours would duplicate or contradict it.`;
+- Do not write any privacy notice, legal disclosure, data-source explanation or unsubscribe text. The system appends that afterwards; yours would duplicate or contradict it.
+- SUBJECT: write it for THIS business and THIS finding. At most six words, specific, no hype, no clickbait, naming the concrete thing found rather than a generic phrase. The EXAMPLE below shows length and register only — never reuse its subject wording; ten live generations copied it verbatim and that is the exact mistake this line exists to stop.`;
 
 /**
  * Rendered with real literal values (2026-07-28 rewrite's worked example),
@@ -88,14 +89,14 @@ HARD LIMITS
  * only. Deliberately unrounded ("6.4" / "6,4") to model the verbatim-figure
  * rule rather than contradict it. No sign-off line: the system appends one.
  */
-const EXAMPLE_EN = `EXAMPLE
+const EXAMPLE_EN = `EXAMPLE (illustrates length and register only — write your own subject, do not reuse this one)
 SUBJECT: Your site is slow on mobile
 BODY:
 Hi,
 
 I took a look at Van Dijk Physio. The largest image on your homepage takes 6.4 seconds to appear. Most mobile visitors leave after three seconds, so you are probably losing enquiries before anyone sees what you offer. I put the full findings together for you here: [RAPPORT]. If it looks useful, let me know and I will walk you through it in fifteen minutes. No obligation.`;
 
-const EXAMPLE_NL = `EXAMPLE
+const EXAMPLE_NL = `EXAMPLE (illustreert lengte en register alleen — schrijf je eigen subject, hergebruik deze niet)
 SUBJECT: Je site laadt traag op mobiel
 BODY:
 Hi,
@@ -104,7 +105,7 @@ Ik keek even naar Fysio Van Dijk. De grootste afbeelding op je homepage is pas n
 
 const OUTPUT_CONTRACT = `OUTPUT CONTRACT
 Return exactly this shape and nothing else:
-SUBJECT: one line, at most six words, specific, no hype, no clickbait
+SUBJECT: one line, at most six words, specific, no hype, no clickbait, written for this business and this finding, not copied from the example
 BODY:
 the body text`;
 

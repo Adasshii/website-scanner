@@ -241,6 +241,30 @@ describe("buildDraftPrompt — single finding (Change C)", () => {
   });
 });
 
+// 06-03 (2026-07-29): all ten live subjects were byte-identical to the
+// worked example's subject — the model was copying the example rather than
+// writing one for the business in front of it. Fixed in the prompt, not in
+// parsing: the model must be told, explicitly, not to reuse that wording.
+
+describe("buildDraftPrompt — subject must not copy the example (06-03)", () => {
+  it("tells the model not to reuse the example's subject wording", () => {
+    const prompt = buildDraftPrompt(baseInput());
+    expect(prompt.toLowerCase()).toMatch(/never reuse|not copied from the example|do not reuse this one/);
+  });
+
+  it("requires the subject to be written for this business and this finding", () => {
+    const prompt = buildDraftPrompt(baseInput());
+    expect(prompt.toLowerCase()).toMatch(/this business and this finding/);
+  });
+
+  it("still contains both example subjects verbatim as illustrations (guidance, not deletion)", () => {
+    const nlPrompt = buildDraftPrompt(baseInput({ locale: "nl" }));
+    const enPrompt = buildDraftPrompt(baseInput({ locale: "en" }));
+    expect(enPrompt).toContain("SUBJECT: Your site is slow on mobile");
+    expect(nlPrompt).toContain("SUBJECT: Je site laadt traag op mobiel");
+  });
+});
+
 // Change B: the model authors the subject line; parseDraftResponse parses
 // it, with a buildDraftSubject() fallback.
 
