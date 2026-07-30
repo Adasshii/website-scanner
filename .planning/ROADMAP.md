@@ -266,7 +266,7 @@ Notes:
   4. The first-contact template carries the Article 14 notice without anyone adding it by hand (DRA-05)
   5. Joshua reads every draft with its scan evidence beside it, edits inline, approves one at a time, or rejects the prospect outright — and finds no bulk-approve action anywhere (QUE-01, QUE-02, QUE-03, QUE-04, QUE-05)
 
-**Plans**: 7/8 plans executed
+**Plans**: 8/8 plans executed
 
 Plans:
 **Wave 1**
@@ -289,7 +289,7 @@ Plans:
 
 **Wave 5** *(blocked on Wave 4 completion)*
 
-- [ ] 06-07-PLAN.md — Outreach admin tab: single-open expandable review panel with evidence pane (wave 5, non-autonomous)
+- [x] 06-07-PLAN.md — Outreach admin tab: single-open expandable review panel with evidence pane (wave 5, non-autonomous)
 - [x] 06-08-PLAN.md — Shortlist "Generate draft" affordance for named-person and failed-generation prospects (wave 5)
 
 **UI hint**: yes
@@ -376,7 +376,7 @@ Phase 8 does not begin until the Parallel Track closes, regardless of numeric or
 | 3. Triage & Shortlist | 6/6 | Complete    | 2026-07-20 |
 | 4. Bulk Scan Queue | 6/6 | Complete    | 2026-07-23 |
 | 5. Contact Extraction & Classification | 4/4 | Complete    | 2026-07-27 |
-| 6. Draft Generation & Approval Queue | 7/8 | In Progress|  |
+| 6. Draft Generation & Approval Queue | 8/8 | In Progress|  |
 | 7. Lifecycle, Reporting & Retention | 0/TBD | Not started | - |
 | 8. Send — GATED | 0/TBD | Blocked (send-path decision) | - |
 

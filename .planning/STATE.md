@@ -4,16 +4,16 @@ milestone: v1.0
 milestone_name: milestone
 current_phase: 06
 current_phase_name: draft-generation-approval-queue
-status: executing
-stopped_at: Completed 06-02-PLAN.md
-last_updated: "2026-07-28T15:06:14.744Z"
+status: verifying
+stopped_at: Completed 06-07-PLAN.md
+last_updated: "2026-07-30T14:08:42.308Z"
 last_activity: 2026-07-28
 last_activity_desc: Phase 06 execution started
 progress:
   total_phases: 7
-  completed_phases: 6
+  completed_phases: 7
   total_plans: 37
-  completed_plans: 36
+  completed_plans: 37
 ---
 
 # Project State
@@ -29,10 +29,10 @@ See: .planning/PROJECT.md (updated 2026-07-17)
 
 Phase: 06 (draft-generation-approval-queue) — EXECUTING
 Plan: 8 of 8
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-07-28 — Phase 06 execution started
 
-Progress: [██████████] 97%
+Progress: [██████████] 100%
 
 ## Performance Metrics
 
@@ -90,6 +90,7 @@ Progress: [██████████] 97%
 | Plan | Duration | Tasks | Files |
 |------|----------|-------|-------|
 | Phase 06 P02 | 12min | 2 tasks | 1 files |
+| Phase 06 P07 | ~2h | 3 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -156,6 +157,10 @@ Recent decisions affecting current work:
 - [Phase 06-08]: No backfill script for pre-phase prospects -- the manual Generate draft button (required anyway by D-6-06) doubles as the backfill mechanism
 - [Phase 06-02]: D-6-15 reuses prospects.lifecycle_state = 'rejected'; Phase 7 (TRK-01/02) owns the lifecycle state machine and must not reintroduce a parallel reject flag or overwrite this value in a generic status-advance sweep.
 - [Phase 06-02]: GEMINI_API_KEY provisioned server-side in .env.local (dev) and Vercel Production+Preview (prod) by Joshua; documented by name only (empty value) in .env.example.
+- [Phase ?]: [Phase 06-07]: expandedId kept a single nullable string with no second collection-typed expansion state (QUE-05, T-06-BULK), grep-gated at zero new Set / zero checkbox occurrences
+- [Phase ?]: [Phase 06-07]: window.confirm()/window.alert() replaced with in-DOM role=alertdialog/role=alert — both are per-origin suppressible in Chrome and silently no-op, which made Regenerate/Reject/Save/Approve look dead and made required confirmation copy uninspectable
+- [Phase ?]: [Phase 06-07]: Task 3 live verification found GEMINI_API_KEY had never been in the health check REQUIRED_VARS (06-02) and buildReportUrl hardcoded the production host (06-04) -- draft generation had silently never run end to end before this pass; both fixed and amended into 06-02/06-04
+- [Phase ?]: [Phase 06-07]: DRA-04 tone check failed on first read; 06-03 pitch prompt rewritten (code-owned [RAPPORT] token, informal je-register, model subject with code fallback, real singular/plural) -- subject fallback rate 3/6 to 0/6 measured before/after
 
 ### Pending Todos
 
@@ -173,6 +178,7 @@ The three prospect-quality todos were resolved by Phase 4.1 (moved to `.planning
 - **Scoring verdict-threshold divergence** (`lib/scoring.ts` vs `scanner-service/src/index.ts`, 95/85/70/50 vs 90/70/50) is scheduled as the first plan of Phase 6 but is not a numbered v1 requirement. REQUIREMENTS.md may need an addition — see ROADMAP Coverage Notes.
 - **Blast radius:** nothing in this milestone may risk the existing scanner's email or scanning. It works and it earns. Phase 4 verification watches the public scanner's success rate during bulk runs.
 - **Overture data quality** is a proven risk here, not theoretical — prior research produced a 98% false-positive read before correction. Manual sample audit required in Phase 1.
+- Open follow-up: cited-number-vs-report locale match verified only against seeded fixture scans (report rendered English against a Dutch draft); confirm against a real NL crawl the first time this surface handles genuine production data
 
 ### Roadmap Evolution
 
@@ -188,6 +194,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-28T15:06:14.730Z
-Stopped at: Completed 06-02-PLAN.md
+Last session: 2026-07-30T14:08:24.917Z
+Stopped at: Completed 06-07-PLAN.md
 Resume file: None
