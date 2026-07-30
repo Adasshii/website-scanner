@@ -26,7 +26,7 @@ key-files:
   modified:
     - app/admin/page.tsx
     - lib/draft-generator.ts
-    - lib/health.ts
+    - app/api/health/route.ts
     - lib/draft-prompt.ts
     - lib/draft-metric-selector.ts
 
@@ -135,7 +135,7 @@ status: complete
 - **Duration:** ~2h (2 implementation tasks plus an extended verification session that produced defect fixes and a prompt rewrite)
 - **Completed:** 2026-07-30
 - **Tasks:** 3 (2 auto, 1 checkpoint:human-verify)
-- **Files modified:** 3 in this plan's own scope (`app/admin/page.tsx`, `components/admin/outreach-table.tsx`, `components/admin/outreach-row-panel.tsx`), plus defect fixes touching `lib/draft-generator.ts`, `lib/health.ts`, `lib/draft-prompt.ts`, `lib/draft-metric-selector.ts` discovered during verification and attributed to their originating plans (06-02, 06-04)
+- **Files modified:** 3 in this plan's own scope (`app/admin/page.tsx`, `components/admin/outreach-table.tsx`, `components/admin/outreach-row-panel.tsx`), plus defect fixes touching `lib/draft-generator.ts`, `app/api/health/route.ts`, `lib/draft-prompt.ts`, `lib/draft-metric-selector.ts` discovered during verification and attributed to their originating plans (06-02, 06-04)
 
 ## Accomplishments
 
@@ -187,8 +187,8 @@ status: complete
 
 **3. [Rule 2 - Missing Critical] `GEMINI_API_KEY` missing from the health check**
 - **Found during:** Task 3 setup — draft generation had never once executed end to end in this environment; root cause traced to the health check's `REQUIRED_VARS` list omitting the key entirely, masking the missing credential.
-- **Fix:** Added `GEMINI_API_KEY` to `lib/health.ts`'s `REQUIRED_VARS`.
-- **Files modified:** `lib/health.ts`
+- **Fix:** Added `GEMINI_API_KEY` to `app/api/health/route.ts`'s `REQUIRED_VARS`.
+- **Files modified:** `app/api/health/route.ts`
 - **Commit:** `f393036` fix(06-02): add GEMINI_API_KEY to the health check required vars
 - **Amends:** Plan 06-02.
 
