@@ -31,9 +31,24 @@ expected: |
   Stronger check if the app is deployed: open https://scan.adashi.io/api/health and confirm
   the env block reports GEMINI_API_KEY as true. That endpoint reports presence as a boolean
   and never exposes a value.
-result: FAILED (2026-07-30)
-detail: |
-  Confirmed absent from Vercel Production by direct inspection of
+result: PASSED (2026-07-30, after gap closure)
+resolution: |
+  https://scan.adashi.io/api/health now returns status "ok" with GEMINI_API_KEY true, on an
+  uncached request-time read (x-vercel-cache: MISS). All eight required vars report true.
+  Verified by machine check, not attestation — which is the point, since the attestation for
+  this variable was wrong three times in this phase (local, then production, then again
+  before the redeploy took effect).
+
+  Two fixes were needed beyond adding the variable:
+  - Vercel binds env vars to a deployment at build time, so the variable did not reach the
+    already-deployed build. A redeploy was required after saving it.
+  - /api/health was itself statically prerendered (no dynamic directive, no request arg, no
+    dynamic functions), so it reported BUILD-time env and was served from CDN cache with a
+    climbing age. Commit e5f47e7 added `export const dynamic = "force-dynamic"` and a
+    no-store Cache-Control. Without that fix this endpoint would have kept reporting false
+    even once the variable was correct.
+prior_failure_detail: |
+  Originally FAILED. Confirmed absent from Vercel Production by direct inspection of
   Settings -> Environments -> Production -> Environment Variables. The full list is
   CRON_SECRET, SUPABASE_SERVICE_ROLE_KEY, SCANNER_SERVICE_URL, SCANNER_API_KEY,
   RESEND_WEBHOOK_SECRET, RESEND_FROM_EMAIL, RESEND_API_KEY, NEXT_PUBLIC_SUPABASE_URL,
@@ -68,17 +83,23 @@ result: [pending]
 ## Summary
 
 total: 3
-passed: 0
-issues: 1
-pending: 0
+passed: 1
+issues: 0
+pending: 2
 skipped: 0
-blocked: 2
+blocked: 0
 
 ## Gaps
 
 ### GAP-06-01: GEMINI_API_KEY missing from the Vercel production environment
 severity: high
-status: failed
+status: resolved
+resolved: 2026-07-30
+resolution_note: |
+  Variable added to Vercel Production and picked up by a fresh deployment. Confirmed live via
+  an uncached /api/health read reporting GEMINI_API_KEY true and overall status ok. Closing
+  this also required fixing the health endpoint itself (commit e5f47e7) — it was statically
+  prerendered and reporting build-time env, so it could not have confirmed the fix.
 source: UAT test 1
 requirement: DRA-01
 detail: |
