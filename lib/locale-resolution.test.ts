@@ -187,3 +187,81 @@ describe("parseAcceptLanguage (Task 1 baseline)", () => {
     expect(parseAcceptLanguage("")).toBeNull();
   });
 });
+
+describe("parseAcceptLanguage (Task 2: q-value negotiation)", () => {
+  it("picks the highest-q supported tag among several", () => {
+    expect(parseAcceptLanguage("nl-NL,nl;q=0.9,en-US;q=0.8,en;q=0.7")).toBe(
+      "nl",
+    );
+  });
+
+  it("picks en when en has the higher q", () => {
+    expect(parseAcceptLanguage("en-US,en;q=0.9,nl;q=0.8")).toBe("en");
+  });
+
+  it("highest q wins regardless of position", () => {
+    expect(parseAcceptLanguage("en;q=0.3,nl;q=0.9")).toBe("nl");
+  });
+
+  it("a missing q defaults to 1.0, beating an explicit lower q", () => {
+    expect(parseAcceptLanguage("nl;q=0.5,en")).toBe("en");
+  });
+
+  it("equal q-values break on document order", () => {
+    expect(parseAcceptLanguage("nl;q=0.8,en;q=0.8")).toBe("nl");
+  });
+
+  it("q=0 means not acceptable, so the other tag wins", () => {
+    expect(parseAcceptLanguage("nl;q=0,en;q=0.5")).toBe("en");
+  });
+
+  it("q=0 alone returns null", () => {
+    expect(parseAcceptLanguage("nl;q=0")).toBeNull();
+  });
+
+  it("skips unsupported tags", () => {
+    expect(parseAcceptLanguage("de-DE,fr;q=0.9,nl;q=0.5")).toBe("nl");
+  });
+
+  it("returns null when nothing is supported", () => {
+    expect(parseAcceptLanguage("de,fr")).toBeNull();
+  });
+
+  it("ignores a bare wildcard", () => {
+    expect(parseAcceptLanguage("*")).toBeNull();
+  });
+
+  it("is case-insensitive", () => {
+    expect(parseAcceptLanguage("NL-nl")).toBe("nl");
+  });
+
+  it("never throws on malformed input: semicolons only", () => {
+    expect(parseAcceptLanguage(";;;")).toBeNull();
+  });
+
+  it("never throws on malformed input: empty q value", () => {
+    expect(parseAcceptLanguage("nl;q=")).toBeNull();
+  });
+
+  it("never throws on malformed input: non-numeric q value", () => {
+    expect(parseAcceptLanguage("nl;q=abc")).toBeNull();
+  });
+
+  it("never throws on malformed input: commas only", () => {
+    expect(parseAcceptLanguage(",,")).toBeNull();
+  });
+
+  it("never throws on malformed input: whitespace only", () => {
+    expect(parseAcceptLanguage("   ")).toBeNull();
+  });
+
+  it("never throws on a 10000-character junk string", () => {
+    const junk = "x".repeat(10000);
+    expect(() => parseAcceptLanguage(junk)).not.toThrow();
+    expect(parseAcceptLanguage(junk)).toBeNull();
+  });
+
+  it("tolerates surrounding and internal whitespace", () => {
+    expect(parseAcceptLanguage(" nl-NL , en ; q=0.8 ")).toBe("nl");
+  });
+});
