@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-07-17)
 Phase: 7 — Lifecycle, Reporting & Retention
 Plan: Not started
 Status: Ready to plan
-Last activity: 2026-07-30 — Phase 6 complete, transitioned to Phase 7
+Last activity: 2026-07-30 — Phase 6 complete, transitioned to Phase 7; quick task 260730-oiy fixed the report locale default
 
 Progress: [██████████] 100%
 
@@ -179,7 +179,14 @@ The three prospect-quality todos were resolved by Phase 4.1 (moved to `.planning
 - **Scoring verdict-threshold divergence** (`lib/scoring.ts` vs `scanner-service/src/index.ts`, 95/85/70/50 vs 90/70/50) is scheduled as the first plan of Phase 6 but is not a numbered v1 requirement. REQUIREMENTS.md may need an addition — see ROADMAP Coverage Notes.
 - **Blast radius:** nothing in this milestone may risk the existing scanner's email or scanning. It works and it earns. Phase 4 verification watches the public scanner's success rate during bulk runs.
 - **Overture data quality** is a proven risk here, not theoretical — prior research produced a 98% false-positive read before correction. Manual sample audit required in Phase 1.
-- Open follow-up: cited-number-vs-report locale match verified only against seeded fixture scans (report rendered English against a Dutch draft); confirm against a real NL crawl the first time this surface handles genuine production data
+- ~~Open follow-up: cited-number-vs-report locale match verified only against seeded fixture scans (report rendered English against a Dutch draft)~~ — RESOLVED by quick task 260730-oiy (2026-07-30). The report now resolves locale as cookie > prospect country > Accept-Language > "en", so a Dutch prospect's report renders Dutch by default and matches the Dutch draft that links to it. Verified end to end against a real dev server plus seeded NL/GB prospects. Still worth a spot-check on scan.adashi.io after deploy.
+- Behaviour change to watch after that deploy: `Accept-Language` is now honoured on every route, not only `/report/*`. Dutch-browser visitors to the public scanner homepage now get Dutch where they previously got English. Correct, but new.
+
+### Quick Tasks Completed
+
+| # | Description | Date | Commit | Directory |
+|---|-------------|------|--------|-----------|
+| 260730-oiy | Report page defaults to English for Dutch prospects — add locale resolution chain | 2026-07-30 | d6a5568 | [260730-oiy-report-page-defaults-to-english-for-dutc](./quick/260730-oiy-report-page-defaults-to-english-for-dutc/) |
 
 ### Roadmap Evolution
 
