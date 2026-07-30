@@ -8,13 +8,12 @@ updated: 2026-07-30
 
 ## Current Test
 
-number: 1
-name: Confirm GEMINI_API_KEY is present in the Vercel production environment
+number: 2
+name: A draft generated from a genuinely crawled scan
 expected: |
-  The Vercel project website-scanner has GEMINI_API_KEY set, scoped to Production and
-  Preview, server-side, with no NEXT_PUBLIC_ prefix. Confirmed by looking at the Vercel
-  dashboard directly, not by recollection.
-awaiting: user response
+  Blocked on test 1's gap being closed first (GEMINI_API_KEY added to Vercel, then main
+  pushed). Until then no draft can generate in production.
+awaiting: gap closure
 
 ## Tests
 
@@ -32,7 +31,24 @@ expected: |
   Stronger check if the app is deployed: open https://scan.adashi.io/api/health and confirm
   the env block reports GEMINI_API_KEY as true. That endpoint reports presence as a boolean
   and never exposes a value.
-result: [pending]
+result: FAILED (2026-07-30)
+detail: |
+  Confirmed absent from Vercel Production by direct inspection of
+  Settings -> Environments -> Production -> Environment Variables. The full list is
+  CRON_SECRET, SUPABASE_SERVICE_ROLE_KEY, SCANNER_SERVICE_URL, SCANNER_API_KEY,
+  RESEND_WEBHOOK_SECRET, RESEND_FROM_EMAIL, RESEND_API_KEY, NEXT_PUBLIC_SUPABASE_URL,
+  NEXT_PUBLIC_SUPABASE_ANON_KEY, FILLOUT_WEBHOOK_SECRET, ADMIN_EMAIL, ADMIN_SECRET — all
+  added Mar 25. No Gemini variable under any name.
+
+  Independently corroborated: https://scan.adashi.io/api/health returns 200 and reports
+  only those seven checked vars, with no GEMINI_API_KEY entry at all (production runs a
+  build predating commit f393036, which added it to REQUIRED_VARS).
+
+  Severity HIGH, and live now rather than hypothetical. The deployed production commit
+  56e06a0 already contains lib/draft-generator.ts, lib/outreach-queue.ts,
+  lib/draft-on-scan-complete.ts and components/admin/outreach-row-panel.tsx. So draft
+  generation is deployed and silently returning null on every call in production today,
+  not merely at risk of doing so on the next release.
 
 ### 2. A draft generated from a genuinely crawled scan
 expected: |
@@ -53,9 +69,38 @@ result: [pending]
 
 total: 3
 passed: 0
-issues: 0
-pending: 3
+issues: 1
+pending: 0
 skipped: 0
-blocked: 0
+blocked: 2
 
 ## Gaps
+
+### GAP-06-01: GEMINI_API_KEY missing from the Vercel production environment
+severity: high
+status: failed
+source: UAT test 1
+requirement: DRA-01
+detail: |
+  Draft generation is deployed to production (commit 56e06a0) but GEMINI_API_KEY is not set
+  in the Vercel project env, so lib/draft-generator.ts's getClient() returns null and every
+  draft resolves to null with no user-visible error. The feature is live and inert.
+
+  This is the second occurrence of the same root cause in this phase. Plan 06-02 was marked
+  complete on a human attestation for BOTH runtimes; the local claim was already found false
+  during 06-07 verification (the key existed only in scanner-service/.env, which the Next.js
+  runtime does not load). The production half of that same attestation is now also confirmed
+  false. The lesson is recorded rather than the incident: an env-var prerequisite needs a
+  machine check, not an attestation. app/api/health/route.ts now provides that check, but it
+  is not yet deployed.
+fix: |
+  1. Joshua adds GEMINI_API_KEY in Vercel -> website-scanner -> Settings -> Environments ->
+     Production, scoped to Production and Preview, server-side, no NEXT_PUBLIC_ prefix.
+     Same credential as scanner-service/.env. Claude cannot do this step — entering a
+     credential is out of bounds.
+  2. Push main (20 commits ahead of origin/main). Vercel is git-connected with Branch
+     Tracking on main, so the push itself deploys. This ships the health check, the report
+     URL fix, the inline error banner, the in-DOM confirmations and the prompt rewrite.
+  3. Re-check https://scan.adashi.io/api/health and confirm GEMINI_API_KEY reports true.
+  4. Then run UAT tests 2 and 3, which are blocked until generation works in production.
+blocks: [test 2, test 3]
