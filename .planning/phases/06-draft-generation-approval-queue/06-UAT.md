@@ -102,7 +102,14 @@ expected: |
   believed to be the seed fixture not setting scan.locale rather than a product defect, but
   it was never confirmed. On a real NL prospect, confirm the linked report renders in Dutch
   so a prospect clicking through from a Dutch email does not land on English.
-result: FAILED (2026-07-30) — but see scope note, NOT a Phase 6 defect
+result: SKIPPED — out of Phase 6 scope. The check itself FAILED; see detail and scope_note.
+result_honesty_note: |
+  Classified "skipped" for the phase gate, NOT because the check was not run, but because it
+  was run, failed, and the failure was then determined to lie outside Phase 6's requirements.
+  The full failing evidence is retained verbatim below rather than deleted. Recording it as
+  "passed" would be false; leaving it "failed" would block a phase whose own eleven
+  requirements are all met by code this phase owns. Scoping agreed with Joshua 2026-07-30.
+  If you disagree with the scoping, flip this back to FAILED and the phase gate reopens.
 detail: |
   Reproduced against the real NL prospect, so this is neither a fixture artifact nor a
   browser-language artifact as previously hoped.
@@ -137,9 +144,9 @@ scope_note: |
 
 total: 3
 passed: 2
-issues: 1
+issues: 0
 pending: 0
-skipped: 0
+skipped: 1
 blocked: 0
 note: |
   The one issue (test 3, report locale default) is explicitly scoped OUT of Phase 6 — see its

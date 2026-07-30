@@ -1,7 +1,48 @@
 ---
 phase: 06-draft-generation-approval-queue
 verified: 2026-07-30T14:20:26Z
-status: human_needed
+status: passed
+status_transition:
+  from: human_needed
+  to: passed
+  date: 2026-07-30
+  by: "orchestrator, after all three human_verification items were resolved with evidence (see 06-UAT.md)"
+  resolutions:
+    - item: "GEMINI_API_KEY genuinely live in Vercel Production"
+      outcome: RESOLVED
+      evidence: |
+        Initially FAILED — the variable was absent from Vercel Production entirely, confirmed
+        both from the dashboard and from https://scan.adashi.io/api/health. The verifier's
+        suspicion was correct: the attestation was wrong for production exactly as it had been
+        for local. Worse, the phase's code was ALREADY deployed (commit 56e06a0), so draft
+        generation was live and silently returning null in production.
+        Now closed: variable added, redeployed, and confirmed by an uncached request-time read
+        reporting GEMINI_API_KEY true with overall status ok.
+        Closing it also required fixing the health endpoint itself (commit e5f47e7) — it was
+        statically prerendered and reporting BUILD-time env, so it could not have confirmed
+        the fix and would have kept reporting false.
+    - item: "A draft from a genuinely crawled scan"
+      outcome: RESOLVED
+      evidence: |
+        fysiotherapiemeerweg.nl, real production prospect, drafted automatically. Subject
+        "Leesbaarheid op je site", cites "7 kritieke problemen" matching the report's "7 need
+        immediate attention", report link resolved to scan.adashi.io unmangled, Article 14
+        block present and read-only. Tone approved by Joshua. First true end-to-end execution
+        of DRA-01/02/03 against real crawl data.
+    - item: "NL report locale on a real scan"
+      outcome: "HYPOTHESIS DISPROVEN, but scoping conclusion upheld"
+      evidence: |
+        IMPORTANT correction to this file's original reasoning. The item stated the English
+        report was "attributed to the seed fixture not setting scan.locale, not a product
+        defect". That attribution is WRONG and was disproven against the real NL prospect:
+        the report serves <html lang="en"> with English copy under Accept-Language nl-NL,
+        en-US, and no header alike. It is not a fixture artifact and not browser-dependent.
+        What the original reasoning got right is the scoping: the report page's locale logic
+        is pre-existing code this phase did not touch, and Phase 6's own requirement for the
+        link (DRA-03, code-constructed from BASE_URL + scan id) passes. Phase 6 did not cause
+        this; it created the first audience exposed to it.
+        Agreed with Joshua on 2026-07-30 to treat it as a follow-up to be fixed before any
+        real sending (Phase 8), not as a Phase 6 blocker. Tracked as a separate work item.
 score: 39/39 must-haves verified (code + tests + build + live checks)
 behavior_unverified: 0
 overrides_applied: 0
