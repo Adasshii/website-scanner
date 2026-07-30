@@ -1,5 +1,5 @@
 ---
-status: testing
+status: passed
 phase: 06-draft-generation-approval-queue
 source: [06-VERIFICATION.md]
 started: 2026-07-30
@@ -8,12 +8,12 @@ updated: 2026-07-30
 
 ## Current Test
 
-number: 2
-name: A draft generated from a genuinely crawled scan
+number: none
+name: All tests resolved
 expected: |
-  Blocked on test 1's gap being closed first (GEMINI_API_KEY added to Vercel, then main
-  pushed). Until then no draft can generate in production.
-awaiting: gap closure
+  UAT complete. Tests 1 and 2 passed. Test 3's issue is scoped out of Phase 6 and tracked as
+  a follow-up, agreed with Joshua on 2026-07-30.
+awaiting: nothing
 
 ## Tests
 
