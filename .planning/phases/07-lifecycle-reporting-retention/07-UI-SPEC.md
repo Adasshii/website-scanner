@@ -1,7 +1,7 @@
 ---
 phase: 7
 slug: lifecycle-reporting-retention
-status: draft
+status: approved
 shadcn_initialized: false
 preset: none
 created: 2026-07-31
@@ -141,18 +141,58 @@ honest zero rendered as `0`, no special copy.
 
 ## UI Considerations
 
-Applicable state considerations resolved: 8 covered, 0 backstop, 0 unresolved.
+Resolved via the ui-consideration-probe (post-verification, 4 elements × applicable
+categories). **28 applicable: 23 covered, 2 backstop, 3 dismissed, 0 unresolved.**
 
-| Category | Element(s) | Status | Resolution / Reason |
-|----------|------------|--------|---------------------|
-| empty | Funnel summary (list-collection), Per-day table (list-collection) | ✅ covered | Two distinct empty copies specified above (zero prospects ever vs. zero 30-day activity); see Copywriting Contract |
-| loading | Funnel summary, per-day table, Reporting tab nav | ✅ covered | Reuses the exact `<div className="p-12 text-center text-gray-400">Loading...</div>` pattern used by every existing tab — no new loading treatment |
-| error | Funnel summary, per-day table | ✅ covered | Reuses the exact red error banner (`bg-red-50 border-red-200 text-red-700`) and copy pattern from `fetchShortlist`/`fetchOutreach`; see Copywriting Contract |
-| populated | Funnel summary, per-day table | ✅ covered | Funnel: 5 stat cards in TRK-01 order (New → Qualified → Contacted → Replied → Booked), `Booked` gets the existing `highlight` treatment. Table: 30 rows, newest day first, columns Date / Imported / Triaged / Scanned / Contacted / Reply rate / Booked |
-| partial | Per-day table (Reply rate / Booked columns pre-Phase-8) | ✅ covered | This is the "not yet sending" contract itself (D-7-13) — every day renders imported/triaged/scanned/contacted as real numbers while Reply rate/Booked show the awaiting state, until the global sent-gate flips |
-| overflow | Per-day table (7 columns on narrow viewports), Lifecycle pill column | ✅ covered | Table wrapped in the existing `overflow-x-auto` convention (horizontal scroll on narrow admin viewports, same as every other admin table); pill labels are short fixed uppercase strings with no wrap risk |
-| zero-one-many | Funnel summary, Per-day table | ✅ covered | Funnel always renders exactly 5 cards regardless of count (0/1/many all just render as the number). Per-day table always renders exactly 30 calendar-day rows regardless of activity level — it is a fixed window (D-7-12), not a filtered activity list, so it never needs zero/one/many layout branching |
-| long-text | Lifecycle pill column on Shortlist | ✅ covered | Fixed vocabulary of 12 short uppercase labels (`NEW` … `SCAN QUEUED` … `REJECTED`), longest is `SCAN QUEUED` (~12 chars) — no truncation or wrap handling needed, same as existing `NAMED-PERSON`/`CRITICAL` pills |
+Element kinds (author-confirmed, correcting the heuristic classifier on E2 — its prose tripped
+only the `list-collection` cue, but the error banner interpolates an unbounded server-supplied
+`{detail}` string, so `static-content`/`long-text` genuinely applies):
+
+| id | Element | Kinds |
+|----|---------|-------|
+| E1 | Funnel summary — 5 stat cards, Reporting tab | list-collection, static-content |
+| E2 | Per-day table — 30 rows × 7 columns, Reporting tab | list-collection, static-content |
+| E3 | Reporting tab button — 5th entry in the admin tab bar | nav, interactive-control |
+| E4 | Lifecycle `Stage` pill column — new column on Shortlist | list-collection, static-content |
+
+| Element | Category | Status | Statement / Reason |
+|---------|----------|--------|--------------------|
+| E1 | empty | ✅ covered | With zero prospects ever imported, the panel renders the tab-level empty state (`No prospects imported yet`) in place of the card row — it does not render five zeroed cards. |
+| E1 | loading | ✅ covered | Panel-level `<div className="p-12 text-center text-gray-400">Loading...</div>`, identical to every existing admin tab. The cards do not load independently. |
+| E1 | error | ✅ covered | Panel-level red error banner (`bg-red-50 border-red-200 text-red-700`) replaces the card row; copy per the Copywriting Contract. |
+| E1 | populated | ✅ covered | Exactly 5 cards in TRK-01 order (New → Qualified → Contacted → Replied → Booked); the Booked card carries the existing `highlight` treatment. |
+| E1 | partial | ⚑ backstop | `statement:` While the global sent-gate is open (no `outreach_messages` row has ever reached `status = 'sent'`), the Contacted, Replied and Booked cards render the awaiting treatment rather than a count; New and Qualified always render real counts. `verification: backstop` |
+| E1 | overflow | ✅ covered | Five cards do not divide into the existing 4-column admin grid. Per *Claude's Discretion* ("the exact visual treatment of the funnel"), this tab uses `grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 mb-6` so the funnel reads as one row at desktop width and never strands a single orphaned card on a second row. |
+| E1 | zero-one-many | ✅ covered | Always exactly 5 cards regardless of underlying counts; a group with no prospects renders `0`, never a hidden or collapsed card. |
+| E1 | long-text | ⊘ dismissed | Reason: card values are integers and labels are five fixed literals. No user-supplied or server-supplied string reaches this element, so no unbounded text is reachable. |
+| E2 | empty | ✅ covered | Two distinct empty copies (zero prospects ever vs. prospects exist but zero 30-day activity); see Copywriting Contract. |
+| E2 | loading | ✅ covered | Same panel-level `Loading...` treatment as E1; no per-row skeleton. |
+| E2 | error | ✅ covered | Same red error banner and copy pattern as `fetchShortlist`/`fetchOutreach`, noun swapped to "reporting data". |
+| E2 | populated | ✅ covered | 30 rows, newest day first; columns Date / Imported / Triaged / Scanned / Contacted / Reply rate / Booked. |
+| E2 | partial | ⚑ backstop | `statement:` While the global sent-gate is open, every row renders Imported/Triaged/Scanned/Contacted as real numbers while the Reply rate and Booked cells render `— Not yet sending`; when the gate flips, all cells render real numbers with no other UI change. `verification: backstop` |
+| E2 | overflow | ✅ covered | Table wrapped in the existing `overflow-x-auto` convention — horizontal scroll on narrow admin viewports, same as every other admin table. |
+| E2 | zero-one-many | ✅ covered | Always exactly 30 calendar-day rows: a fixed window (D-7-12), not a filtered activity list, so no zero/one/many layout or copy branching exists. |
+| E2 | long-text | ✅ covered | Cells hold only dates, integers, and one fixed placeholder. The one unbounded string is the interpolated `{detail}` in the error copy, which renders inside the existing wrapping error banner (no `truncate` / `whitespace-nowrap`), so a long detail wraps rather than overflowing its container. |
+| E3 | loading | ✅ covered | The tab button has no fetch of its own; it renders with the rest of the tab bar and has no loading treatment. |
+| E3 | error | ⊘ dismissed | Reason: the control issues no request. A failed load surfaces in the panel it opens (E1/E2 error state), never on the nav control itself. |
+| E3 | overflow | ✅ covered | Five tabs sit in the existing tab-bar container and inherit its current wrapping behavior unchanged; this phase adds no tab-bar layout rules. |
+| E3 | long-text | ⊘ dismissed | Reason: the label is the fixed literal `Reporting`. No dynamic text reaches it. |
+| E4 | empty | ✅ covered | The column introduces no table-level empty state; when Shortlist has no rows its existing empty state covers the whole table. Every rendered row resolves to a state, so no cell is ever blank. |
+| E4 | loading | ✅ covered | Inherits the Shortlist table's existing loading state; the column adds none. |
+| E4 | error | ✅ covered | Inherits the Shortlist table's existing error banner. State is derived from the same payload, so the column cannot fail independently of the table. |
+| E4 | populated | ✅ covered | One pill per row from the 12-value vocabulary, using the fine-state colour mapping in the Color section. |
+| E4 | partial | ✅ covered | Derivation is total: every prospect resolves to exactly one of the 12 states with `new` as the floor (D-7-02). No row renders a blank, `unknown`, or placeholder pill. |
+| E4 | overflow | ✅ covered | Fixed short uppercase labels inside the Shortlist table's existing `overflow-x-auto` wrapper; the column adds no new overflow behaviour. |
+| E4 | zero-one-many | ✅ covered | Exactly one pill per row, always. No singular/plural copy and no count-dependent layout. |
+| E4 | long-text | ✅ covered | Fixed vocabulary; longest label is `SCAN QUEUED` (11 chars). No truncation or wrap handling needed, matching the existing `NAMED-PERSON` / `CRITICAL` pills. |
+
+**Why the two `partial` rows are `backstop` and not plain truths.** They carry D-7-13's honesty
+guarantee, and their failure mode is silent: if the sent-gate logic regresses, the UI renders a
+plausible `0%` reply rate, which is precisely the "number that looks like a result and is
+actually an absence" D-7-13 exists to prevent. A code-reading verification would pass such a
+regression. These two require explicit test evidence — a held-out UI-state test asserting the
+awaiting treatment with the gate closed and real numbers with it open. At verify time, absent
+that evidence they route to `insufficient_spec → human_needed` rather than passing silently.
 
 **Explicitly out of scope (not a gap):** a retention/CMP-13-15 admin panel. CONTEXT.md's
 locked decisions describe retention as a headless monthly cron (`/api/cron/retention`) whose
@@ -182,11 +222,13 @@ first column = priority/risk flags) rather than overloading one cell with unrela
 
 ## Checker Sign-Off
 
-- [ ] Dimension 1 Copywriting: PASS
-- [ ] Dimension 2 Visuals: PASS
-- [ ] Dimension 3 Color: PASS
-- [ ] Dimension 4 Typography: PASS
-- [ ] Dimension 5 Spacing: PASS
-- [ ] Dimension 6 Registry Safety: PASS
+- [x] Dimension 1 Copywriting: PASS
+- [x] Dimension 2 Visuals: PASS
+- [x] Dimension 3 Color: PASS
+- [x] Dimension 4 Typography: PASS
+- [x] Dimension 5 Spacing: PASS
+- [x] Dimension 6 Registry Safety: PASS
 
-**Approval:** pending
+**Approval:** approved (gsd-ui-checker, 2026-07-31) — 6/6 dimensions PASS, 0 recommendations.
+UI-consideration probe run post-verification: 28 applicable, 23 covered, 2 backstop, 3 dismissed,
+0 unresolved.
