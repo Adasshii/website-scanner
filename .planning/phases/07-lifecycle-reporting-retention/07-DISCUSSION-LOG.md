@@ -1,7 +1,7 @@
 # Phase 7: Lifecycle, Reporting & Retention - Discussion Log
 
 > **Audit trail only.** Do not use as input to planning, research, or execution agents.
-> Decisions are captured in CONTEXT.md — this log preserves the alternatives considered.
+> Decisions are captured in CONTEXT.md. This log preserves the alternatives considered.
 
 **Date:** 2026-07-31
 **Phase:** 7-Lifecycle, Reporting & Retention
@@ -15,12 +15,12 @@
 
 | Option | Description | Selected |
 |--------|-------------|----------|
-| Derived from existing markers | One `deriveLifecycleState()` reads scan_released_at, scan_status, triage_checked_at, contact_email, outreach_messages.status. Column keeps only terminals. No migration, no backfill, no writes added to Phases 1–6. | ✓ |
+| Derived from existing markers | One `deriveLifecycleState()` reads scan_released_at, scan_status, triage_checked_at, contact_email, outreach_messages.status. Column keeps only terminals. No migration, no backfill, no writes added to Phases 1 through 6. | ✓ |
 | Stored column, dual-written | lifecycle_state becomes authoritative; add a write at each transition in triage release, scan drain, contact extraction and draft generation, plus a backfill for the ~800 rows at 'new'. | |
 | Stored column, backfill only | Backfill once, then write forward only at Phase 7/8 transitions. Goes stale the moment a scan drains without a matching write. | |
 
 **User's choice:** Derived from existing markers
-**Notes:** Scouting found the column is effectively a ghost — 13 enum values, three ever written (`'new'`/`'no_website'` at `lib/prospect-upsert.ts:127`, `'rejected'` at `lib/outreach-queue.ts:274`). Migrations 016 and 017 both carry comments explicitly declining to write it. Deriving continues that convention rather than reversing it, and makes the STATE.md warning about `'rejected'` structurally impossible to violate.
+**Notes:** Scouting found the column is effectively a ghost: 13 enum values, three ever written (`'new'` and `'no_website'` at `lib/prospect-upsert.ts:127`, `'rejected'` at `lib/outreach-queue.ts:274`). Migrations 016 and 017 both carry comments explicitly declining to write it. Deriving continues that convention rather than reversing it, and makes the STATE.md warning about `'rejected'` structurally impossible to violate.
 
 ### How many states does the derivation return?
 
@@ -53,10 +53,10 @@
 
 | Option | Description | Selected |
 |--------|-------------|----------|
-| No — suppression is a separate axis | Per-email and permanent; a suppressed prospect still has a real funnel position. TRK-01 does not name it. `'suppressed'` stays unused. | ✓ |
-| Yes — suppressed outranks everything | Join suppressions on contact_email; obvious in the admin list, at the cost of a join and of hiding where the prospect actually got to. | |
+| No, suppression is a separate axis | Per-email and permanent; a suppressed prospect still has a real funnel position. TRK-01 does not name it. `'suppressed'` stays unused. | ✓ |
+| Yes, suppressed outranks everything | Join suppressions on contact_email; obvious in the admin list, at the cost of a join and of hiding where the prospect actually got to. | |
 
-**User's choice:** No — suppression is a separate axis
+**User's choice:** No, suppression is a separate axis
 
 ---
 
@@ -67,11 +67,11 @@
 | Option | Description | Selected |
 |--------|-------------|----------|
 | Email exact, then domain fallback | Try `prospects.contact_email` exact; on a miss, match the booking email's domain against `prospects.domain`, screened through `isAggregatorDomain()`. No external config. | ✓ |
-| Email exact only | Zero false positives, close to zero true positives — the person booking rarely types the generic address we mailed. | |
+| Email exact only | Zero false positives, close to zero true positives. The person booking rarely types the generic address we mailed. | |
 | Token through the report link | Exact attribution, but requires changes to the adashi.io site and the Fillout form config, both outside this repo. | |
 
 **User's choice:** Email exact, then domain fallback
-**Notes:** Framing correction during discussion — there is no booking form in this repo. `lib/email.ts:72` links to `https://adashi.io/contact`, where the Fillout form lives. That is what rules the token approach out of Phase 7's reach.
+**Notes:** Framing correction during discussion. There is no booking form in this repo; `lib/email.ts:72` links to `https://adashi.io/contact`, where the Fillout form lives. That is what rules the token approach out of Phase 7's reach.
 
 ### Where does the booked signal get recorded?
 
@@ -79,7 +79,7 @@
 |--------|-------------|----------|
 | `prospects.booked_at` + `booked_match_method` | One additive migration mirroring migration 004. The method column keeps a domain-inferred booking from being silently counted as certain. | ✓ |
 | `prospects.booked_at` only | Smaller; loses the ability to tell an exact match from an inferred one later. | |
-| A `prospect_events` table | More general, the shape Phase 8's reply signal would want. Heavier than 10–50/week needs. | |
+| A `prospect_events` table | More general, the shape Phase 8's reply signal would want. Heavier than 10 to 50 per week needs. | |
 
 **User's choice:** `prospects.booked_at` + `booked_match_method`
 
@@ -111,7 +111,7 @@
 | Option | Description | Selected |
 |--------|-------------|----------|
 | A calendar day, derived from timestamps | Group five existing timestamps by day. No table, no run_id, no writes added to prior phases. Crons are daily, so a day already is a run. | ✓ |
-| A real runs table with a run_id | Exact grouping; costs a table plus four new write sites in Phases 1–4. | |
+| A real runs table with a run_id | Exact grouping; costs a table plus four new write sites in Phases 1 through 4. | |
 | Rolling windows, no run concept | Simplest; cannot answer "what did yesterday's drain do". | |
 
 **User's choice:** A calendar day, derived from timestamps
@@ -139,7 +139,7 @@
 
 | Option | Description | Selected |
 |--------|-------------|----------|
-| Current funnel + last 30 days per-day | Standing five-state funnel on top, per-day imported/triaged/scanned/contacted plus reply rate and booked below. 30 days ≈ 40–200 prospects, readable without paging. | ✓ |
+| Current funnel + last 30 days per-day | Standing five-state funnel on top, per-day imported/triaged/scanned/contacted plus reply rate and booked below. 30 days is roughly 40 to 200 prospects, readable without paging. | ✓ |
 | Current funnel only, per-day behind a toggle | Quieter default, one more click to answer "what happened yesterday". | |
 | Per-day table only | Least to build; TRK-01's aggregate view then has nowhere to appear. | |
 
@@ -151,7 +151,7 @@
 |--------|-------------|----------|
 | As a column on the Shortlist tab | Beside the existing NAMED-PERSON and CRITICAL pills; one column rather than a second list. Reporting tab stays aggregate. | ✓ |
 | Only inside the reporting tab | All lifecycle presentation in one place; cannot see a single prospect's stage while triaging. | |
-| Nowhere in the UI — aggregate only | Least UI work; loses the "stuck at scan_queued" debugging value. | |
+| Nowhere in the UI, aggregate only | Least UI work; loses the "stuck at scan_queued" debugging value. | |
 
 **User's choice:** As a column on the Shortlist tab
 
@@ -168,7 +168,7 @@
 | Import date only, ignore later activity | Simplest; expires an actively-corresponding prospect mid-conversation. | |
 
 **User's choice:** Most recent of contact, scan, or import
-**Notes:** The tradeoff was raised explicitly and accepted — a scraped prospect never used arguably has a weaker basis than one corresponded with. A shorter window for the untouched pile becomes a second constant if counsel asks for it after the LIA, not now.
+**Notes:** The tradeoff was raised explicitly and accepted. A scraped prospect never used arguably has a weaker basis than one corresponded with. A shorter window for the untouched pile becomes a second constant if counsel asks for it after the LIA, not now.
 
 ### What does the job touch?
 
@@ -183,8 +183,8 @@
 
 | Option | Description | Selected |
 |--------|-------------|----------|
-| Anonymise by default — null the identifiers, keep the row | Personal data gone, funnel history TRK-05 is built on survives. `RETENTION_MODE` via `lib/retention-constants.ts`. | ✓ |
-| Delete by default — row removed | Strongest minimisation posture; costs the historical counts and makes an over-eager window a permanent loss. | |
+| Anonymise by default, null the identifiers, keep the row | Personal data gone, funnel history TRK-05 is built on survives. `RETENTION_MODE` via `lib/retention-constants.ts`. | ✓ |
+| Delete by default, row removed | Strongest minimisation posture; costs the historical counts and makes an over-eager window a permanent loss. | |
 
 **User's choice:** Anonymise by default
 
@@ -202,10 +202,10 @@
 
 | Option | Description | Selected |
 |--------|-------------|----------|
-| Yes — a dry-run mode that logs and changes nothing | Third `RETENTION_MODE` value. Cheap, since the selection query is identical either way. | ✓ |
-| No — ship it live | One fewer mode to build and remember to switch off. | |
+| Yes, a dry-run mode that logs and changes nothing | Third `RETENTION_MODE` value. Cheap, since the selection query is identical either way. | ✓ |
+| No, ship it live | One fewer mode to build and remember to switch off. | |
 
-**User's choice:** Yes — a dry-run mode
+**User's choice:** Yes, a dry-run mode
 
 ### How often does the job run?
 
@@ -216,7 +216,7 @@
 | Folded into an existing daily cron | Sidesteps the cron-count question; a retention failure could take out the scan drain. | |
 
 **User's choice:** Monthly, dedicated cron route
-**Notes:** Flagged as an open research item — `vercel.json` already carries four crons on Vercel Hobby. Whether a fifth is permitted, and whether Hobby accepts a monthly schedule, must be confirmed before planning commits. Stated fallback if not: a manually-invoked script, not folding into an existing route.
+**Notes:** Flagged as an open research item. `vercel.json` already carries four crons on Vercel Hobby. Whether a fifth is permitted, and whether Hobby accepts a monthly schedule, must be confirmed before planning commits. Stated fallback if not: a manually-invoked script, not folding into an existing route.
 
 ---
 
@@ -229,13 +229,13 @@
 
 ## Deferred Ideas
 
-- A shorter retention window for never-contacted prospects — revisit when the LIA returns.
-- A `prospect_events` append-only log — reconsider if Phase 8's reply signal needs more than one timestamp column.
-- Token-carrying report links for exact booking attribution — revisit if domain-fallback proves lossy once real sends start.
+- A shorter retention window for never-contacted prospects. Revisit when the LIA returns.
+- A `prospect_events` append-only log. Reconsider if Phase 8's reply signal needs more than one timestamp column.
+- Token-carrying report links for exact booking attribution. Revisit if domain-fallback proves lossy once real sends start.
 - Dutch report locale (pre-existing, running as a separate task; must land before Phase 8 sends).
-- Prompt-injection gate at volume (T-06-PI) — belongs in Phase 8's threat model.
-- Scan throughput investigation — suspicion is triage release starving batches, not scanner capacity. Not measured, not urgent.
+- Prompt-injection gate at volume (T-06-PI). Belongs in Phase 8's threat model.
+- Scan throughput investigation. Suspicion is triage release starving batches, not scanner capacity. Not measured, not urgent.
 
 ### Reviewed Todos (not folded)
 
-- `2026-07-24-random-import-from-target-categories.md` — "Add random import mode: TARGET_CATEGORIES and TARGET_REGIONS sampling". Matched at 0.9 on generic keywords rather than on lifecycle, reporting or retention. Import/triage scope; left in the backlog.
+- `2026-07-24-random-import-from-target-categories.md`: "Add random import mode: TARGET_CATEGORIES and TARGET_REGIONS sampling". Matched at 0.9 on generic keywords rather than on lifecycle, reporting or retention. Import/triage scope; left in the backlog.

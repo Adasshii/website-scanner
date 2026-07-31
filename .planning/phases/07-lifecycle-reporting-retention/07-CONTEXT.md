@@ -19,7 +19,7 @@ builds the derivation and the counters that read them, and reads an explicit
 
 Out of scope: any change to how prospects are imported, triaged, scanned, or drafted.
 This phase adds a derivation, a reporting surface, one webhook extension and one
-scheduled job. It does not add writes to Phase 1–6 code paths.
+scheduled job. It does not add writes to Phase 1 through 6 code paths.
 
 </domain>
 
@@ -35,22 +35,22 @@ scheduled job. It does not add writes to Phase 1–6 code paths.
   impossible rather than a rule someone has to follow.
 - **D-7-R3: CMP-13's 12-month window is a placeholder pending the LIA, not a legal
   fact.** It is config (CMP-14), so counsel's answer changes a value, not code.
-- **D-7-R4: Scale is 10–50 prospects/week.** Solutions sized for thousands are rejected
-  on sight (PROJECT.md Constraints).
+- **D-7-R4: Scale is 10 to 50 prospects per week.** Solutions sized for thousands are
+  rejected on sight (PROJECT.md Constraints).
 - **D-7-R5: Nothing in this phase may put the existing public scanner's email or
-  scanning at risk** (PROJECT.md blast radius). Two decisions below, D-7-09 and D-7-14,
+  scanning at risk** (PROJECT.md blast radius). Two decisions below, D-7-09 and D-7-16,
   exist specifically to hold this line.
 
 ### Lifecycle state machine (TRK-01, TRK-02)
 - **D-7-01: Lifecycle state is derived, never written.** A pure
-  `deriveLifecycleState()` reads the markers that already carry the truth —
+  `deriveLifecycleState()` reads the markers that already carry the truth:
   `prospects.lifecycle_state` (terminals only), `triage_checked_at`,
   `scan_released_at`, `scan_status`, `contact_email`, `booked_at`, and the owning
   `outreach_messages.status`. No migration for lifecycle, no backfill of the ~800 rows
-  sitting at `'new'`, and no write added to any Phase 1–6 code path. It cannot drift,
-  because there is nothing to keep in sync. This is also what makes D-7-R2 structural:
-  Phase 7 never writes `lifecycle_state`, so `'rejected'` cannot be swept away by a
-  generic status advance.
+  sitting at `'new'`, and no write added to any Phase 1 through 6 code path. It cannot
+  drift, because there is nothing to keep in sync. This is also what makes D-7-R2
+  structural: Phase 7 never writes `lifecycle_state`, so `'rejected'` cannot be swept
+  away by a generic status advance.
   — **Reversibility:** reversible — the derivation is one module with one caller
   surface; switching to a stored column later means adding writes, not undoing any.
 - **D-7-02: The derivation returns the fine-grained state; the funnel groups it.**
@@ -60,10 +60,10 @@ scheduled job. It does not add writes to Phase 1–6 code paths.
   per-stage counts directly instead of needing a second set of queries. A grouping maps
   it to the five names TRK-01 uses for the funnel view.
 - **D-7-03: It lives in TypeScript, not SQL.** `lib/lifecycle.ts`, a pure predicate
-  applied at read time — the same shape as `isReleasable` (Phase 4.1) and
+  applied at read time, the same shape as `isReleasable` (Phase 4.1) and
   `lib/triage-eligibility.ts`. No view, no generated column, no DDL. Unit-testable
   without a database. At ~800 rows the aggregate cost is irrelevant.
-- **D-7-04: Precedence — stored terminals win, then furthest stage reached.** The stored
+- **D-7-04: Precedence, stored terminals win, then furthest stage reached.** The stored
   column is read first and only for its terminal values (`rejected`, `no_website`); if
   it holds one, that is the state. Otherwise the derivation returns the furthest marker
   stage.
@@ -90,7 +90,7 @@ scheduled job. It does not add writes to Phase 1–6 code paths.
   columns become inputs to D-7-01 and to the reporting queries.
 - **D-7-08: Attribute only after contact, and only once.** A booking attributes to a
   prospect only if that prospect has an `outreach_messages` row with status `'sent'`,
-  and `booked_at` is written under `.is("booked_at", null)` — the same first-write-wins
+  and `booked_at` is written under `.is("booked_at", null)`, the same first-write-wins
   guard the leads update already uses at `app/api/webhooks/fillout/route.ts:50`. Until
   Phase 8 sends anything this reads honest zero, rather than crediting outreach for
   inbound public-scanner bookings.
@@ -105,7 +105,7 @@ scheduled job. It does not add writes to Phase 1–6 code paths.
   `prospects.created_at` (imported), `triage_checked_at` (triaged), `scan_released_at`
   (released), `scans.created_at` (scanned) and `outreach_messages.sent_at` (contacted)
   by day. No `runs` table, no `run_id` stamped anywhere, no writes added to prior
-  phases — the same reasoning as D-7-01. Vercel forces the crons to daily anyway
+  phases, the same reasoning as D-7-01. Vercel forces the crons to daily anyway
   (`drain-scan-queue` at 07:00), so a day genuinely is a run for triage release and scan
   drain; only the manual import is off-grain, and at this volume a day is finer than
   needed.
@@ -116,11 +116,11 @@ scheduled job. It does not add writes to Phase 1–6 code paths.
 - **D-7-12: Default view is the current funnel plus a 30-day per-day table.** Top: where
   every prospect stands now, using the five-state grouping from D-7-02. Below: per-day
   imported / triaged / scanned / contacted, plus reply rate and booked. Thirty days
-  covers roughly 40–200 prospects at the stated volume, so the table stays readable
+  covers roughly 40 to 200 prospects at the stated volume, so the table stays readable
   without paging.
 - **D-7-13: Figures that depend on a Phase 8 signal render an explicit "not yet sending"
   state, not 0%.** A literal 0% reply rate is a number that looks like a result and is
-  actually an absence — the same failure mode as the Phase 6 health endpoint reporting a
+  actually an absence, the same failure mode as the Phase 6 health endpoint reporting a
   stale `false`. Once the first send lands, the real number takes over on its own.
 - **D-7-14: The fine-grained state shows as a column on the existing Shortlist tab.**
   Shortlist already lists prospects row by row with pills (NAMED-PERSON, CRITICAL). A
@@ -130,8 +130,8 @@ scheduled job. It does not add writes to Phase 1–6 code paths.
 
 ### Retention (CMP-13, CMP-14, CMP-15)
 - **D-7-15: The clock is the most recent of contact, scan, or import.** Coalesce down:
-  last sent message → last scan → `created_at`. Every prospect has `created_at`, so
-  nothing is ever undated and nothing sits forever because a field was null. One
+  last sent message, then last scan, then `created_at`. Every prospect has `created_at`,
+  so nothing is ever undated and nothing sits forever because a field was null. One
   expression, one config value; counsel's LIA answer changes a single number.
   **Known tradeoff, recorded deliberately:** a scraped prospect never used arguably has
   a weaker basis than one actively corresponded with, so a shorter window for the
@@ -148,9 +148,9 @@ scheduled job. It does not add writes to Phase 1–6 code paths.
 - **D-7-17: Anonymise is the default; delete is the alternative; both by config.** Clear
   `name`, `domain`, `website_url`, `contact_email` and the draft body; keep the row, its
   timestamps, its scores and its lifecycle markers. The personal data is gone and the
-  funnel history TRK-05 is built on in this same phase survives — delete-by-default
-  would quietly destroy that reporting a few months in. `RETENTION_MODE` env var read
-  through a `lib/retention-constants.ts`, matching the `lib/triage-constants.ts` and
+  funnel history TRK-05 is built on in this same phase survives. Delete-by-default would
+  quietly destroy that reporting a few months in. `RETENTION_MODE` env var read through a
+  `lib/retention-constants.ts`, matching the `lib/triage-constants.ts` and
   `lib/bulk-scan-constants.ts` pattern.
 - **D-7-18: `RETENTION_MODE` carries a third value: dry run.** Reports exactly which
   rows it would have touched, changes nothing. Cheap, because the selection query is
@@ -166,7 +166,7 @@ scheduled job. It does not add writes to Phase 1–6 code paths.
   independently, so the send-time check in Phase 8 still catches a re-imported business.
 - **D-7-20: A dedicated monthly cron route, `/api/cron/retention`.** Data expiry does not
   need day resolution, and a monthly run keeps the blast radius of a first version small.
-  Not folded into an existing cron — a retention failure must not be able to take out the
+  Not folded into an existing cron: a retention failure must not be able to take out the
   scan drain.
   **Open for research:** `vercel.json` already carries four crons and this project is on
   Vercel Hobby. Whether a fifth cron is permitted, and whether Hobby accepts a
@@ -190,52 +190,52 @@ scheduled job. It does not add writes to Phase 1–6 code paths.
 **Downstream agents MUST read these before planning or implementing.**
 
 ### Requirements and scope
-- `.planning/ROADMAP.md` § "Phase 7: Lifecycle, Reporting & Retention" — goal, success
+- `.planning/ROADMAP.md` § "Phase 7: Lifecycle, Reporting & Retention": goal, success
   criteria, and the four Notes, including the CMP-15 trap and the honest-dependency note
   on Phase 8
-- `.planning/REQUIREMENTS.md` lines 87–89, 105–109 — verbatim text of CMP-13/14/15 and
-  TRK-01..05
-- `.planning/PROJECT.md` § Constraints — scale (10–50/week), blast radius, tech-stack
-  ceiling, geography as a parameter
-- `.planning/STATE.md` — carries the Phase 6 warning that TRK-01/02 must not overwrite
+- `.planning/REQUIREMENTS.md` lines 87 to 89 and 105 to 109: verbatim text of
+  CMP-13/14/15 and TRK-01..05
+- `.planning/PROJECT.md` § Constraints: scale (10 to 50 per week), blast radius,
+  tech-stack ceiling, geography as a parameter
+- `.planning/STATE.md`: carries the Phase 6 warning that TRK-01/02 must not overwrite
   `lifecycle_state = 'rejected'`
 
 ### Schema the derivation reads
-- `supabase/migrations/010_create_prospects.sql` lines 23–26 — the 13-value
+- `supabase/migrations/010_create_prospects.sql` lines 23 to 26: the 13-value
   `lifecycle_state` check constraint, and line 42's index on it
-- `supabase/migrations/016_add_scan_release_marker.sql` lines 1–8 — `scan_released_at`,
+- `supabase/migrations/016_add_scan_release_marker.sql` lines 1 to 8: `scan_released_at`,
   and the explicit statement that triage never touches `lifecycle_state` (D-07/D-08)
-- `supabase/migrations/017_add_scan_status.sql` lines 12–17, 45–53 — `scan_status`,
-  `scan_attempts`, and the comment recording that the lifecycle enum values "are never
-  written anywhere in this codebase"
-- `supabase/migrations/012_create_outreach_messages.sql` lines 10–16 — the status enum
+- `supabase/migrations/017_add_scan_status.sql` lines 12 to 17 and 45 to 53:
+  `scan_status`, `scan_attempts`, and the comment recording that the lifecycle enum
+  values "are never written anywhere in this codebase"
+- `supabase/migrations/012_create_outreach_messages.sql` lines 10 to 16: the status enum
   (`draft | edited | approved | rejected | sent`) plus `approved_at` and `sent_at`
-- `supabase/migrations/013_add_prospect_id_to_scans.sql` — `scans.prospect_id`, the
+- `supabase/migrations/013_add_prospect_id_to_scans.sql`: `scans.prospect_id`, the
   column that draws D-7-16's scope line
-- `supabase/migrations/014_create_suppressions.sql` lines 4–30 — the permanent,
+- `supabase/migrations/014_create_suppressions.sql` lines 4 to 30: the permanent,
   no-expiry table CMP-15 protects
-- `supabase/migrations/004_add_booked_at.sql` — the shape D-7-07's migration mirrors
+- `supabase/migrations/004_add_booked_at.sql`: the shape D-7-07's migration mirrors
 
 ### Code the phase touches or reuses
-- `app/api/webhooks/fillout/route.ts` — the webhook D-7-06/08/09 extend; line 50 is the
+- `app/api/webhooks/fillout/route.ts`: the webhook D-7-06/08/09 extend; line 50 is the
   first-write-wins guard being copied
-- `lib/outreach-queue.ts:274` — the only production writer of `lifecycle_state` in the
+- `lib/outreach-queue.ts:274`: the only production writer of `lifecycle_state` in the
   repo, and the one D-7-01 must not disturb
-- `lib/prospect-upsert.ts:127` — where `'new'` / `'no_website'` are set at import
-- `lib/domain-normalize.ts` — `normalizeDomain()`, `AGGREGATOR_DOMAINS`,
+- `lib/prospect-upsert.ts:127`: where `'new'` and `'no_website'` are set at import
+- `lib/domain-normalize.ts`: `normalizeDomain()`, `AGGREGATOR_DOMAINS`,
   `isAggregatorDomain()`, used by D-7-06's domain fallback
-- `lib/triage-eligibility.ts`, `lib/triage-release.ts` — the derived-predicate pattern
+- `lib/triage-eligibility.ts`, `lib/triage-release.ts`: the derived-predicate pattern
   D-7-03 follows
-- `lib/triage-constants.ts`, `lib/bulk-scan-constants.ts` — the config pattern D-7-17
+- `lib/triage-constants.ts`, `lib/bulk-scan-constants.ts`: the config pattern D-7-17
   follows
-- `app/admin/page.tsx:58` — the `Tab` union D-7-11 extends; `ShortlistTab` at line 474 is
+- `app/admin/page.tsx:58`: the `Tab` union D-7-11 extends; `ShortlistTab` at line 474 is
   where D-7-14's column goes
-- `vercel.json` — the four existing crons, relevant to D-7-20's open question
+- `vercel.json`: the four existing crons, relevant to D-7-20's open question
 
 ### Prior-phase context that binds
-- `.planning/phases/06-draft-generation-approval-queue/06-CONTEXT.md` — D-6-01 (the
+- `.planning/phases/06-draft-generation-approval-queue/06-CONTEXT.md`: D-6-01 (the
   4th-tab precedent D-7-11 follows), D-6-15 (the `'rejected'` reuse D-7-04 protects)
-- `.planning/phases/06-draft-generation-approval-queue/06-SECURITY.md` — flags the
+- `.planning/phases/06-draft-generation-approval-queue/06-SECURITY.md`: flags the
   attestation-only mitigation pattern; relevant to how D-7-19's test is written
 
 </canonical_refs>
@@ -244,10 +244,10 @@ scheduled job. It does not add writes to Phase 1–6 code paths.
 ## Existing Code Insights
 
 ### Reusable Assets
-- `isAggregatorDomain()` / `normalizeDomain()` (`lib/domain-normalize.ts`): D-7-06's
+- `isAggregatorDomain()` and `normalizeDomain()` (`lib/domain-normalize.ts`): D-7-06's
   domain fallback screens through these rather than writing a second denylist. Note the
-  false-positive risk is low by construction — prospects are businesses with their own
-  website domains, so a booking from a free-mail address matches nothing.
+  false-positive risk is low by construction, because prospects are businesses with their
+  own website domains, so a booking from a free-mail address matches nothing.
 - `scans.prospect_id` (migration 013): already links every prospect scan to its prospect
   and every public-scanner scan is NULL. This is what lets D-7-16 draw its scope line in
   a query rather than a convention.
@@ -258,8 +258,8 @@ scheduled job. It does not add writes to Phase 1–6 code paths.
 
 ### Established Patterns
 - **Purpose-built markers over a status column.** Every phase so far expressed state as a
-  dedicated column — `scan_released_at`, `scan_status`, `triage_checked_at`,
-  `outreach_messages.status` — and migrations 016 and 017 both carry comments explicitly
+  dedicated column (`scan_released_at`, `scan_status`, `triage_checked_at`,
+  `outreach_messages.status`), and migrations 016 and 017 both carry comments explicitly
   declining to write `lifecycle_state`. D-7-01 continues that convention rather than
   reversing it.
 - **Derived rules live as pure TypeScript predicates in `lib/`.** `isReleasable`
@@ -273,8 +273,8 @@ scheduled job. It does not add writes to Phase 1–6 code paths.
   scan-complete webhook already works this way; D-7-09 applies it to Fillout.
 
 ### Integration Points
-- `app/api/webhooks/fillout/route.ts` — one extension after the existing leads update.
-- `app/admin/page.tsx` — one new tab (D-7-11) and one new column on `ShortlistTab`
+- `app/api/webhooks/fillout/route.ts`: one extension after the existing leads update.
+- `app/admin/page.tsx`: one new tab (D-7-11) and one new column on `ShortlistTab`
   (D-7-14).
 - A new admin API route under `app/api/admin/` for the funnel and per-day aggregates.
 - A new cron route `/api/cron/retention` plus a `vercel.json` entry (D-7-20, pending the
@@ -299,7 +299,7 @@ scheduled job. It does not add writes to Phase 1–6 code paths.
 
 - The framing that settled three of the four areas: **prefer deriving over storing**.
   It was chosen for lifecycle (D-7-01) and then applied again to runs (D-7-10) for the
-  same reason — a derived value cannot disagree with the markers beside it, and adding
+  same reason. A derived value cannot disagree with the markers beside it, and adding
   writes to five prior-phase code paths is the failure mode both decisions exist to
   avoid. Downstream agents should treat "add a column and write it at each transition"
   as the rejected option in this phase, not the default.
@@ -317,10 +317,10 @@ scheduled job. It does not add writes to Phase 1–6 code paths.
 
 - **A shorter retention window for never-contacted prospects.** Defensible under data
   minimisation, and explicitly not built now (D-7-15). Revisit when counsel returns the
-  LIA — at that point it is a second constant beside the first, not a redesign.
+  LIA. At that point it is a second constant beside the first, not a redesign.
 - **A `prospect_events` append-only log** (considered and rejected for D-7-07). It is the
   shape Phase 8's reply signal would want too. If Phase 8 needs more than one more
-  timestamp column, that is the moment to reconsider it — not now, at 10–50/week.
+  timestamp column, that is the moment to reconsider it, not now at 10 to 50 per week.
 - **Token-carrying report links for exact booking attribution** (considered and rejected
   for D-7-06). Requires changes to the adashi.io site and the Fillout form config, both
   outside this repo, and only attributes people who arrive via the report link. Revisit
@@ -332,13 +332,13 @@ scheduled job. It does not add writes to Phase 1–6 code paths.
 - **Prompt-injection gate at volume (T-06-PI).** Currently rests solely on human review
   of every draft. Fine at three drafts a week, weak at volume. Belongs in Phase 8's
   threat model.
-- **Scan throughput investigation.** Ceiling is roughly 10/day and 70/week; the design
-  target is 10–50/week, so capacity is not short. The open suspicion is that the triage
-  release ceiling in `lib/triage-release.ts` starves batches rather than the scanner
-  being the constraint. Not measured, not urgent.
+- **Scan throughput investigation.** Ceiling is roughly 10 per day and 70 per week; the
+  design target is 10 to 50 per week, so capacity is not short. The open suspicion is
+  that the triage release ceiling in `lib/triage-release.ts` starves batches rather than
+  the scanner being the constraint. Not measured, not urgent.
 
 ### Reviewed Todos (not folded)
-- **`2026-07-24-random-import-from-target-categories.md`** — "Add random import mode:
+- **`2026-07-24-random-import-from-target-categories.md`**: "Add random import mode:
   TARGET_CATEGORIES and TARGET_REGIONS sampling". Matched this phase at 0.9 on generic
   keywords (prospects, phase, every) rather than on lifecycle, reporting or retention.
   It is import/triage scope. Left in the backlog deliberately.
