@@ -17,6 +17,12 @@ const sharedExclude = [...configDefaults.exclude, "**/.claude/worktrees/**"];
 // random subset of the integration files.
 const INTEGRATION_GLOB = "**/*.integration.test.ts";
 
+// JSX tests need a DOM (jsdom). The `unit` and `integration` projects stay
+// deliberately `environment: "node"` — this glob is excluded from `unit`
+// below so a `.test.tsx` file is never collected and run without a
+// `document` (07-01).
+const COMPONENT_GLOB = "**/*.test.tsx";
+
 // Node test environment (no jsdom) — these tests are Node-side logic and DB
 // integration, not browser/DOM code.
 const sharedTestConfig = {
@@ -38,7 +44,10 @@ export default defineConfig({
         test: {
           ...sharedTestConfig,
           name: "unit",
-          exclude: [...sharedExclude, INTEGRATION_GLOB],
+          // COMPONENT_GLOB excluded here too — without it, `unit` (no
+          // `include`) would collect every `.test.tsx` file and run it under
+          // `environment: "node"`, failing on a missing `document`.
+          exclude: [...sharedExclude, INTEGRATION_GLOB, COMPONENT_GLOB],
         },
       },
       {
@@ -55,6 +64,22 @@ export default defineConfig({
           fileParallelism: false,
         },
       },
+      {
+        // Do NOT spread sharedTestConfig here — its environment is "node"
+        // and would override jsdom below.
+        extends: true,
+        test: {
+          name: "component",
+          environment: "jsdom",
+          include: [COMPONENT_GLOB],
+          exclude: sharedExclude,
+          globals: false,
+          // globals: false means RTL's automatic per-test cleanup never
+          // registers. Every component test MUST import `cleanup` from
+          // "@testing-library/react" and call it in an explicit afterEach,
+          // or DOM nodes leak across tests in the same file.
+        },
+      },
     ],
   },
   resolve: {
@@ -62,5 +87,14 @@ export default defineConfig({
       // Mirrors tsconfig.json's `@/*` -> root path alias.
       "@": path.resolve(__dirname, "."),
     },
+  },
+  // tsconfig.json sets "jsx": "preserve" (Next.js does its own JSX
+  // transform at build time). This Vite version transforms via oxc (not
+  // esbuild) and reads that same tsconfig, so it also leaves JSX
+  // untransformed — crashing the "component" project's parser on the first
+  // `.tsx` test file. Overriding oxc's jsx mode here is test-only — next
+  // build never reads vitest.config.ts.
+  oxc: {
+    jsx: "automatic",
   },
 });
