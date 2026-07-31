@@ -326,8 +326,34 @@ Notes:
   4. Prospect, scan, and outreach data past the retention window expires on a schedule, deleting or anonymising by config rather than by hardcoding (CMP-13, CMP-14)
   5. Suppression records survive the retention job and are flagged in code as permanently exempt (CMP-15)
 
-**Plans**: TBD (est. 3-4)
+**Plans**: 7 plans
 **UI hint**: yes
+
+Plans:
+**Wave 1**
+
+- [ ] 07-01-PLAN.md — Component-test infrastructure and migration 019 (`prospects.booked_at`)
+- [ ] 07-02-PLAN.md — `deriveLifecycleState()`, the reporting route and the Reporting tab
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
+- [ ] 07-03-PLAN.md — Per-day aggregates, reply-rate formatting and the sent-gate copy
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+- [ ] 07-04-PLAN.md — Stage column on the Shortlist tab
+
+**Wave 4** *(blocked on Wave 3 completion)*
+
+- [ ] 07-05-PLAN.md — Booking attribution in the Fillout webhook
+
+**Wave 5** *(blocked on Wave 4 completion)*
+
+- [ ] 07-06-PLAN.md — Retention config, expiry clock and the cron route, dry-run only
+
+**Wave 6** *(blocked on Wave 5 completion)*
+
+- [ ] 07-07-PLAN.md — Anonymise and delete modes, the monthly schedule, and the flip decision
 
 Notes:
 

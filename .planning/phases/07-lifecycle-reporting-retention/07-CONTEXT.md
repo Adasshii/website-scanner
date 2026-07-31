@@ -33,13 +33,10 @@ scheduled job. It does not add writes to Phase 1 through 6 code paths.
 - **D-7-R2: TRK-01/02 must not overwrite `lifecycle_state = 'rejected'`.** Carried
   forward from Phase 6 (STATE.md note, D-6-15). D-7-01 makes this structurally
   impossible rather than a rule someone has to follow.
-- **D-7-R3: CMP-13's 12-month window is a placeholder pending the LIA, not a legal
-  fact.** It is config (CMP-14), so counsel's answer changes a value, not code.
+- **D-7-R3: CMP-13's 12-month window is a placeholder pending the LIA, not a legal fact.** It is config (CMP-14), so counsel's answer changes a value, not code.
 - **D-7-R4: Scale is 10 to 50 prospects per week.** Solutions sized for thousands are
   rejected on sight (PROJECT.md Constraints).
-- **D-7-R5: Nothing in this phase may put the existing public scanner's email or
-  scanning at risk** (PROJECT.md blast radius). Two decisions below, D-7-09 and D-7-16,
-  exist specifically to hold this line.
+- **D-7-R5: Nothing in this phase may put the existing public scanner's email or scanning at risk** (PROJECT.md blast radius). Two decisions below, D-7-09 and D-7-16, exist specifically to hold this line.
 
 ### Lifecycle state machine (TRK-01, TRK-02)
 - **D-7-01: Lifecycle state is derived, never written.** A pure
@@ -118,8 +115,7 @@ scheduled job. It does not add writes to Phase 1 through 6 code paths.
   imported / triaged / scanned / contacted, plus reply rate and booked. Thirty days
   covers roughly 40 to 200 prospects at the stated volume, so the table stays readable
   without paging.
-- **D-7-13: Figures that depend on a Phase 8 signal render an explicit "not yet sending"
-  state, not 0%.** A literal 0% reply rate is a number that looks like a result and is
+- **D-7-13: Figures that depend on a Phase 8 signal render an explicit "not yet sending" state, not 0%.** A literal 0% reply rate is a number that looks like a result and is
   actually an absence, the same failure mode as the Phase 6 health endpoint reporting a
   stale `false`. Once the first send lands, the real number takes over on its own.
 - **D-7-14: The fine-grained state shows as a column on the existing Shortlist tab.**
@@ -152,7 +148,7 @@ scheduled job. It does not add writes to Phase 1 through 6 code paths.
   quietly destroy that reporting a few months in. `RETENTION_MODE` env var read through a
   `lib/retention-constants.ts`, matching the `lib/triage-constants.ts` and
   `lib/bulk-scan-constants.ts` pattern.
-- **D-7-18: `RETENTION_MODE` carries a third value: dry run.** Reports exactly which
+- **D-7-18: `RETENTION_MODE` carries a third value, dry run.** Reports exactly which
   rows it would have touched, changes nothing. Cheap, because the selection query is
   identical either way, and it is what catches an off-by-one in D-7-15's clock
   expression before it anonymises 800 rows. Ship in dry-run, read one run's output, then
