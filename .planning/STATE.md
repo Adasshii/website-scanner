@@ -5,15 +5,15 @@ milestone_name: milestone
 current_phase: 07
 current_phase_name: lifecycle-reporting-retention
 status: executing
-stopped_at: Completed 07-05-PLAN.md
-last_updated: "2026-08-01T22:39:07.975Z"
+stopped_at: Completed 07-06-PLAN.md
+last_updated: "2026-08-01T22:57:02.118Z"
 last_activity: 2026-08-01
 last_activity_desc: Phase 07 execution started
 progress:
   total_phases: 8
   completed_phases: 7
   total_plans: 44
-  completed_plans: 42
+  completed_plans: 43
 ---
 
 # Project State
@@ -28,11 +28,11 @@ See: .planning/PROJECT.md (updated 2026-07-17)
 ## Current Position
 
 Phase: 07 (lifecycle-reporting-retention) — EXECUTING
-Plan: 5 of 7
+Plan: 6 of 7
 Status: Ready to execute
 Last activity: 2026-08-01 — Phase 07 execution started
 
-Progress: [██████████] 95%
+Progress: [██████████] 98%
 
 ## Performance Metrics
 
@@ -97,6 +97,7 @@ Progress: [██████████] 95%
 | Phase 07 P03 | 50min | 3 tasks | 7 files |
 | Phase 07 P04 | ~30min | 2 tasks | 4 files |
 | Phase 07 P05 | ~45min | 2 tasks | 3 files |
+| Phase 07 P06 | ~1h10min | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -177,6 +178,8 @@ Recent decisions affecting current work:
 - [Phase ?]: [Phase 07-04]: Cleaned up 14 stray local-Supabase fixture rows left by an earlier interrupted 07-03 test run (duplicate-key blocking npx vitest run) via the same prefix-scoped delete the test's own afterEach uses -- data cleanup only, no test/code touched
 - [Phase ?]: [Phase 07-05]: Both booking-attribution candidate lookups (email-exact, domain-fallback) are bounded .limit(2) array queries, never .single()/.maybeSingle() -- contact_email carries no unique index at all, closing the sharper half of FA-TRK-04
 - [Phase ?]: [Phase 07-05]: D-7-08 sent-gate and ambiguity disambiguation share one outreach_messages query; an ambiguous surviving candidate set is dropped, never guessed, since booked_match_method='email' would be indistinguishable from a certainty
+- [Phase ?]: [Phase 07-06]: retentionFrom() is the single guarded table accessor keyed on RETENTION_TABLE_ALLOWLIST (3 entries); suppressions and leads deliberately absent, enforced by compile-time union + runtime check + integration test, not just a comment
+- [Phase ?]: [Phase 07-06]: chunked .in() lookups (RETENTION_ID_CHUNK_SIZE=150) added as a Rule 1 fix after a real {months:0} run against the 711-row local dev prospects table produced URI-too-long — RETENTION_MAX_BATCH(1000) permits a candidate set the un-chunked query could not survive
 
 ### Pending Todos
 
@@ -217,6 +220,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-08-01T22:39:07.953Z
-Stopped at: Completed 07-05-PLAN.md
+Last session: 2026-08-01T22:57:02.104Z
+Stopped at: Completed 07-06-PLAN.md
 Resume file: None
