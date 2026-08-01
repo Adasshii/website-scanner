@@ -8,10 +8,13 @@ import { ShortlistTable } from "@/components/admin/shortlist-table";
 import { ReleaseButton } from "@/components/admin/release-button";
 import { RunBatchButton } from "@/components/admin/run-batch-button";
 import { OutreachTable } from "@/components/admin/outreach-table";
+import { ReportingTab } from "@/components/admin/reporting-tab";
+import { StatCard } from "@/components/admin/stat-card";
 import type { ShortlistRow } from "@/lib/triage-candidates";
 import { DEFAULT_CUTOFF } from "@/lib/triage-constants";
 import { isReleasable } from "@/lib/triage-eligibility";
 import type { OutreachFilter, OutreachQueueRow } from "@/lib/outreach-queue";
+import type { ReportingPayload } from "@/lib/reporting-aggregates";
 
 const OUTREACH_FILTERS: OutreachFilter[] = ["pending", "approved", "rejected"];
 
@@ -55,7 +58,7 @@ interface LeadRow {
   emailStatuses: Array<{ email_type: string; status: string }>;
 }
 
-type Tab = "scans" | "leads" | "shortlist" | "outreach";
+type Tab = "scans" | "leads" | "shortlist" | "outreach" | "reporting";
 
 export default function AdminPage() {
   const router = useRouter();
@@ -80,6 +83,8 @@ export default function AdminPage() {
     approved: 0,
     rejected: 0,
   });
+  const [reportingPayload, setReportingPayload] = useState<ReportingPayload | null>(null);
+  const [reportingLoading, setReportingLoading] = useState(false);
 
   // Restore secret from sessionStorage
   useEffect(() => {
@@ -220,16 +225,54 @@ export default function AdminPage() {
     [secret]
   );
 
+  /**
+   * D-7-11's 5th tab: same secret-header auth, 401 handling, and network-
+   * failure copy as fetchShortlist, noun swapped to "reporting data".
+   */
+  const fetchReporting = useCallback(async () => {
+    setReportingLoading(true);
+    setError("");
+
+    try {
+      const res = await fetch("/api/admin/reporting", {
+        headers: { "x-admin-secret": secret },
+      });
+
+      if (!res.ok) {
+        if (res.status === 401) {
+          setAuthenticated(false);
+          setError("Invalid admin secret.");
+        } else {
+          const body = await res.json().catch(() => ({}));
+          setError(`Failed to fetch reporting data${body.detail ? `: ${body.detail}` : ""}.`);
+        }
+        setReportingLoading(false);
+        return;
+      }
+
+      const data = await res.json();
+      setReportingPayload(data);
+      setAuthenticated(true);
+      sessionStorage.setItem("admin_secret", secret);
+    } catch {
+      setError("Could not connect to server.");
+    } finally {
+      setReportingLoading(false);
+    }
+  }, [secret]);
+
   useEffect(() => {
     if (!authenticated) return;
     if (tab === "shortlist") {
       fetchShortlist();
     } else if (tab === "outreach") {
       fetchOutreach();
+    } else if (tab === "reporting") {
+      fetchReporting();
     } else {
       fetchData(tab, page);
     }
-  }, [authenticated, tab, page, fetchData, fetchShortlist, fetchOutreach]);
+  }, [authenticated, tab, page, fetchData, fetchShortlist, fetchOutreach, fetchReporting]);
 
   function handleLogin(e: React.FormEvent) {
     e.preventDefault();
@@ -384,6 +427,12 @@ export default function AdminPage() {
           >
             Outreach
           </TabButton>
+          <TabButton
+            active={tab === "reporting"}
+            onClick={() => handleTabChange("reporting")}
+          >
+            Reporting
+          </TabButton>
         </div>
 
         {/* Table */}
@@ -404,6 +453,8 @@ export default function AdminPage() {
             counts={outreachCounts}
             onRefetch={fetchOutreach}
           />
+        ) : tab === "reporting" ? (
+          <ReportingTab payload={reportingPayload} loading={reportingLoading} error={error} />
         ) : (
           <div className="bg-white rounded-2xl shadow-card overflow-hidden">
             {loading ? (
@@ -417,7 +468,7 @@ export default function AdminPage() {
         )}
 
         {/* Pagination */}
-        {tab !== "shortlist" && tab !== "outreach" && totalPages > 1 && (
+        {tab !== "shortlist" && tab !== "outreach" && tab !== "reporting" && totalPages > 1 && (
           <div className="flex items-center justify-center gap-2 mt-6">
             <button
               onClick={() => setPage((p) => Math.max(1, p - 1))}
@@ -444,32 +495,9 @@ export default function AdminPage() {
 }
 
 // ── Sub-components ───────────────────────────────────────────────────
-
-function StatCard({
-  label,
-  value,
-  sub,
-  highlight,
-}: {
-  label: string;
-  value: number | string;
-  sub?: string;
-  highlight?: boolean;
-}) {
-  return (
-    <div
-      className={`rounded-xl p-4 ${
-        highlight ? "bg-adashi-blue/5 border border-adashi-blue/20" : "bg-white shadow-sm"
-      }`}
-    >
-      <div className={`text-2xl font-bold ${highlight ? "text-adashi-blue" : "text-adashi-gulf"}`}>
-        {value}
-      </div>
-      <div className="text-sm text-gray-500 mt-1">{label}</div>
-      {sub && <div className="text-xs text-gray-400 mt-0.5">{sub}</div>}
-    </div>
-  );
-}
+// StatCard lives in components/admin/stat-card.tsx (see import above) — a
+// page.tsx file cannot export arbitrary named values under Next.js's App
+// Router route-type validation.
 
 function ShortlistTab({
   rows,

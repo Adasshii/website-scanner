@@ -95,6 +95,12 @@ export default defineConfig({
   // `.tsx` test file. Overriding oxc's jsx mode here is test-only — next
   // build never reads vitest.config.ts.
   oxc: {
-    jsx: "automatic",
+    // rolldown's JsxOptions type dropped the bare `"automatic"` string
+    // shorthand in favor of `{ runtime: "automatic" }` since this override
+    // was first added (07-01) — a transitive dependency bump between then
+    // and now (npm install pulled a newer rolldown/vite under the same
+    // semver range) changed the accepted shape and broke `tsc --noEmit` /
+    // `next build`'s type-check step. Same effect, current shape.
+    jsx: { runtime: "automatic" },
   },
 });
