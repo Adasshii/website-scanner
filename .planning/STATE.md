@@ -5,15 +5,15 @@ milestone_name: milestone
 current_phase: 07
 current_phase_name: lifecycle-reporting-retention
 status: executing
-stopped_at: Completed 07-04-PLAN.md
-last_updated: "2026-08-01T22:27:05.548Z"
+stopped_at: Completed 07-05-PLAN.md
+last_updated: "2026-08-01T22:39:07.975Z"
 last_activity: 2026-08-01
 last_activity_desc: Phase 07 execution started
 progress:
   total_phases: 8
   completed_phases: 7
   total_plans: 44
-  completed_plans: 41
+  completed_plans: 42
 ---
 
 # Project State
@@ -28,11 +28,11 @@ See: .planning/PROJECT.md (updated 2026-07-17)
 ## Current Position
 
 Phase: 07 (lifecycle-reporting-retention) — EXECUTING
-Plan: 4 of 7
+Plan: 5 of 7
 Status: Ready to execute
 Last activity: 2026-08-01 — Phase 07 execution started
 
-Progress: [█████████░] 93%
+Progress: [██████████] 95%
 
 ## Performance Metrics
 
@@ -96,6 +96,7 @@ Progress: [█████████░] 93%
 | Phase 07 P02 | 35min | 2 tasks | 10 files |
 | Phase 07 P03 | 50min | 3 tasks | 7 files |
 | Phase 07 P04 | ~30min | 2 tasks | 4 files |
+| Phase 07 P05 | ~45min | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -174,6 +175,8 @@ Recent decisions affecting current work:
 - [Phase ?]: [Phase 07-03]: replyRate's theoretically-true branch computes a literal 0, not a real numerator — no replied marker/count exists anywhere in this codebase; Phase 8 must supply the real per-day replied count in the same change that flips REPLY_SIGNAL_AVAILABLE
 - [Phase ?]: [Phase 07-04]: getShortlist() attaches stage: FineLifecycleState via a single-pass reuse of the existing outreach_messages query (widened to status/created_at, ordered ascending) -- no third round trip, and has_outreach_draft/stage can never describe different rows for the same prospect (Pitfall 4)
 - [Phase ?]: [Phase 07-04]: Cleaned up 14 stray local-Supabase fixture rows left by an earlier interrupted 07-03 test run (duplicate-key blocking npx vitest run) via the same prefix-scoped delete the test's own afterEach uses -- data cleanup only, no test/code touched
+- [Phase ?]: [Phase 07-05]: Both booking-attribution candidate lookups (email-exact, domain-fallback) are bounded .limit(2) array queries, never .single()/.maybeSingle() -- contact_email carries no unique index at all, closing the sharper half of FA-TRK-04
+- [Phase ?]: [Phase 07-05]: D-7-08 sent-gate and ambiguity disambiguation share one outreach_messages query; an ambiguous surviving candidate set is dropped, never guessed, since booked_match_method='email' would be indistinguishable from a certainty
 
 ### Pending Todos
 
@@ -214,6 +217,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-08-01T22:27:05.504Z
-Stopped at: Completed 07-04-PLAN.md
+Last session: 2026-08-01T22:39:07.953Z
+Stopped at: Completed 07-05-PLAN.md
 Resume file: None
