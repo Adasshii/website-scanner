@@ -106,7 +106,7 @@
 - [x] **TRK-02**: Lifecycle state advances as real events happen rather than by manual bookkeeping where avoidable
 - [x] **TRK-03**: Joshua can see reply rate across contacted prospects
 - [x] **TRK-04**: Joshua can see booked calls attributable to outreach, reusing the existing Fillout `booked_at` signal
-- [ ] **TRK-05**: Joshua can see how many prospects were imported, triaged, scanned, and contacted per run
+- [x] **TRK-05**: Joshua can see how many prospects were imported, triaged, scanned, and contacted per run
 
 ## v2 Requirements
 
@@ -219,7 +219,7 @@ Populated during roadmap creation. See `.planning/ROADMAP.md` for phase detail.
 | TRK-02 | Phase 7 | Complete |
 | TRK-03 | Phase 7 | Complete |
 | TRK-04 | Phase 7 | Complete |
-| TRK-05 | Phase 7 | Pending |
+| TRK-05 | Phase 7 | Complete |
 
 **Coverage:**
 

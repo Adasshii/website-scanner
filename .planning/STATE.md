@@ -5,15 +5,15 @@ milestone_name: milestone
 current_phase: 07
 current_phase_name: lifecycle-reporting-retention
 status: executing
-stopped_at: Completed 07-02-PLAN.md
-last_updated: "2026-08-01T20:06:46.586Z"
-last_activity: 2026-07-31
+stopped_at: Completed 07-03-PLAN.md
+last_updated: "2026-08-01T22:11:07.427Z"
+last_activity: 2026-08-01
 last_activity_desc: Phase 07 execution started
 progress:
   total_phases: 8
   completed_phases: 7
   total_plans: 44
-  completed_plans: 39
+  completed_plans: 40
 ---
 
 # Project State
@@ -28,11 +28,11 @@ See: .planning/PROJECT.md (updated 2026-07-17)
 ## Current Position
 
 Phase: 07 (lifecycle-reporting-retention) — EXECUTING
-Plan: 3 of 7
+Plan: 2 of 7
 Status: Ready to execute
-Last activity: 2026-07-31 — Phase 07 execution started
+Last activity: 2026-08-01 — Phase 07 execution started
 
-Progress: [█████████░] 89%
+Progress: [█████████░] 91%
 
 ## Performance Metrics
 
@@ -94,6 +94,7 @@ Progress: [█████████░] 89%
 | Phase 06 P07 | ~2h | 3 tasks | 3 files |
 | Phase 07 P01 | 40min | 4 tasks | 5 files |
 | Phase 07 P02 | 35min | 2 tasks | 10 files |
+| Phase 07 P03 | 50min | 3 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -168,6 +169,8 @@ Recent decisions affecting current work:
 - [Phase ?]: Local migration 019 applied via 'supabase migration up' (not 'db reset') to preserve 407 existing prospect rows; local Supabase requires --ignore-health-check to start on this machine
 - [Phase ?]: [Phase 07-02]: StatCard extracted to components/admin/stat-card.tsx instead of exported from app/admin/page.tsx — Next.js App Router route-type validation rejects arbitrary named exports from page.tsx
 - [Phase ?]: [Phase 07-02]: vitest.config.ts oxc.jsx changed from bare "automatic" string to { runtime: "automatic" } object — installed rolldown's JsxOptions type dropped the string shorthand since 07-01, was blocking tsc/build
+- [Phase ?]: [Phase 07-03]: Booked cell gates on payload.sentGateOpen directly (not day.booked's own nullability); Reply rate gates on day.replyRate === null alone, ignoring sentGateOpen, so it stays awaiting past the gate flip while REPLY_SIGNAL_AVAILABLE is false
+- [Phase ?]: [Phase 07-03]: replyRate's theoretically-true branch computes a literal 0, not a real numerator — no replied marker/count exists anywhere in this codebase; Phase 8 must supply the real per-day replied count in the same change that flips REPLY_SIGNAL_AVAILABLE
 
 ### Pending Todos
 
@@ -208,6 +211,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-08-01T20:06:46.511Z
-Stopped at: Completed 07-02-PLAN.md
+Last session: 2026-08-01T22:11:07.214Z
+Stopped at: Completed 07-03-PLAN.md
 Resume file: None
