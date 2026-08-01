@@ -13,12 +13,27 @@
  * overrides below (module scope, before any client is constructed) are what
  * keep this suite off it.
  */
-import { afterEach, beforeAll, describe, expect, it } from "vitest";
+import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { NextRequest } from "next/server";
 import { randomUUID } from "node:crypto";
 import { createServerClient } from "@/lib/supabase";
+import { attributeBookingToProspect } from "@/lib/booking-attribution";
 import { POST } from "./route";
+
+// Task 2 / D-7-09: the attribution module is mocked so the "leads first,
+// prospects after, in a try/catch" guarantee can be tested by injecting a
+// failure rather than by reading the try block. The default implementation
+// delegates to the real matcher, so every Task 1 test above keeps exercising
+// real attribution logic — only the failure-injection describe below
+// overrides it, per-call, with mockRejectedValueOnce/mockImplementationOnce.
+vi.mock("@/lib/booking-attribution", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/booking-attribution")>();
+  return {
+    ...actual,
+    attributeBookingToProspect: vi.fn(actual.attributeBookingToProspect),
+  };
+});
 
 process.env.NEXT_PUBLIC_SUPABASE_URL = "http://127.0.0.1:54321";
 process.env.SUPABASE_SERVICE_ROLE_KEY =
@@ -313,5 +328,67 @@ describe("POST /api/webhooks/fillout — booking attribution (TRK-04)", () => {
 
     const lead = await getLead(email);
     expect(lead?.booked_at).not.toBeNull();
+  });
+});
+
+// D-7-09 / T-07-22: this guarantee fails silently in the direction that
+// costs the most. A regression here does not throw in the admin UI — it
+// turns a 200 into a 500, Fillout retries the submission, and the failure
+// surfaces as duplicate webhook traffic against the earning product's own
+// booking path. Code inspection passes a `try` block that has quietly
+// stopped covering the call; only an injected failure catches that.
+describe("POST /api/webhooks/fillout — D-7-09 fire-and-forget guarantee", () => {
+  afterEach(() => {
+    vi.mocked(attributeBookingToProspect).mockClear();
+  });
+
+  it("returns 200 and leaves the lead booked when attribution rejects asynchronously", async () => {
+    const domain = fixtureDomain();
+    const email = `info@${domain}`;
+    await seedLead(email, domain);
+
+    vi.mocked(attributeBookingToProspect).mockRejectedValueOnce(new Error("boom-async"));
+
+    const res = await postBooking(email);
+    const body = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(body.matched).toBe(true);
+    expect(body.leadsUpdated).toBe(1);
+    expect(body.prospectAttribution).toBe("failed");
+
+    const lead = await getLead(email);
+    expect(lead?.booked_at).not.toBeNull();
+  });
+
+  it("returns 200 and leaves the lead booked when attribution throws synchronously", async () => {
+    const domain = fixtureDomain();
+    const email = `info@${domain}`;
+    await seedLead(email, domain);
+
+    vi.mocked(attributeBookingToProspect).mockImplementationOnce(() => {
+      throw new Error("boom-sync");
+    });
+
+    const res = await postBooking(email);
+    const body = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(body.matched).toBe(true);
+    expect(body.leadsUpdated).toBe(1);
+    expect(body.prospectAttribution).toBe("failed");
+
+    const lead = await getLead(email);
+    expect(lead?.booked_at).not.toBeNull();
+  });
+
+  it("regression guard: a no-match booking with no mock override still returns 200 with matched:false and a no_match outcome", async () => {
+    const res = await postBooking(`unmocked-${randomUUID()}@nowhere-really.test`);
+    const body = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(body.matched).toBe(false);
+    expect(body.leadsUpdated).toBe(0);
+    expect(body.prospectAttribution).toBe("no_match");
   });
 });
