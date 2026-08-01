@@ -6,7 +6,7 @@
  * PRECONDITION: a local Supabase stack, NOT production:
  *   supabase start
  *   supabase db reset   # applies supabase/migrations/*, including 015 + its seed
- *   npx vitest run "supabase/migrations/015_create_legal_basis.integration.test.ts"
+ *   npx vitest run "lib/legal-basis.integration.test.ts"
  *
  * The client is pointed at the local stack via the env vars set below —
  * the fixed local-dev URL and demo service-role JWT `supabase start` always
