@@ -5,6 +5,9 @@
 // armBatch() convention). Never performs HTTP.
 import type { SupabaseClient } from "@supabase/supabase-js";
 import {
+  ANONYMIZED_OUTREACH_FIELDS,
+  ANONYMIZED_PROSPECT_FIELDS,
+  ANONYMIZED_SCAN_FIELDS,
   RETENTION_ID_CHUNK_SIZE,
   RETENTION_MAX_BATCH,
   RETENTION_MODE,
@@ -194,6 +197,60 @@ export async function selectExpiringProspects(
 }
 
 /**
+ * Anonymise mode (D-7-17, Task 1). Three updates against the id set
+ * `selectExpiringProspects()` already bounded, each opened through
+ * `retentionFrom` and each ending in `.select("id")` so the affected count
+ * is real rather than assumed. Returns `{ prospects: 0, outreach: 0, scans:
+ * 0 }` immediately on an empty `ids`, so an empty run issues no queries at
+ * all.
+ *
+ * The pass is idempotent by construction: every write assigns a constant
+ * value rather than deriving one from the row's current state, so a repeat
+ * run over the same ids writes the same values again and reports the same
+ * counters. This matters because D-7-17 deliberately preserves every
+ * timestamp the D-7-15 clock reads — an anonymised prospect re-qualifies on
+ * every later run (07-RESEARCH.md Pitfall #5 claims the opposite; that
+ * claim is wrong under this design, and this comment is the correction).
+ * Re-processing an already-anonymised row is harmless for exactly that
+ * reason, and it is what makes the job safe against Vercel's best-effort
+ * cron delivery with no lock or dedup logic.
+ */
+export async function anonymizeProspects(
+  sb: SupabaseClient,
+  ids: string[]
+): Promise<{ prospects: number; outreach: number; scans: number }> {
+  if (ids.length === 0) return { prospects: 0, outreach: 0, scans: 0 };
+
+  const { data: prospectRows, error: prospectError } = await retentionFrom(sb, "prospects")
+    .update(ANONYMIZED_PROSPECT_FIELDS)
+    .in("id", ids)
+    .select("id");
+  if (prospectError) throw prospectError;
+
+  const { data: outreachRows, error: outreachError } = await retentionFrom(sb, "outreach_messages")
+    .update(ANONYMIZED_OUTREACH_FIELDS)
+    .in("prospect_id", ids)
+    .select("id");
+  if (outreachError) throw outreachError;
+
+  // The `.not("prospect_id", "is", null)` filter is redundant by one layer
+  // — SQL `IN` already excludes nulls — but it stays because it is D-7-16's
+  // scope line written where a reader and a grep can both find it.
+  const { data: scanRows, error: scansError } = await retentionFrom(sb, "scans")
+    .update(ANONYMIZED_SCAN_FIELDS)
+    .in("prospect_id", ids)
+    .not("prospect_id", "is", null)
+    .select("id");
+  if (scansError) throw scansError;
+
+  return {
+    prospects: (prospectRows ?? []).length,
+    outreach: (outreachRows ?? []).length,
+    scans: (scanRows ?? []).length,
+  };
+}
+
+/**
  * Resolves mode/months as `opts.mode ?? RETENTION_MODE` / `opts.months ??
  * RETENTION_MONTHS` — the same `??` override shape armBatch() uses for its
  * ceiling. Production calls this with no options and gets the environment
@@ -201,10 +258,10 @@ export async function selectExpiringProspects(
  * re-evaluating a module-scope read.
  *
  * The dry-run arm returns the result with all five write counters at 0 and
- * issues no write of any kind. The other two arms throw — deliberately, not
- * a silent no-op: a job that accepted a writing mode and expired nothing
- * would look healthy and be doing nothing, which is the same
- * plausible-looking absence D-7-13 rejects elsewhere in this phase.
+ * issues no write of any kind. The delete arm still throws until Task 2 —
+ * deliberately, not a silent no-op: a job that accepted a writing mode and
+ * expired nothing would look healthy and be doing nothing, which is the
+ * same plausible-looking absence D-7-13 rejects elsewhere in this phase.
  */
 export async function runRetention(
   sb: SupabaseClient,
@@ -230,6 +287,15 @@ export async function runRetention(
   };
 
   if (mode === "dry-run") {
+    return result;
+  }
+
+  if (mode === "anonymize") {
+    const ids = expiring.map((row) => row.id);
+    const { prospects, outreach, scans } = await anonymizeProspects(sb, ids);
+    result.prospectsAnonymized = prospects;
+    result.outreachAnonymized = outreach;
+    result.scansAnonymized = scans;
     return result;
   }
 

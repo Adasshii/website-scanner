@@ -100,3 +100,110 @@ export const RETENTION_MAX_BATCH = 1000;
  * it costs meaningfully more round trips than it saves.
  */
 export const RETENTION_ID_CHUNK_SIZE = 150;
+
+// ── Anonymise mode field lists (D-7-17, Task 1) ─────────────────────
+//
+// Each list below is a Record of column name to replacement value, not a
+// bare array of names — two of the three tables carry not-null columns
+// (scans.url, scans.domain) and one not-null jsonb-default column
+// (scans.pages) that a bare name list cannot express a replacement for.
+// Every object here is spread straight into the matching `.update()`
+// payload in lib/retention.ts's anonymizeProspects().
+
+/**
+ * prospects columns anonymise clears. `name`, `domain`, `website_url` and
+ * `contact_email` are the four identifiers D-7-17 names by hand.
+ * `website_url_pending` and `address` are the precise field list beyond
+ * those identifiers that D-7-17 explicitly delegates to this plan's
+ * discretion: a pending website URL is the same identifier held in a
+ * second column (migration 010's website_url_pending / D-05 pattern), and
+ * a street address identifies the business as squarely as its domain
+ * does.
+ *
+ * Kept, deliberately: `country`, `region`, `category`, `campaign_tag`,
+ * `triage_score`, every timestamp (`created_at`, `updated_at`,
+ * `triage_checked_at`, `scan_released_at`, `booked_at`,
+ * `website_url_changed_at`, `country_pending`, `country_changed_at`), and
+ * the stored `lifecycle_state`. D-7-17 chose anonymise over delete
+ * precisely so the funnel history this same phase (TRK-05) reports on
+ * survives the identifiers' expiry — nulling any of these would quietly
+ * break that reporting surface a few months in.
+ */
+export const ANONYMIZED_PROSPECT_FIELDS: Record<string, null> = {
+  name: null,
+  domain: null,
+  website_url: null,
+  contact_email: null,
+  website_url_pending: null,
+  address: null,
+};
+
+/**
+ * outreach_messages columns anonymise clears. `draft_subject` is included
+ * alongside D-7-17's "draft body" because a cold-outreach subject line
+ * names the business it was written for just as plainly as the body does.
+ *
+ * Kept: `status`, `approved_by`, `approved_at`, `sent_at`, `created_at` —
+ * the markers deriveLifecycleState() and the reporting counters
+ * (lib/reporting-aggregates.ts) read.
+ */
+export const ANONYMIZED_OUTREACH_FIELDS: Record<string, null> = {
+  draft_subject: null,
+  draft_body: null,
+};
+
+/**
+ * The reserved TLD from RFC 2606 — guaranteed to never resolve. The scans
+ * table's `url`/`domain` columns are not null (migration 001), so a
+ * sentinel is the only in-place option; nulling them is not available.
+ * The public scanner's one-hour domain cache only ever looks at scans
+ * from the last hour, so a twelve-month-old sentinel row can never be
+ * served to a visitor. `scans.domain` carries a non-unique index (unlike
+ * prospects.domain's partial-unique index), so many anonymised rows
+ * sharing this value is fine.
+ */
+export const ANONYMIZED_SCAN_SENTINEL_URL = "https://anonymized.invalid";
+export const ANONYMIZED_SCAN_SENTINEL_DOMAIN = "anonymized.invalid";
+
+/**
+ * scans columns anonymise clears, for a prospect-owned scan only
+ * (`prospect_id` not null — see lib/retention.ts's `.not()` filter).
+ *
+ * A prospect's scan row holds the site's URL and its crawled page
+ * content, and `prospects.latest_scan_id` points straight at it — D-7-17's
+ * own sentence lists only prospect fields and the draft body, but leaving
+ * a scan's URL live while the owning prospect's is cleared would make the
+ * anonymisation reversible by a one-line join. D-7-16 already puts
+ * prospect-owned scans in scope; this is that scope applied consistently.
+ *
+ * `pages` is set to `[]` (not null — the column is not null with a `'[]'`
+ * jsonb default) since it holds full per-page crawl content. `url` and
+ * `domain` go to the two sentinels above, both not-null columns. Every
+ * other content column — `summary`, `screenshots`,
+ * `homepage_screenshot_url`, `email`, `error_message`, `cost_estimate`,
+ * `quick_wins`, `website_personality`, `sales_brief`, `design_ai_analysis`,
+ * `visitor_experience`, `ai_content_alt`, `issues_alt` — goes to null.
+ *
+ * Kept: `scores`, `type`, `status`, `locale`, `ip_hash`, `prospect_id`,
+ * `design_ai_analyzed_at`, and every timestamp (`started_at`,
+ * `completed_at`, `created_at`) — the reporting surface reads these, and
+ * D-7-17 only asks for content and identifiers to go.
+ */
+export const ANONYMIZED_SCAN_FIELDS: Record<string, unknown> = {
+  pages: [],
+  url: ANONYMIZED_SCAN_SENTINEL_URL,
+  domain: ANONYMIZED_SCAN_SENTINEL_DOMAIN,
+  summary: null,
+  screenshots: null,
+  homepage_screenshot_url: null,
+  email: null,
+  error_message: null,
+  cost_estimate: null,
+  quick_wins: null,
+  website_personality: null,
+  sales_brief: null,
+  design_ai_analysis: null,
+  visitor_experience: null,
+  ai_content_alt: null,
+  issues_alt: null,
+};
