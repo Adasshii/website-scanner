@@ -5,6 +5,7 @@
 // armBatch() convention). Never performs HTTP.
 import type { SupabaseClient } from "@supabase/supabase-js";
 import {
+  RETENTION_ID_CHUNK_SIZE,
   RETENTION_MAX_BATCH,
   RETENTION_MODE,
   RETENTION_MONTHS,
@@ -12,6 +13,14 @@ import {
   type RetentionMode,
   type RetentionTable,
 } from "@/lib/retention-constants";
+
+function chunkIds(ids: string[], size: number): string[][] {
+  const chunks: string[][] = [];
+  for (let i = 0; i < ids.length; i += size) {
+    chunks.push(ids.slice(i, i + size));
+  }
+  return chunks;
+}
 
 export interface ExpiringProspect {
   id: string;
@@ -102,22 +111,33 @@ async function computeExpiringProspects(
 
   const ids = candidateRows.map((row) => row.id);
 
+  // Both lookups below filter on `.in("prospect_id", ids)`. PostgREST
+  // URL-encodes an `.in()` filter into the GET request's query string, so a
+  // candidate set anywhere near RETENTION_MAX_BATCH (1000 ids) overflows
+  // the gateway's URL length limit in one call ("URI too long" — surfaced
+  // by a real `{ months: 0 }` run against this project's 711-row local
+  // dev prospects table). Chunking keeps every call well under that limit
+  // regardless of how many candidates the pre-filter returns.
+  const idChunks = chunkIds(ids, RETENTION_ID_CHUNK_SIZE);
+
   // 2. Contact lookup. Only a message at status "sent" counts as contact
   // per D-7-15 — widening it to any other status would make a drafted but
   // never sent prospect look freshly contacted and keep its data alive
   // indefinitely.
-  const { data: outreachRows, error: outreachError } = await retentionFrom(sb, "outreach_messages")
-    .select("prospect_id, sent_at")
-    .in("prospect_id", ids)
-    .eq("status", "sent")
-    .not("sent_at", "is", null);
-  if (outreachError) throw outreachError;
-
   const contactByProspect = new Map<string, string>();
-  for (const row of (outreachRows ?? []) as { prospect_id: string; sent_at: string }[]) {
-    const existing = contactByProspect.get(row.prospect_id);
-    if (!existing || Date.parse(row.sent_at) > Date.parse(existing)) {
-      contactByProspect.set(row.prospect_id, row.sent_at);
+  for (const idChunk of idChunks) {
+    const { data: outreachRows, error: outreachError } = await retentionFrom(sb, "outreach_messages")
+      .select("prospect_id, sent_at")
+      .in("prospect_id", idChunk)
+      .eq("status", "sent")
+      .not("sent_at", "is", null);
+    if (outreachError) throw outreachError;
+
+    for (const row of (outreachRows ?? []) as { prospect_id: string; sent_at: string }[]) {
+      const existing = contactByProspect.get(row.prospect_id);
+      if (!existing || Date.parse(row.sent_at) > Date.parse(existing)) {
+        contactByProspect.set(row.prospect_id, row.sent_at);
+      }
     }
   }
 
@@ -125,17 +145,19 @@ async function computeExpiringProspects(
   // D-7-16's scope line expressed in the query rather than in a
   // convention: a public-scanner scan carries a null prospect_id forever
   // (migration 013) and can never enter this working set.
-  const { data: scanRows, error: scansError } = await retentionFrom(sb, "scans")
-    .select("prospect_id, created_at")
-    .in("prospect_id", ids)
-    .not("prospect_id", "is", null);
-  if (scansError) throw scansError;
-
   const scanByProspect = new Map<string, string>();
-  for (const row of (scanRows ?? []) as { prospect_id: string; created_at: string }[]) {
-    const existing = scanByProspect.get(row.prospect_id);
-    if (!existing || Date.parse(row.created_at) > Date.parse(existing)) {
-      scanByProspect.set(row.prospect_id, row.created_at);
+  for (const idChunk of idChunks) {
+    const { data: scanRows, error: scansError } = await retentionFrom(sb, "scans")
+      .select("prospect_id, created_at")
+      .in("prospect_id", idChunk)
+      .not("prospect_id", "is", null);
+    if (scansError) throw scansError;
+
+    for (const row of (scanRows ?? []) as { prospect_id: string; created_at: string }[]) {
+      const existing = scanByProspect.get(row.prospect_id);
+      if (!existing || Date.parse(row.created_at) > Date.parse(existing)) {
+        scanByProspect.set(row.prospect_id, row.created_at);
+      }
     }
   }
 

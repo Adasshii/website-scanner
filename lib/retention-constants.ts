@@ -88,3 +88,15 @@ export type RetentionTable = (typeof RETENTION_TABLE_ALLOWLIST)[number];
  * than to raise this number.
  */
 export const RETENTION_MAX_BATCH = 1000;
+
+/**
+ * Max ids per `.in("prospect_id", ids)` call in lib/retention.ts's contact
+ * and scan lookups. PostgREST URL-encodes an `.in()` filter into the GET
+ * request's query string, so a candidate set anywhere near
+ * RETENTION_MAX_BATCH overflows the gateway's URL length limit in one
+ * call — confirmed by a real `{ months: 0 }` run against this project's
+ * local dev prospects table (711 rows, "URI too long"). 150 UUIDs is
+ * comfortably under any gateway's URL limit; raise only if profiling shows
+ * it costs meaningfully more round trips than it saves.
+ */
+export const RETENTION_ID_CHUNK_SIZE = 150;
