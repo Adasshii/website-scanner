@@ -57,7 +57,7 @@ function cardLabelsInOrder(container: HTMLElement): string[] {
 
 describe("ReportingTab — E1 sent-gate backstop", () => {
   it("gate CLOSED: renders the awaiting treatment on Contacted/Replied/Booked, real counts elsewhere", () => {
-    const payload: ReportingPayload = { funnel: FUNNEL, sentGateOpen: false };
+    const payload: ReportingPayload = { funnel: FUNNEL, sentGateOpen: false, days: [] };
     const { container } = render(<ReportingTab payload={payload} loading={false} error="" />);
 
     expect(screen.getAllByText(/Not yet sending/).length).toBe(3);
@@ -76,7 +76,7 @@ describe("ReportingTab — E1 sent-gate backstop", () => {
   });
 
   it("gate OPEN: renders every group as a real integer, no awaiting copy, no explainer", () => {
-    const payload: ReportingPayload = { funnel: FUNNEL, sentGateOpen: true };
+    const payload: ReportingPayload = { funnel: FUNNEL, sentGateOpen: true, days: [] };
     const { container } = render(<ReportingTab payload={payload} loading={false} error="" />);
 
     expect(screen.getByText("5")).toBeTruthy();
@@ -112,6 +112,7 @@ describe("ReportingTab — E1 sent-gate backstop", () => {
     const zeroPayload: ReportingPayload = {
       funnel: { New: 0, Qualified: 0, Contacted: 0, Replied: 0, Booked: 0, Rejected: 0 },
       sentGateOpen: false,
+      days: [],
     };
     const { container } = render(<ReportingTab payload={zeroPayload} loading={false} error="" />);
 

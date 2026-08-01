@@ -107,3 +107,13 @@ export const FUNNEL_CARD_ORDER: readonly FunnelGroup[] = [
   "Replied",
   "Booked",
 ];
+
+// The single flip point for Phase 8 (D-7-R1). No reply marker exists
+// anywhere in this codebase — no `replied_at` column, no reply-detection
+// webhook, no event log — so `deriveLifecycleState()` above can never
+// return `replied`, and no reply-rate figure can be honestly computed.
+// Phase 8 must flip this to `true` in the SAME change that adds the reply
+// marker and the `replied` ladder rung; a caller (lib/reporting-aggregates.ts)
+// reads this constant rather than inferring "can we show a rate" from the
+// presence of a rung, so Phase 8 does not have to go hunting for the gate.
+export const REPLY_SIGNAL_AVAILABLE = false;
