@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@/lib/supabase";
+import { attributeBookingToProspect, type BookingAttribution } from "@/lib/booking-attribution";
 
 export const runtime = "nodejs";
 
@@ -58,10 +59,27 @@ export async function POST(request: NextRequest) {
     const matchCount = updated?.length || 0;
     console.log(`[webhook/fillout] Marked ${matchCount} lead(s) as booked for ${email}`);
 
+    // D-7-09: prospect attribution is a guarded post-step. The leads path
+    // above has already run and returned exactly as it did before this
+    // change; a failure here is logged and swallowed, never allowed to turn
+    // this 200 into a 500 (which would make Fillout retry a submission that
+    // already landed).
+    let attribution: BookingAttribution = { outcome: "no_match", prospectId: null, matchMethod: null };
+    try {
+      attribution = await attributeBookingToProspect(supabase, email, now);
+    } catch (attributionError) {
+      console.error("[webhook/fillout] Prospect attribution failed (non-fatal):", attributionError);
+      attribution = { outcome: "failed", prospectId: null, matchMethod: null };
+    }
+    console.log(
+      `[webhook/fillout] Prospect attribution outcome=${attribution.outcome} prospectId=${attribution.prospectId ?? "none"}`
+    );
+
     return NextResponse.json({
       received: true,
       matched: matchCount > 0,
       leadsUpdated: matchCount,
+      prospectAttribution: attribution.outcome,
     });
   } catch (error) {
     console.error("[webhook/fillout] Webhook processing failed:", error);
