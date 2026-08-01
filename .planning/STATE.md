@@ -5,15 +5,15 @@ milestone_name: milestone
 current_phase: 07
 current_phase_name: lifecycle-reporting-retention
 status: executing
-stopped_at: Completed 07-03-PLAN.md
-last_updated: "2026-08-01T22:11:07.427Z"
+stopped_at: Completed 07-04-PLAN.md
+last_updated: "2026-08-01T22:27:05.548Z"
 last_activity: 2026-08-01
 last_activity_desc: Phase 07 execution started
 progress:
   total_phases: 8
   completed_phases: 7
   total_plans: 44
-  completed_plans: 40
+  completed_plans: 41
 ---
 
 # Project State
@@ -28,11 +28,11 @@ See: .planning/PROJECT.md (updated 2026-07-17)
 ## Current Position
 
 Phase: 07 (lifecycle-reporting-retention) — EXECUTING
-Plan: 2 of 7
+Plan: 4 of 7
 Status: Ready to execute
 Last activity: 2026-08-01 — Phase 07 execution started
 
-Progress: [█████████░] 91%
+Progress: [█████████░] 93%
 
 ## Performance Metrics
 
@@ -95,6 +95,7 @@ Progress: [█████████░] 91%
 | Phase 07 P01 | 40min | 4 tasks | 5 files |
 | Phase 07 P02 | 35min | 2 tasks | 10 files |
 | Phase 07 P03 | 50min | 3 tasks | 7 files |
+| Phase 07 P04 | ~30min | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -171,6 +172,8 @@ Recent decisions affecting current work:
 - [Phase ?]: [Phase 07-02]: vitest.config.ts oxc.jsx changed from bare "automatic" string to { runtime: "automatic" } object — installed rolldown's JsxOptions type dropped the string shorthand since 07-01, was blocking tsc/build
 - [Phase ?]: [Phase 07-03]: Booked cell gates on payload.sentGateOpen directly (not day.booked's own nullability); Reply rate gates on day.replyRate === null alone, ignoring sentGateOpen, so it stays awaiting past the gate flip while REPLY_SIGNAL_AVAILABLE is false
 - [Phase ?]: [Phase 07-03]: replyRate's theoretically-true branch computes a literal 0, not a real numerator — no replied marker/count exists anywhere in this codebase; Phase 8 must supply the real per-day replied count in the same change that flips REPLY_SIGNAL_AVAILABLE
+- [Phase ?]: [Phase 07-04]: getShortlist() attaches stage: FineLifecycleState via a single-pass reuse of the existing outreach_messages query (widened to status/created_at, ordered ascending) -- no third round trip, and has_outreach_draft/stage can never describe different rows for the same prospect (Pitfall 4)
+- [Phase ?]: [Phase 07-04]: Cleaned up 14 stray local-Supabase fixture rows left by an earlier interrupted 07-03 test run (duplicate-key blocking npx vitest run) via the same prefix-scoped delete the test's own afterEach uses -- data cleanup only, no test/code touched
 
 ### Pending Todos
 
@@ -211,6 +214,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-08-01T22:11:07.214Z
-Stopped at: Completed 07-03-PLAN.md
+Last session: 2026-08-01T22:27:05.504Z
+Stopped at: Completed 07-04-PLAN.md
 Resume file: None
