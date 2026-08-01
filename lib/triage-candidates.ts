@@ -10,6 +10,7 @@
 //     without a server round-trip per slide (D-07 "pure query").
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { TriageScore } from "@/types/triage";
+import { deriveLifecycleState, type FineLifecycleState, type LifecycleInputs } from "@/lib/lifecycle";
 
 export interface TriageCandidate {
   id: string;
@@ -36,6 +37,9 @@ export interface ShortlistRow {
    * any row (any status) exists for the prospect, which is what hides the
    * manual "Generate draft" action in the Shortlist. */
   has_outreach_draft: boolean;
+  /** Resolved server-side via deriveLifecycleState() (D-7-14, UI-SPEC E4) —
+   * the admin client never computes a stage, it only renders one. */
+  stage: FineLifecycleState;
 }
 
 /**
@@ -76,32 +80,59 @@ export async function getShortlist(sb: SupabaseClient): Promise<ShortlistRow[]> 
   const { data, error } = await sb
     .from("prospects")
     .select(
-      "id, domain, category, triage_score, scan_released_at, scan_status, scan_attempts, scan_status_reason, latest_scan_id, contact_email_type, contact_email"
+      "id, domain, category, triage_score, scan_released_at, scan_status, scan_attempts, scan_status_reason, latest_scan_id, contact_email_type, contact_email, lifecycle_state, triage_checked_at, booked_at"
     )
     .not("triage_score", "is", null);
   if (error) throw error;
-  const rawRows = (data ?? []) as (ShortlistRow & { contact_email: string | null })[];
+  const rawRows = (data ?? []) as (ShortlistRow & {
+    contact_email: string | null;
+    lifecycle_state: string;
+    triage_checked_at: string | null;
+    booked_at: string | null;
+  })[];
 
   if (rawRows.length === 0) return [];
 
   // One extra round trip at this project's volume (10-50/week) is the right
   // trade against a view or a denormalised column (D-6-08 discretion note).
-  const { data: draftRows, error: draftError } = await sb
+  // Ordered ascending by created_at so both answers this single query serves
+  // are built from the same last-write-wins pass: draftedIds (any row at
+  // all) and the newest per-prospect status for stage resolution. Splitting
+  // this into two queries would let has_outreach_draft and the resolved
+  // stage describe different rows for the same prospect (Pitfall 4 — no
+  // UNIQUE constraint on prospect_id).
+  const { data: outreachRows, error: outreachError } = await sb
     .from("outreach_messages")
-    .select("prospect_id")
+    .select("prospect_id, status, created_at")
     .in(
       "prospect_id",
       rawRows.map((r) => r.id)
+    )
+    .order("created_at", { ascending: true });
+  if (outreachError) throw outreachError;
+  const draftedIds = new Set((outreachRows ?? []).map((r) => r.prospect_id as string));
+  const latestOutreachStatus = new Map<string, LifecycleInputs["outreachStatus"]>();
+  for (const message of outreachRows ?? []) {
+    latestOutreachStatus.set(
+      message.prospect_id as string,
+      message.status as LifecycleInputs["outreachStatus"]
     );
-  if (draftError) throw draftError;
-  const draftedIds = new Set((draftRows ?? []).map((r) => r.prospect_id as string));
+  }
 
   return rawRows.map((row) => {
-    const { contact_email, ...rest } = row;
+    const { contact_email, lifecycle_state, triage_checked_at, booked_at, ...rest } = row;
     return {
       ...rest,
       has_contact_email: !!contact_email && contact_email.trim().length > 0,
       has_outreach_draft: draftedIds.has(row.id),
+      stage: deriveLifecycleState({
+        lifecycle_state,
+        triage_checked_at,
+        scan_released_at: row.scan_released_at,
+        scan_status: row.scan_status,
+        booked_at,
+        outreachStatus: latestOutreachStatus.get(row.id) ?? null,
+      }),
     };
   });
 }
