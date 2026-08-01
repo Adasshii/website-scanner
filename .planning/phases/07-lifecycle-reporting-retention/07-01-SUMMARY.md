@@ -143,3 +143,7 @@ None further — the one external-service step this plan required (Task 4, apply
 ---
 *Phase: 07-lifecycle-reporting-retention*
 *Completed: 2026-08-01*
+
+## Self-Check: PASSED
+
+All created files and commit hashes verified present on disk / in git log.
