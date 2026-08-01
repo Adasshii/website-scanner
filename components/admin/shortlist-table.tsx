@@ -4,6 +4,7 @@ import { useState } from "react";
 import type { ShortlistRow } from "@/lib/triage-candidates";
 import { SignalChips } from "@/components/admin/signal-chips";
 import { isReleasable } from "@/lib/triage-eligibility";
+import { FUNNEL_GROUPS, type FineLifecycleState, type FunnelGroup } from "@/lib/lifecycle";
 
 interface ShortlistTableProps {
   rows: ShortlistRow[];
@@ -39,6 +40,32 @@ function StatusPill({ status }: { status: keyof typeof statusPillStyles }) {
       className={`inline-block text-xs font-semibold px-2 py-0.5 rounded-full border ${statusPillStyles[status]}`}
     >
       {status.toUpperCase()}
+    </span>
+  );
+}
+
+// Stage pill palette (D-7-14, 07-UI-SPEC.md § Color) — six funnel-group
+// styles covering the twelve fine states via FUNNEL_GROUPS, so this palette
+// and the Reporting card row can never disagree about which bucket a state
+// belongs to.
+const stagePillStyles: Record<FunnelGroup, string> = {
+  New: "bg-gray-100 text-gray-500 border-gray-200",
+  Qualified: "bg-blue-100 text-blue-700 border-blue-200",
+  Contacted: "bg-yellow-100 text-yellow-700 border-yellow-200",
+  Replied: "bg-green-100 text-green-700 border-green-200",
+  Booked: "bg-emerald-50 text-emerald-700 font-semibold border-emerald-200",
+  Rejected: "bg-red-100 text-red-700 border-red-200",
+};
+
+// Rendered unconditionally, unlike StatusPill — stage is total (D-7-02 puts
+// `new` at the floor), so a blank cell would mean the payload lost a field,
+// never that the prospect has no stage.
+function StagePill({ state }: { state: FineLifecycleState }) {
+  return (
+    <span
+      className={`inline-block text-xs font-semibold px-2 py-0.5 rounded-full border ${stagePillStyles[FUNNEL_GROUPS[state]]}`}
+    >
+      {state.replace(/_/g, " ").toUpperCase()}
     </span>
   );
 }
@@ -195,6 +222,7 @@ export function ShortlistTable({ rows, cutoff, loading, secret, onRequeued }: Sh
             <th className="px-4 py-3">Domain</th>
             <th className="px-4 py-3">Triage score</th>
             <th className="px-4 py-3">Status</th>
+            <th className="px-4 py-3">Stage</th>
             <th className="px-4 py-3">Released</th>
             <th className="px-4 py-3">Signals</th>
           </tr>
@@ -297,6 +325,9 @@ export function ShortlistTable({ rows, cutoff, loading, secret, onRequeued }: Sh
                   ) : (
                     <StatusPill status={row.scan_status} />
                   )}
+                </td>
+                <td className="px-4 py-3">
+                  <StagePill state={row.stage} />
                 </td>
                 <td className="px-4 py-3 text-gray-400 text-xs whitespace-nowrap">
                   {released ? `Released ${relativeDate(row.scan_released_at as string)}` : ""}
