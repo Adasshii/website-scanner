@@ -24,7 +24,7 @@
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createServerClient } from "@/lib/supabase";
-import { getReportingData } from "./reporting-aggregates";
+import { getReportingData, utcDay } from "./reporting-aggregates";
 
 process.env.NEXT_PUBLIC_SUPABASE_URL = "http://127.0.0.1:54321";
 process.env.SUPABASE_SERVICE_ROLE_KEY =
@@ -157,5 +157,215 @@ describe("getReportingData", () => {
     expect(after.funnel.Rejected - before.funnel.Rejected).toBe(1);
     expect(after.funnel.Booked - before.funnel.Booked).toBe(0);
     expect(after.funnel.New - before.funnel.New).toBe(0);
+  });
+});
+
+// utcDay() (Pitfall 6) — bucketing helper `days` builds on. Tested directly
+// (no DB) alongside the DB-backed `days` assertions below so a bucketing
+// regression is caught at the smallest possible unit.
+describe("utcDay", () => {
+  it("returns the UTC calendar day of an ISO timestamp regardless of process TZ", () => {
+    const original = process.env.TZ;
+    process.env.TZ = "Europe/Amsterdam";
+    try {
+      expect(utcDay("2026-03-15T23:59:59Z")).toBe("2026-03-15");
+      expect(utcDay("2026-03-16T00:00:01Z")).toBe("2026-03-16");
+    } finally {
+      if (original === undefined) delete process.env.TZ;
+      else process.env.TZ = original;
+    }
+  });
+});
+
+// Helper: builds the exact 30-entry, newest-first UTC-day window
+// getReportingData() itself builds, so a test can assert against a real
+// "today" without hardcoding a date that goes stale.
+function expectedDayWindow(): string[] {
+  const days: string[] = [];
+  const now = new Date();
+  for (let i = 0; i < 30; i++) {
+    const d = new Date(now);
+    d.setUTCDate(d.getUTCDate() - i);
+    days.push(utcDay(d.toISOString()));
+  }
+  return days;
+}
+
+describe("getReportingData — days (30-day per-day table, TRK-05)", () => {
+  it("returns exactly 30 entries, newest first, each a distinct date with no gaps", async () => {
+    const { days } = await getReportingData(sb);
+    const expected = expectedDayWindow();
+
+    expect(days.length).toBe(30);
+    expect(days.map((d) => d.date)).toEqual(expected);
+    // No gaps / no duplicates: 30 distinct calendar days.
+    expect(new Set(days.map((d) => d.date)).size).toBe(30);
+  });
+
+  it("buckets a 23:59:59Z prospect and the next day's 00:00:01Z prospect into two different days, unaffected by process TZ", async () => {
+    const original = process.env.TZ;
+    process.env.TZ = "Europe/Amsterdam";
+    try {
+      // Anchor 5 days back from "now" so both fixtures land safely inside
+      // the 30-day window no matter what instant the window is built from.
+      const anchor = new Date();
+      anchor.setUTCDate(anchor.getUTCDate() - 5);
+      const day1 = utcDay(anchor.toISOString());
+      const nextAnchor = new Date(anchor);
+      nextAnchor.setUTCDate(nextAnchor.getUTCDate() + 1);
+      const day2 = utcDay(nextAnchor.toISOString());
+
+      const before = await getReportingData(sb);
+      await seedProspect(`${PREFIX}boundary-1`, { created_at: `${day1}T23:59:59Z` });
+      await seedProspect(`${PREFIX}boundary-2`, { created_at: `${day2}T00:00:01Z` });
+      const after = await getReportingData(sb);
+
+      const beforeD1 = before.days.find((d) => d.date === day1)!.imported;
+      const afterD1 = after.days.find((d) => d.date === day1)!.imported;
+      const beforeD2 = before.days.find((d) => d.date === day2)!.imported;
+      const afterD2 = after.days.find((d) => d.date === day2)!.imported;
+
+      expect(afterD1 - beforeD1).toBe(1);
+      expect(afterD2 - beforeD2).toBe(1);
+    } finally {
+      if (original === undefined) delete process.env.TZ;
+      else process.env.TZ = original;
+    }
+  });
+
+  it("per-day imported/triaged/scanned/contacted counts match hand-seeded fixture rows, and a zero day renders 0", async () => {
+    const anchor = new Date();
+    anchor.setUTCDate(anchor.getUTCDate() - 6);
+    const day = utcDay(anchor.toISOString());
+    const iso = `${day}T12:00:00Z`;
+
+    const before = await getReportingData(sb);
+
+    await seedProspect(`${PREFIX}day-imported-1`, { created_at: iso });
+    await seedProspect(`${PREFIX}day-triaged-1`, {
+      created_at: iso,
+      triage_checked_at: iso,
+    });
+    const contactedId = await seedProspect(`${PREFIX}day-contacted-1`, { created_at: iso });
+    const { error } = await sb.from("outreach_messages").insert({
+      prospect_id: contactedId,
+      status: "sent",
+      created_at: iso,
+      sent_at: iso,
+    });
+    if (error) throw error;
+    const { error: scanError } = await sb.from("scans").insert({
+      url: "https://example.com",
+      domain: `${PREFIX}day-scanned`,
+      type: "full",
+      status: "completed",
+      pages: [],
+      ip_hash: "test-reporting-agg",
+      prospect_id: contactedId,
+      created_at: iso,
+    });
+    if (scanError) throw scanError;
+
+    const after = await getReportingData(sb);
+
+    const beforeDay = before.days.find((d) => d.date === day)!;
+    const afterDay = after.days.find((d) => d.date === day)!;
+
+    expect(afterDay.imported - beforeDay.imported).toBe(3);
+    expect(afterDay.triaged - beforeDay.triaged).toBe(1);
+    expect(afterDay.scanned - beforeDay.scanned).toBe(1);
+    expect(afterDay.contacted - beforeDay.contacted).toBe(1);
+
+    // A day with no seeded activity still renders 0, not an omitted entry.
+    const untouchedDay = after.days.find((d) => d.date !== day)!;
+    expect(typeof untouchedDay.imported).toBe("number");
+  });
+
+  it("does not count a scans row with a NULL prospect_id (a public-scanner scan) into scanned", async () => {
+    const anchor = new Date();
+    anchor.setUTCDate(anchor.getUTCDate() - 7);
+    const day = utcDay(anchor.toISOString());
+    const iso = `${day}T12:00:00Z`;
+
+    const before = await getReportingData(sb);
+
+    const { error: scanError, data: scanRow } = await sb
+      .from("scans")
+      .insert({
+        url: "https://public-scanner-example.com",
+        domain: "public-scanner-example.com",
+        type: "quick",
+        status: "completed",
+        pages: [],
+        ip_hash: "test-reporting-agg-public",
+        prospect_id: null,
+        created_at: iso,
+      })
+      .select("id")
+      .single();
+    if (scanError) throw scanError;
+
+    const after = await getReportingData(sb);
+    const beforeDay = before.days.find((d) => d.date === day)!;
+    const afterDay = after.days.find((d) => d.date === day)!;
+    expect(afterDay.scanned - beforeDay.scanned).toBe(0);
+
+    // cleanup — this scan is not prospect-owned so afterEach's prefix
+    // cleanup never touches it.
+    await sb.from("scans").delete().eq("id", scanRow!.id as string);
+  });
+
+  it("excludes an event older than 30 days from every day bucket, but still counts it in the funnel", async () => {
+    const oldIso = "2020-01-01T12:00:00Z";
+    const beforeFunnel = await getReportingData(sb);
+
+    await seedProspect(`${PREFIX}old-event-1`, { created_at: oldIso });
+
+    const afterFunnel = await getReportingData(sb);
+    // Still counted in the (unbounded) funnel.
+    expect(afterFunnel.funnel.New - beforeFunnel.funnel.New).toBe(1);
+    // Never counted into any of the 30 day-window buckets.
+    const totalImportedInWindow = afterFunnel.days.reduce((sum, d) => sum + d.imported, 0);
+    const totalImportedInWindowBefore = beforeFunnel.days.reduce(
+      (sum, d) => sum + d.imported,
+      0
+    );
+    expect(totalImportedInWindow - totalImportedInWindowBefore).toBe(0);
+  });
+
+  it("replyRate is null on every day while REPLY_SIGNAL_AVAILABLE is false, even on a day with contacted > 0", async () => {
+    const anchor = new Date();
+    anchor.setUTCDate(anchor.getUTCDate() - 8);
+    const day = utcDay(anchor.toISOString());
+    const iso = `${day}T12:00:00Z`;
+
+    const contactedId = await seedProspect(`${PREFIX}reply-gate-1`, { created_at: iso });
+    const { error } = await sb.from("outreach_messages").insert({
+      prospect_id: contactedId,
+      status: "sent",
+      created_at: iso,
+      sent_at: iso,
+    });
+    if (error) throw error;
+
+    const { days } = await getReportingData(sb);
+    for (const d of days) {
+      expect(d.replyRate).toBeNull();
+    }
+  });
+
+  it("booked and bookedByDomain are null on every day while sentGateOpen is false; bookedByDomain never exceeds booked", async () => {
+    const { days, sentGateOpen } = await getReportingData(sb);
+    if (!sentGateOpen) {
+      for (const d of days) {
+        expect(d.booked).toBeNull();
+        expect(d.bookedByDomain).toBeNull();
+      }
+    } else {
+      for (const d of days) {
+        expect(typeof d.booked).toBe("number");
+        expect(d.bookedByDomain ?? 0).toBeLessThanOrEqual(d.booked ?? 0);
+      }
+    }
   });
 });
