@@ -58,6 +58,9 @@ async function seedProspect(overrides?: {
   triageScore?: TriageScore | null;
   scanReleasedAt?: string | null;
   contactEmail?: string | null;
+  lifecycleState?: string;
+  scanStatus?: "queued" | "scanning" | "done" | "failed" | null;
+  bookedAt?: string | null;
 }) {
   domainCounter += 1;
   const domain = overrides?.domain === undefined ? `triage-candidates-${domainCounter}.test` : overrides.domain;
@@ -72,6 +75,9 @@ async function seedProspect(overrides?: {
       triage_checked_at: overrides?.triageScore ? new Date().toISOString() : null,
       scan_released_at: overrides?.scanReleasedAt ?? null,
       contact_email: overrides?.contactEmail ?? null,
+      ...(overrides?.lifecycleState !== undefined ? { lifecycle_state: overrides.lifecycleState } : {}),
+      ...(overrides?.scanStatus !== undefined ? { scan_status: overrides.scanStatus } : {}),
+      ...(overrides?.bookedAt !== undefined ? { booked_at: overrides.bookedAt } : {}),
     })
     .select("id")
     .single();
@@ -79,11 +85,16 @@ async function seedProspect(overrides?: {
   return data.id as string;
 }
 
-async function seedOutreachMessage(prospectId: string) {
+async function seedOutreachMessage(
+  prospectId: string,
+  overrides?: { status?: "draft" | "edited" | "approved" | "rejected" | "sent"; createdAt?: string }
+) {
   const { error } = await sb.from("outreach_messages").insert({
     prospect_id: prospectId,
     draft_subject: "Test subject",
     draft_body: "Test body",
+    ...(overrides?.status !== undefined ? { status: overrides.status } : {}),
+    ...(overrides?.createdAt !== undefined ? { created_at: overrides.createdAt } : {}),
   });
   if (error) throw error;
 }
@@ -166,5 +177,116 @@ describe("getShortlist", () => {
     const withoutDraftRow = shortlist.find((r) => r.id === withoutDraftId);
     expect(withDraftRow?.has_outreach_draft).toBe(true);
     expect(withoutDraftRow?.has_outreach_draft).toBe(false);
+  });
+
+  // 07-04: `stage` resolution (D-7-01/02/04, D-7-14). Each test seeds only the
+  // markers relevant to the rung it asserts, mirroring lib/lifecycle.test.ts's
+  // per-rung shape but proving it at this surface (getShortlist), not just in
+  // the unit-tested derivation.
+
+  it("resolves stage: triaged for a prospect with a triage score and nothing else", async () => {
+    const id = await seedProspect({ triageScore: makeTriageScore() });
+    const shortlist = await getShortlist(sb);
+    expect(shortlist.find((r) => r.id === id)?.stage).toBe("triaged");
+  });
+
+  it("resolves stage: qualified for a released, unscanned prospect", async () => {
+    const id = await seedProspect({
+      triageScore: makeTriageScore(),
+      scanReleasedAt: new Date().toISOString(),
+    });
+    const shortlist = await getShortlist(sb);
+    expect(shortlist.find((r) => r.id === id)?.stage).toBe("qualified");
+  });
+
+  it("resolves stage: scanned for a prospect with scan_status done", async () => {
+    const id = await seedProspect({
+      triageScore: makeTriageScore(),
+      scanReleasedAt: new Date().toISOString(),
+      scanStatus: "done",
+    });
+    const shortlist = await getShortlist(sb);
+    expect(shortlist.find((r) => r.id === id)?.stage).toBe("scanned");
+  });
+
+  it("resolves stage: contacted for a prospect with a sent outreach message", async () => {
+    const id = await seedProspect({
+      triageScore: makeTriageScore(),
+      scanReleasedAt: new Date().toISOString(),
+      scanStatus: "done",
+    });
+    await seedOutreachMessage(id, { status: "sent" });
+    const shortlist = await getShortlist(sb);
+    expect(shortlist.find((r) => r.id === id)?.stage).toBe("contacted");
+  });
+
+  it("resolves stage: booked for a prospect with booked_at set, outranking a sent outreach row", async () => {
+    const id = await seedProspect({
+      triageScore: makeTriageScore(),
+      scanReleasedAt: new Date().toISOString(),
+      scanStatus: "done",
+      bookedAt: new Date().toISOString(),
+    });
+    await seedOutreachMessage(id, { status: "sent" });
+    const shortlist = await getShortlist(sb);
+    expect(shortlist.find((r) => r.id === id)?.stage).toBe("booked");
+  });
+
+  it("resolves stage: rejected for a prospect whose stored lifecycle_state is rejected, even with booked_at set and a sent outreach row (D-7-R2)", async () => {
+    const id = await seedProspect({
+      triageScore: makeTriageScore(),
+      scanReleasedAt: new Date().toISOString(),
+      scanStatus: "done",
+      bookedAt: new Date().toISOString(),
+      lifecycleState: "rejected",
+    });
+    await seedOutreachMessage(id, { status: "sent" });
+    const shortlist = await getShortlist(sb);
+    expect(shortlist.find((r) => r.id === id)?.stage).toBe("rejected");
+  });
+
+  it("resolves stage from the newest outreach_messages row when two exist, and still reports has_outreach_draft true (Pitfall 4)", async () => {
+    const id = await seedProspect({ triageScore: makeTriageScore() });
+    await seedOutreachMessage(id, { status: "sent", createdAt: "2026-01-01T00:00:00.000Z" });
+    await seedOutreachMessage(id, { status: "draft", createdAt: "2026-01-02T00:00:00.000Z" });
+
+    const shortlist = await getShortlist(sb);
+    const row = shortlist.find((r) => r.id === id);
+    expect(row?.stage).toBe("drafted");
+    expect(row?.has_outreach_draft).toBe(true);
+  });
+
+  it("returns a row with a stage property and none of the raw derivation input properties", async () => {
+    await seedProspect({ triageScore: makeTriageScore() });
+    const shortlist = await getShortlist(sb);
+    for (const row of shortlist) {
+      expect(row).toHaveProperty("stage");
+      expect(row).not.toHaveProperty("lifecycle_state");
+      expect(row).not.toHaveProperty("triage_checked_at");
+      expect(row).not.toHaveProperty("booked_at");
+    }
+  });
+
+  it("every returned row's stage is one of the 12 FineLifecycleState values", async () => {
+    await seedProspect({ triageScore: makeTriageScore() });
+    const shortlist = await getShortlist(sb);
+    const validStages = new Set([
+      "new",
+      "no_website",
+      "triaged",
+      "qualified",
+      "scan_queued",
+      "scanned",
+      "drafted",
+      "approved",
+      "contacted",
+      "replied",
+      "booked",
+      "rejected",
+    ]);
+    for (const row of shortlist) {
+      expect(row.stage).toBeDefined();
+      expect(validStages.has(row.stage)).toBe(true);
+    }
   });
 });
