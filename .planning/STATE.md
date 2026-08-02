@@ -218,6 +218,12 @@ Items acknowledged and carried forward from previous milestone close:
 |----------|------|--------|-------------|
 | *(none)* | | | |
 
+## Quick Tasks Completed
+
+| Date | Slug | Outcome |
+|------|------|---------|
+| 2026-08-02 | reporting-agg-cleanup-leak | `reporting-aggregates.integration.test.ts` `afterEach` swallowed a `scans_prospect_id_fkey` violation (migration 013 is `ON DELETE NO ACTION`), so one blocked row aborted the whole prospects delete and every fixture row survived, cumulatively, across runs. Cleanup now deletes in FK-safe order and throws on any error. |
+
 ## Session Continuity
 
 Last session: 2026-08-01T22:57:02.104Z

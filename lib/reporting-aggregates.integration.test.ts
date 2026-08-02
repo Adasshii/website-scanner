@@ -38,15 +38,69 @@ beforeAll(() => {
 
 const PREFIX = "test-reporting-agg-";
 
+// Every fixture scans row this suite inserts carries an ip_hash starting with
+// PREFIX-minus-trailing-dash, which is what makes them findable here. The
+// public-scanner fixture (prospect_id NULL) uses an off-prefix *domain* on
+// purpose, so domain is not a reliable marker for scans.
+const SCAN_MARKER = PREFIX.replace(/-$/, "");
+
+// Deletes in an order that satisfies the FK graph, and throws on any failure.
+//
+// Only outreach_messages and prospect_sources cascade off prospects. Three
+// edges are ON DELETE NO ACTION and have to be cleared by hand, in order:
+//   scans.prospect_id -> prospects      (migration 013, no ON DELETE clause)
+//   prospects.latest_scan_id -> scans   (migration 013)
+//   outreach_messages.scan_id -> scans  (migration 012)
+//
+// The failure this replaces: the per-day test seeds a scans row pointing at a
+// fixture prospect, that FK rejected the prospects delete, and because a
+// PostgREST delete is one statement over all matched ids, the rejection took
+// every other prospect down with it. The error was never read, so cleanup
+// reported success while leaving the whole fixture set behind, and the
+// survivors were prefix-matched again next run, so the leak became permanent.
+// Throwing here fails the run that caused the leak instead of the next one.
 afterEach(async () => {
-  const { data: prospects } = await sb
+  const { data: prospects, error: selectError } = await sb
     .from("prospects")
     .select("id")
     .like("domain", `${PREFIX}%`);
+  if (selectError) throw selectError;
   const ids = (prospects ?? []).map((p) => p.id as string);
+
+  const { data: scans, error: scanSelectError } = await sb
+    .from("scans")
+    .select("id")
+    .like("ip_hash", `${SCAN_MARKER}%`);
+  if (scanSelectError) throw scanSelectError;
+  const scanIds = (scans ?? []).map((s) => s.id as string);
+
   if (ids.length > 0) {
-    await sb.from("outreach_messages").delete().in("prospect_id", ids);
-    await sb.from("prospects").delete().in("id", ids);
+    // Release prospects.latest_scan_id before the scans delete below. No test
+    // sets it today; leaving the edge unhandled would make the first one that
+    // does reintroduce exactly this bug.
+    const { error: unlinkError } = await sb
+      .from("prospects")
+      .update({ latest_scan_id: null })
+      .in("id", ids)
+      .not("latest_scan_id", "is", null);
+    if (unlinkError) throw unlinkError;
+
+    // Clears the outreach_messages.scan_id edge as well as the prospect one.
+    const { error: outreachError } = await sb
+      .from("outreach_messages")
+      .delete()
+      .in("prospect_id", ids);
+    if (outreachError) throw outreachError;
+  }
+
+  if (scanIds.length > 0) {
+    const { error: scanError } = await sb.from("scans").delete().in("id", scanIds);
+    if (scanError) throw scanError;
+  }
+
+  if (ids.length > 0) {
+    const { error: prospectError } = await sb.from("prospects").delete().in("id", ids);
+    if (prospectError) throw prospectError;
   }
 });
 
@@ -289,7 +343,7 @@ describe("getReportingData — days (30-day per-day table, TRK-05)", () => {
 
     const before = await getReportingData(sb);
 
-    const { error: scanError, data: scanRow } = await sb
+    const { error: scanError } = await sb
       .from("scans")
       .insert({
         url: "https://public-scanner-example.com",
@@ -300,9 +354,7 @@ describe("getReportingData — days (30-day per-day table, TRK-05)", () => {
         ip_hash: "test-reporting-agg-public",
         prospect_id: null,
         created_at: iso,
-      })
-      .select("id")
-      .single();
+      });
     if (scanError) throw scanError;
 
     const after = await getReportingData(sb);
@@ -310,9 +362,9 @@ describe("getReportingData — days (30-day per-day table, TRK-05)", () => {
     const afterDay = after.days.find((d) => d.date === day)!;
     expect(afterDay.scanned - beforeDay.scanned).toBe(0);
 
-    // cleanup — this scan is not prospect-owned so afterEach's prefix
-    // cleanup never touches it.
-    await sb.from("scans").delete().eq("id", scanRow!.id as string);
+    // No inline cleanup: this row is not prospect-owned, but its ip_hash
+    // carries SCAN_MARKER, so afterEach sweeps it. Cleaning up there rather
+    // than here means a failed assertion above no longer leaks the row.
   });
 
   it("excludes an event older than 30 days from every day bucket, but still counts it in the funnel", async () => {
