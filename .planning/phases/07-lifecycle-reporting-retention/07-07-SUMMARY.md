@@ -36,6 +36,7 @@ key-decisions:
   - "Removed an unused ANONYMIZED_OUTREACH_FIELDS import left over in the test file from Task 1 (the outreach anonymise test hardcodes draft_subject/draft_body instead of iterating the constant) — this was a pre-existing lint error blocking npm run build, which is a hard acceptance criterion for Task 2."
   - ".env.example was not touched. This session's global Claude Code permission settings deny all Read/Bash access to any path matching .env.* — including .env.example, which carries no secrets — with no override available inside this session. Carried as WINDOWS.md entry #1 for Joshua to add by hand."
   - "Task 3 resolved as stay-dry-run WITHOUT running its own evidence-gathering steps (deploy, dashboard cron confirmation, authenticated dry-run read, SQL cross-check). Joshua answered the decision directly; the continuation executor was explicitly instructed not to deploy. See 'Task 3 Resolution' below for exactly what was and was not done."
+  - "A second, concurrently-committed fix (61bf5cb, not authored by this continuation) landed in lib/retention.ts and its test between the prior session's pause and this continuation's close: outreach_messages carries its own no-ON-DELETE-clause FK onto scans.id (migration 012, scan_id), separate from the latest_scan_id/scans pair T-07-33's test already covered, and deleteProspects() was deleting scans before that second FK's rows were cleared. Every prospect that reached the draft stage sets scan_id on its outreach row, so this was not an edge case — delete mode would have thrown for essentially every real expiring prospect. Fixed by deleting outreach explicitly as step 2, before the scans delete, with a regression test. Verified still green in this continuation (36/36 retention integration tests)."
 
 requirements-completed: []  # CMP-13/14/15 deliberately NOT marked complete — see 'Task 3 Resolution': the decision is on record but its own evidence steps (deploy, dashboard, live dry-run, SQL count) were not run, and the plan's own cons text for stay-dry-run says the CMP-13 gap ("a job that reports rather than a job that expires") must be recorded as an open item, not implied closed.
 
@@ -49,11 +50,11 @@ coverage:
         status: pass
     human_judgment: false
   - id: D2
-    description: "deleteProspects() removes prospect/scan/outreach rows in the only FK-safe order, proven load-bearing by a dedicated failing-naive-order test"
+    description: "deleteProspects() removes prospect/scan/outreach rows in the only FK-safe order (null latest_scan_id, delete outreach, delete scans, delete prospects), proven load-bearing by dedicated failing-naive-order tests for BOTH no-ON-DELETE foreign keys — the migration-013 latest_scan_id/scans pair and the migration-012 outreach_messages.scan_id/scans pair"
     requirement: "CMP-13"
     verification:
       - kind: integration
-        ref: "lib/retention.integration.test.ts — 'deleteProspects — FK order and cascade (D-7-16, Task 2)' describe block, in particular the 'deleting the scan before nulling latest_scan_id raises a foreign-key error' test"
+        ref: "lib/retention.integration.test.ts — 'deleteProspects — FK order and cascade (D-7-16, Task 2)' describe block ('deleting the scan before nulling latest_scan_id raises a foreign-key error'), plus the drafted-prospect regression test added in 61bf5cb ('deleting scans before outreach raises outreach_messages_scan_id_fkey')"
         status: pass
     human_judgment: false
   - id: D3
@@ -87,7 +88,7 @@ status: complete
 
 # Phase 7 Plan 07: Retention anonymise/delete modes and the monthly cron Summary
 
-**Delete mode's FK-safe three-statement order (null latest_scan_id, delete scans, delete prospects) proven load-bearing by a dedicated test, both writing modes chunked at RETENTION_ID_CHUNK_SIZE, a fifth vercel.json cron entry, and Task 3 resolved as stay-dry-run — decided directly by Joshua, without the deploy/dashboard/dry-run/SQL evidence steps the task itself calls for.**
+**Delete mode's FK-safe four-statement order (null latest_scan_id, delete outreach, delete scans, delete prospects) proven load-bearing against both no-ON-DELETE foreign keys by dedicated tests, both writing modes chunked at RETENTION_ID_CHUNK_SIZE, a fifth vercel.json cron entry, and Task 3 resolved as stay-dry-run — decided directly by Joshua, without the deploy/dashboard/dry-run/SQL evidence steps the task itself calls for.**
 
 ## Performance
 
@@ -106,6 +107,7 @@ status: complete
 - `vercel.json` carries a fifth cron entry, `/api/cron/retention` at `0 3 1 * *`, added with no change to the four existing entries.
 - Full suite: `npx vitest run` — 41 files, 459 tests, all passing. `npx tsc --noEmit` clean. `npm run build` succeeds.
 - `npx vitest run lib/retention.integration.test.ts -t suppression` selects 5 tests across dry-run/anonymize/delete and all pass — CMP-15's gate.
+- A second real bug in `deleteProspects()`'s FK order was found and fixed concurrently (`61bf5cb`, landed independently of this continuation): `outreach_messages` carries its own no-`ON DELETE` foreign key onto `scans.id` (migration 012), and every prospect that reached the draft stage sets it — so the original order would have thrown `outreach_messages_scan_id_fkey` for essentially every real expiring prospect, not an edge case. Fixed by deleting outreach explicitly before the scans delete, with a regression test. Re-verified in this continuation: 36/36 retention integration tests pass.
 - **Task 3 resolved:** Joshua chose `stay-dry-run`. `RETENTION_MODE` stays unset. See "Task 3 Resolution" below for exactly what evidence was and was not gathered before that decision.
 
 ## Task Commits
@@ -114,12 +116,13 @@ Each task was committed atomically:
 
 1. **Task 1: Anonymise mode — field lists and the three-table pass** - `f501195` (feat) — completed in a prior, interrupted session; verified, not redone.
 2. **Task 2: Delete mode, the FK-safe order, and the monthly schedule** - `a275b18` (feat)
+2b. **Concurrent fix: second no-ON-DELETE FK on outreach_messages.scan_id** - `61bf5cb` (fix) — landed independently between this plan's pause and this continuation's close; see Deviations entry 4 below. Not authored by this continuation session; reviewed and verified as part of closing the plan.
 3. **Task 3: Deploy, read one real dry-run, and decide whether retention starts writing** - resolved by decision, no code change (`RETENTION_MODE` is not set anywhere). See below.
 
 ## Files Created/Modified
 
-- `lib/retention.ts` - `deleteProspects()` (new), chunking added to both writing functions, `runRetention()`'s delete arm wired
-- `lib/retention.integration.test.ts` - delete-mode describe block (9 tests), placeholder `mode: "delete"` rejection test removed, unused import removed
+- `lib/retention.ts` - `deleteProspects()` (new), chunking added to both writing functions, `runRetention()`'s delete arm wired, outreach deleted explicitly before scans (61bf5cb)
+- `lib/retention.integration.test.ts` - delete-mode describe block (9 tests), placeholder `mode: "delete"` rejection test removed, unused import removed, drafted-prospect FK regression test added (61bf5cb)
 - `vercel.json` - fifth cron entry for `/api/cron/retention`
 
 ## Task 3 Resolution
@@ -170,9 +173,17 @@ See `key-decisions` in frontmatter. Summary: kept the uncommitted chunking fix (
 - **Verification:** `grep -c 'delete_expired' lib/retention.ts` returns 0
 - **Committed in:** `a275b18`
 
+**4. [Rule 1 - Bug, fixed concurrently] `deleteProspects()` missed a second no-`ON DELETE` foreign key on `outreach_messages.scan_id`**
+- **Found during:** Between this plan's pause point and this continuation's close, by a concurrent process (commit `61bf5cb`, not authored by this continuation session).
+- **Issue:** `deleteProspects()` nulled `prospects.latest_scan_id`, deleted scans, then deleted prospects, relying on migration 012's `prospect_id` cascade to clear `outreach_messages`. That cascade only covers the `prospect_id` edge and fires at the prospect delete — after the scans delete. `outreach_messages` carries a second foreign key onto `scans` (`scan_id`, declared inline in migration 012 with no `ON DELETE` clause, defaulting to `NO ACTION` like the migration-013 pair T-07-33's original test covered). The scans delete therefore ran while outreach rows still pointed at the scans being removed, raising `outreach_messages_scan_id_fkey`. This was not an edge case: `lib/draft-on-scan-complete.ts` sets `scan_id` on every draft it inserts, so delete mode would have thrown for essentially every real expiring prospect that had reached the draft stage. The original test suite missed it because its fixture seeding never set `scan_id`.
+- **Fix:** Outreach is now deleted explicitly as step 2 (before the scans delete), and the delete's returned row count replaces a separate counting SELECT. A regression test seeds the drafted-prospect shape (`scan_id` set) and asserts the fix; verified it fails against the unfixed code with `outreach_messages_scan_id_fkey` and passes with the fix. The suite's own `afterEach` had the same ordering gap and was corrected alongside.
+- **Files modified:** `lib/retention.ts`, `lib/retention.integration.test.ts`
+- **Verification:** `npx vitest run lib/retention.integration.test.ts` — 36/36 pass (re-verified in this continuation); `npx tsc --noEmit` clean per the commit message.
+- **Committed in:** `61bf5cb`
+
 ### Not Auto-fixed — Recorded as Residuals
 
-**4. [Rule 4 - Architectural/authorization boundary] Task 3's decision was made without its own evidence-gathering steps**
+**5. [Rule 4 - Architectural/authorization boundary] Task 3's decision was made without its own evidence-gathering steps**
 - **Found during:** This continuation, resolving the Task 3 blocking checkpoint
 - **Issue:** Task 3's acceptance criteria require a production deploy, a Vercel dashboard cron confirmation, an authenticated production dry-run read, and a matching SQL count before any option is selected. Joshua answered the decision (`stay-dry-run`) directly, and this continuation was explicitly instructed not to deploy.
 - **Resolution:** Recorded honestly rather than treated as done. See "Task 3 Resolution" above and the corresponding WINDOWS.md entry for the unrun verification steps.
@@ -181,8 +192,8 @@ See `key-decisions` in frontmatter. Summary: kept the uncommitted chunking fix (
 
 ---
 
-**Total deviations:** 3 auto-fixed (Tasks 1-2) + 1 residual (Task 3, recorded not fixed)
-**Impact on plan:** The three auto-fixes were all necessary for Tasks 1-2's acceptance criteria to pass (build, vitest, grep checks) and touch nothing outside the anonymise/delete field lists, the FK order, or the cron schedule. The Task 3 residual is a deliberate authorization boundary, not a defect in the code — the code is correct and untriggered; the evidence that would justify triggering it has not been gathered.
+**Total deviations:** 4 auto-fixed (3 in Tasks 1-2 by this continuation's prior session, 1 real bug fixed concurrently in `61bf5cb`) + 1 residual (Task 3, recorded not fixed)
+**Impact on plan:** All four fixes were necessary for the plan's own acceptance criteria to hold — the concurrent fix in particular closes a gap that would have made delete mode fail for essentially every real prospect that reached the draft stage, which is squarely within this plan's own FK-safety guarantee (D-7-16, T-07-33) even though this continuation did not author the fix itself. Nothing touches outside the anonymise/delete field lists, the FK order, or the cron schedule. The Task 3 residual is a deliberate authorization boundary, not a defect in the code — the code is correct and untriggered; the evidence that would justify triggering it has not been gathered.
 
 ## Issues Encountered
 
@@ -223,6 +234,7 @@ What is carried forward, not closed by this plan:
 
 - FOUND: commit f501195 (Task 1)
 - FOUND: commit a275b18 (Task 2)
+- FOUND: commit 61bf5cb (concurrent FK fix, verified not authored by this continuation)
 - FOUND: lib/retention.ts
 - FOUND: lib/retention.integration.test.ts
 - FOUND: vercel.json
