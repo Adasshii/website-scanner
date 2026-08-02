@@ -5,15 +5,15 @@ milestone_name: milestone
 current_phase: 07
 current_phase_name: lifecycle-reporting-retention
 status: executing
-stopped_at: Completed 07-06-PLAN.md
-last_updated: "2026-08-01T22:57:02.118Z"
+stopped_at: 07-07 Tasks 1-2 complete and committed (f501195, a275b18); Task 3 blocking checkpoint reached, unresolved
+last_updated: "2026-08-02T14:42:53.984Z"
 last_activity: 2026-08-01
 last_activity_desc: Phase 07 execution started
 progress:
   total_phases: 8
-  completed_phases: 7
+  completed_phases: 8
   total_plans: 44
-  completed_plans: 43
+  completed_plans: 44
 ---
 
 # Project State
@@ -180,6 +180,8 @@ Recent decisions affecting current work:
 - [Phase ?]: [Phase 07-05]: D-7-08 sent-gate and ambiguity disambiguation share one outreach_messages query; an ambiguous surviving candidate set is dropped, never guessed, since booked_match_method='email' would be indistinguishable from a certainty
 - [Phase ?]: [Phase 07-06]: retentionFrom() is the single guarded table accessor keyed on RETENTION_TABLE_ALLOWLIST (3 entries); suppressions and leads deliberately absent, enforced by compile-time union + runtime check + integration test, not just a comment
 - [Phase ?]: [Phase 07-06]: chunked .in() lookups (RETENTION_ID_CHUNK_SIZE=150) added as a Rule 1 fix after a real {months:0} run against the 711-row local dev prospects table produced URI-too-long — RETENTION_MAX_BATCH(1000) permits a candidate set the un-chunked query could not survive
+- [Phase ?]: 07-07 Task 2: kept the uncommitted RETENTION_ID_CHUNK_SIZE chunking on anonymizeProspects()/deleteProspects() — matches the read-side pattern and closes a URI-too-long hazard at RETENTION_MAX_BATCH scale
+- [Phase ?]: 07-07 Task 2: .env.example left untouched — global permission settings deny all tool access to .env.* paths; RETENTION_MODE/RETENTION_MONTHS need a manual 2-line add before Task 3's deploy
 
 ### Pending Todos
 
@@ -197,14 +199,8 @@ The three prospect-quality todos were resolved by Phase 4.1 (moved to `.planning
 - **Scoring verdict-threshold divergence** (`lib/scoring.ts` vs `scanner-service/src/index.ts`, 95/85/70/50 vs 90/70/50) is scheduled as the first plan of Phase 6 but is not a numbered v1 requirement. REQUIREMENTS.md may need an addition — see ROADMAP Coverage Notes.
 - **Blast radius:** nothing in this milestone may risk the existing scanner's email or scanning. It works and it earns. Phase 4 verification watches the public scanner's success rate during bulk runs.
 - **Overture data quality** is a proven risk here, not theoretical — prior research produced a 98% false-positive read before correction. Manual sample audit required in Phase 1.
-- ~~Open follow-up: cited-number-vs-report locale match verified only against seeded fixture scans (report rendered English against a Dutch draft)~~ — RESOLVED by quick task 260730-oiy (2026-07-30). The report now resolves locale as cookie > prospect country > Accept-Language > "en", so a Dutch prospect's report renders Dutch by default and matches the Dutch draft that links to it. Verified end to end against a real dev server plus seeded NL/GB prospects. Still worth a spot-check on scan.adashi.io after deploy.
-- Behaviour change to watch after that deploy: `Accept-Language` is now honoured on every route, not only `/report/*`. Dutch-browser visitors to the public scanner homepage now get Dutch where they previously got English. Correct, but new.
-
-### Quick Tasks Completed
-
-| # | Description | Date | Commit | Directory |
-|---|-------------|------|--------|-----------|
-| 260730-oiy | Report page defaults to English for Dutch prospects — add locale resolution chain | 2026-07-30 | d6a5568 | [260730-oiy-report-page-defaults-to-english-for-dutc](./quick/260730-oiy-report-page-defaults-to-english-for-dutc/) |
+- Open follow-up: cited-number-vs-report locale match verified only against seeded fixture scans (report rendered English against a Dutch draft); confirm against a real NL crawl the first time this surface handles genuine production data
+- 07-07 Task 3 (checkpoint:decision, gate=blocking): production deploy + dashboard cron confirmation + live dry-run JSON + SQL count needed before RETENTION_MODE can be chosen (stay-dry-run / anonymize / delete)
 
 ### Roadmap Evolution
 
@@ -226,6 +222,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-08-01T22:57:02.104Z
-Stopped at: Completed 07-06-PLAN.md
-Resume file: None
+Last session: 2026-08-02T14:42:53.969Z
+Stopped at: 07-07 Tasks 1-2 complete and committed (f501195, a275b18); Task 3 blocking checkpoint reached, unresolved
+Resume file: .planning/phases/07-lifecycle-reporting-retention/07-07-PLAN.md (Task 3)
