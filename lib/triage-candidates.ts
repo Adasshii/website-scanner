@@ -10,7 +10,9 @@
 //     without a server round-trip per slide (D-07 "pure query").
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { TriageScore } from "@/types/triage";
+import { chunkIds } from "@/lib/chunk-ids";
 import { deriveLifecycleState, type FineLifecycleState, type LifecycleInputs } from "@/lib/lifecycle";
+import { SHORTLIST_ID_CHUNK_SIZE } from "@/lib/triage-constants";
 
 export interface TriageCandidate {
   id: string;
@@ -95,28 +97,44 @@ export async function getShortlist(sb: SupabaseClient): Promise<ShortlistRow[]> 
 
   // One extra round trip at this project's volume (10-50/week) is the right
   // trade against a view or a denormalised column (D-6-08 discretion note).
-  // Ordered ascending by created_at so both answers this single query serves
-  // are built from the same last-write-wins pass: draftedIds (any row at
-  // all) and the newest per-prospect status for stage resolution. Splitting
-  // this into two queries would let has_outreach_draft and the resolved
-  // stage describe different rows for the same prospect (Pitfall 4 — no
-  // UNIQUE constraint on prospect_id).
-  const { data: outreachRows, error: outreachError } = await sb
-    .from("outreach_messages")
-    .select("prospect_id, status, created_at")
-    .in(
-      "prospect_id",
-      rawRows.map((r) => r.id)
-    )
-    .order("created_at", { ascending: true });
-  if (outreachError) throw outreachError;
-  const draftedIds = new Set((outreachRows ?? []).map((r) => r.prospect_id as string));
+  // Both answers this single query serves — draftedIds (any row at all) and
+  // the newest per-prospect status for stage resolution — must come from
+  // one last-write-wins pass over the SAME accumulated rows. Splitting this
+  // into two queries would let has_outreach_draft and the resolved stage
+  // describe different rows for the same prospect (Pitfall 4 — no UNIQUE
+  // constraint on prospect_id).
+  //
+  // 07-09 (closing 07-REVIEW.md WR-02): rawRows grows with every triaged
+  // prospect, so the `.in("prospect_id", ids)` filter is issued in bounded
+  // chunks (SHORTLIST_ID_CHUNK_SIZE) rather than one unbounded call — this
+  // project already hit PostgREST's URL length limit with the identical
+  // query shape in lib/retention.ts at 711 rows. Each chunk keeps its own
+  // `.order("created_at", { ascending: true })`, but per-chunk ordering
+  // does not compose into global ordering: a later chunk's older row could
+  // otherwise overwrite an earlier chunk's newer one in the last-write-wins
+  // pass below. So the accumulated rows are re-sorted by created_at
+  // ascending, globally, before that pass runs — never built incrementally
+  // inside the chunk loop.
+  const idChunks = chunkIds(
+    rawRows.map((r) => r.id),
+    SHORTLIST_ID_CHUNK_SIZE
+  );
+  const outreachRows: { prospect_id: string; status: string; created_at: string }[] = [];
+  for (const idChunk of idChunks) {
+    const { data, error } = await sb
+      .from("outreach_messages")
+      .select("prospect_id, status, created_at")
+      .in("prospect_id", idChunk)
+      .order("created_at", { ascending: true });
+    if (error) throw error;
+    outreachRows.push(...(data ?? []));
+  }
+  outreachRows.sort((a, b) => Date.parse(a.created_at) - Date.parse(b.created_at));
+
+  const draftedIds = new Set(outreachRows.map((r) => r.prospect_id));
   const latestOutreachStatus = new Map<string, LifecycleInputs["outreachStatus"]>();
-  for (const message of outreachRows ?? []) {
-    latestOutreachStatus.set(
-      message.prospect_id as string,
-      message.status as LifecycleInputs["outreachStatus"]
-    );
+  for (const message of outreachRows) {
+    latestOutreachStatus.set(message.prospect_id, message.status as LifecycleInputs["outreachStatus"]);
   }
 
   return rawRows.map((row) => {

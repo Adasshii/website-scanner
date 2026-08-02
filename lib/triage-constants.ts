@@ -17,6 +17,19 @@ export const MAX_BODY_BYTES = 5 * 1024 * 1024; // tunable default — 5MB body-r
 export const BATCH_SIZE = 5; // tunable default — concurrent fetches in flight
 export const BATCH_DELAY_MS = 500; // tunable default — gap between batches
 
+// ── Shortlist query chunking (07-09, closing 07-REVIEW.md WR-02) ───
+// getShortlist()'s outreach lookup filters on `.in("prospect_id", ids)`
+// against every triaged prospect — a set that only grows. PostgREST
+// URL-encodes an `.in()` filter into the request's query string, and this
+// project already hit the gateway's URL length limit ("URI too long") with
+// the identical query shape in lib/retention.ts at 711 rows in this
+// project's own local database (see lib/retention-constants.ts's
+// RETENTION_ID_CHUNK_SIZE). This is a separate constant from that one —
+// not an import of it — so the two surfaces can be tuned apart rather than
+// coupled by an import that also drags retention's RETENTION_MODE config
+// resolution into the admin read path.
+export const SHORTLIST_ID_CHUNK_SIZE = 150; // tunable default
+
 // ── Cutoff & ceiling (D-03/D-04, TRI-08/TRI-09) ────────────────────
 export const DEFAULT_CUTOFF = 60; // tunable default — score <= cutoff is eligible
 export const RELEASE_CEILING = 20; // tunable default — hard per-release-invocation cap (D-06)

@@ -15,6 +15,7 @@ import { afterEach, beforeAll, describe, expect, it } from "vitest";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createServerClient } from "@/lib/supabase";
 import type { TriageScore } from "@/types/triage";
+import { SHORTLIST_ID_CHUNK_SIZE } from "@/lib/triage-constants";
 import { getShortlist, getTriageCandidates } from "./triage-candidates";
 
 process.env.NEXT_PUBLIC_SUPABASE_URL = "http://127.0.0.1:54321";
@@ -97,6 +98,31 @@ async function seedOutreachMessage(
     ...(overrides?.createdAt !== undefined ? { created_at: overrides.createdAt } : {}),
   });
   if (error) throw error;
+}
+
+/**
+ * Bulk-inserts `count` already-triaged, minimal filler prospects in one
+ * round trip (07-09) — used only to push the shortlist's prospect_id id
+ * list past SHORTLIST_ID_CHUNK_SIZE so getShortlist()'s outreach lookup
+ * issues more than one chunked query. Individual seedProspect() calls would
+ * work but are far slower at this row count.
+ */
+async function seedManyTriagedProspects(count: number): Promise<string[]> {
+  const rows = Array.from({ length: count }, () => {
+    domainCounter += 1;
+    const domain = `triage-candidates-bulk-${domainCounter}.test`;
+    return {
+      domain,
+      website_url: `https://${domain}`,
+      country: "NL",
+      campaign_tag: CAMPAIGN_TAG,
+      triage_score: makeTriageScore(),
+      triage_checked_at: new Date().toISOString(),
+    };
+  });
+  const { data, error } = await sb.from("prospects").insert(rows).select("id");
+  if (error) throw error;
+  return (data ?? []).map((r) => r.id as string);
 }
 
 describe("getTriageCandidates", () => {
@@ -288,5 +314,48 @@ describe("getShortlist", () => {
       expect(row.stage).toBeDefined();
       expect(validStages.has(row.stage)).toBe(true);
     }
+  });
+
+  // 07-09 (closing 07-REVIEW.md WR-02): getShortlist()'s outreach lookup
+  // now chunks its `.in("prospect_id", ids)` filter at SHORTLIST_ID_CHUNK_SIZE.
+  // These two cases cross that boundary — read from the constant, never
+  // hardcoded — rather than merely proving the chunked code compiles.
+
+  it("returns every row with correct has_outreach_draft and stage once the id list crosses the chunk boundary", async () => {
+    const fillerIds = await seedManyTriagedProspects(SHORTLIST_ID_CHUNK_SIZE + 5);
+    const contactedId = fillerIds[0];
+    const untouchedId = fillerIds[fillerIds.length - 1];
+    await seedOutreachMessage(contactedId, { status: "sent" });
+
+    const shortlist = await getShortlist(sb);
+    const shortlistIds = new Set(shortlist.map((r) => r.id));
+
+    // Completeness: every seeded id came back, not just the first chunk's.
+    for (const id of fillerIds) {
+      expect(shortlistIds.has(id)).toBe(true);
+    }
+
+    const contactedRow = shortlist.find((r) => r.id === contactedId);
+    expect(contactedRow?.has_outreach_draft).toBe(true);
+    expect(contactedRow?.stage).toBe("contacted");
+
+    const untouchedRow = shortlist.find((r) => r.id === untouchedId);
+    expect(untouchedRow?.has_outreach_draft).toBe(false);
+    expect(untouchedRow?.stage).toBe("triaged");
+  });
+
+  it("resolves stage from the newest of two outreach rows for one prospect even when the fixture set spans two chunks", async () => {
+    const fillerIds = await seedManyTriagedProspects(SHORTLIST_ID_CHUNK_SIZE + 5);
+    const targetId = await seedProspect({ triageScore: makeTriageScore() });
+    await seedOutreachMessage(targetId, { status: "sent", createdAt: "2026-01-01T00:00:00.000Z" });
+    await seedOutreachMessage(targetId, { status: "draft", createdAt: "2026-01-02T00:00:00.000Z" });
+
+    const shortlist = await getShortlist(sb);
+    expect(shortlist.length).toBeGreaterThan(SHORTLIST_ID_CHUNK_SIZE);
+    expect(fillerIds.every((id) => shortlist.some((r) => r.id === id))).toBe(true);
+
+    const targetRow = shortlist.find((r) => r.id === targetId);
+    expect(targetRow?.stage).toBe("drafted");
+    expect(targetRow?.has_outreach_draft).toBe(true);
   });
 });

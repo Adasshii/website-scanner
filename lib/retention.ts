@@ -4,6 +4,7 @@
 // test can drive it against a local test client (mirrors lib/scan-queue.ts's
 // armBatch() convention). Never performs HTTP.
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { chunkIds } from "@/lib/chunk-ids";
 import {
   ANONYMIZED_OUTREACH_FIELDS,
   ANONYMIZED_PROSPECT_FIELDS,
@@ -16,14 +17,6 @@ import {
   type RetentionMode,
   type RetentionTable,
 } from "@/lib/retention-constants";
-
-function chunkIds(ids: string[], size: number): string[][] {
-  const chunks: string[][] = [];
-  for (let i = 0; i < ids.length; i += size) {
-    chunks.push(ids.slice(i, i + size));
-  }
-  return chunks;
-}
 
 export interface ExpiringProspect {
   id: string;
