@@ -326,7 +326,7 @@ Notes:
   4. Prospect, scan, and outreach data past the retention window expires on a schedule, deleting or anonymising by config rather than by hardcoding (CMP-13, CMP-14)
   5. Suppression records survive the retention job and are flagged in code as permanently exempt (CMP-15)
 
-**Plans**: 7/10 plans executed (07-01…07-07 done; 07-08…07-10 are gap-closure plans for success criterion 4, added 2026-08-02 after verification scored 3/5)
+**Plans**: 8/10 plans executed
 **UI hint**: yes
 
 Plans:
@@ -357,7 +357,7 @@ Plans:
 
 **Wave 7** *(gap closure — blocked on Wave 6 completion)*
 
-- [ ] 07-08-PLAN.md — `prospect_sources` anonymisation: the decision, the code path, and the test that pins it (closes FA-CMP-13-SOURCES / WR-03)
+- [x] 07-08-PLAN.md — `prospect_sources` anonymisation: the decision, the code path, and the test that pins it (closes FA-CMP-13-SOURCES / WR-03)
 
 **Wave 8** *(gap closure — blocked on Wave 7 completion)*
 
@@ -415,7 +415,7 @@ Phase 8 does not begin until the Parallel Track closes, regardless of numeric or
 | 4. Bulk Scan Queue | 6/6 | Complete    | 2026-07-23 |
 | 5. Contact Extraction & Classification | 4/4 | Complete    | 2026-07-27 |
 | 6. Draft Generation & Approval Queue | 8/8 | Complete    | 2026-07-30 |
-| 7. Lifecycle, Reporting & Retention | 7/7 | In Progress|  |
+| 7. Lifecycle, Reporting & Retention | 8/10 | In Progress|  |
 | 8. Send — GATED | 0/TBD | Blocked (send-path decision) | - |
 
 ## Coverage

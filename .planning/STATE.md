@@ -5,15 +5,15 @@ milestone_name: milestone
 current_phase: 07
 current_phase_name: lifecycle-reporting-retention
 status: executing
-stopped_at: Phase 07 gap plans 07-08/09/10 written and checked; ready to execute --gaps-only
-last_updated: "2026-08-02T18:05:00.000Z"
+stopped_at: Completed 07-08-PLAN.md (FA-CMP-13-SOURCES closed, B-delete-source-rows)
+last_updated: "2026-08-02T19:28:37.818Z"
 last_activity: 2026-08-02
-last_activity_desc: Verification gaps planned — 3 gap-closure plans created (waves 7-9)
+last_activity_desc: Phase 07 execution started
 progress:
   total_phases: 8
   completed_phases: 7
   total_plans: 47
-  completed_plans: 44
+  completed_plans: 45
 ---
 
 # Project State
@@ -28,20 +28,23 @@ See: .planning/PROJECT.md (updated 2026-07-17)
 ## Current Position
 
 Phase: 07 (lifecycle-reporting-retention) — EXECUTING
-Plan: 7 of 10 complete (07-01…07-07 done; gap plans 07-08/09/10 planned, not started)
-Status: Ready to execute — gap closure
-Last activity: 2026-08-02 — 3 gap-closure plans written (waves 7-9), plan-checker passed
+Plan: 2 of 10
+Status: Ready to execute
+Last activity: 2026-08-02 — Phase 07 execution started
 
-Progress: [█████████░] 94%
+Progress: [██████████] 96%
 
 Closing the two verification gaps (see 07-VERIFICATION.md):
+
 1. 07-08 (wave 7) — `prospect_sources` anonymisation. Blocking decision checkpoint (clear the raw_*
    columns / delete the source rows / record permanently out of scope), then the code path and a test
    that pins whichever branch is chosen. Note `overture_gers_id` is not-null-unique and resolves to
    the business publicly, so under two of the three options this is pseudonymisation, not anonymisation.
+
 2. 07-09 (wave 8) — candidate-set correctness. Folds in code-review WR-02 (unchunked `.in()` in
    getShortlist, same PostgREST URI-length bug retention already fixed) and WR-01 (booking attribution
    `.limit(2)` misattributes at 3+ shared emails).
+
 3. 07-10 (wave 9) — deploy the cron, gather six separately-checkable evidence steps, hand-add the
    .env.example lines, close both WINDOWS entries. Marks CMP-14 complete; CMP-13 stays Partial because
    stay-dry-run means the job reports rather than expires.
@@ -113,6 +116,7 @@ Next: `/gsd-execute-phase 07 --gaps-only` (sequential, one executor at a time)
 | Phase 07 P05 | ~45min | 2 tasks | 3 files |
 | Phase 07 P06 | ~1h10min | 2 tasks | 5 files |
 | Phase 07 P07 | ~40min | 3 tasks | 3 files |
+| Phase 07 P08 | 20min | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -198,6 +202,7 @@ Recent decisions affecting current work:
 - [Phase ?]: 07-07 Task 2: kept the uncommitted RETENTION_ID_CHUNK_SIZE chunking on anonymizeProspects()/deleteProspects() — matches the read-side pattern and closes a URI-too-long hazard at RETENTION_MAX_BATCH scale
 - [Phase ?]: 07-07 Task 2: .env.example left untouched — global permission settings deny all tool access to .env.* paths; RETENTION_MODE/RETENTION_MONTHS need a manual 2-line add before Task 3's deploy
 - [Phase ?]: [Phase 07-07] Task 3 resolved as stay-dry-run — RETENTION_MODE left unset per D-7-18's default, decided directly by Joshua without running the deploy/dashboard/dry-run/SQL evidence steps the task itself specifies; carried forward as WINDOWS.md #2
+- [Phase ?]: FA-CMP-13-SOURCES resolved as B-delete-source-rows: prospect_sources rows deleted outright during anonymise (not field-list-cleared) because overture_gers_id is not-null/unique and upsertOverturePlace's re-import match on it would silently undo an in-place clear; accepted cost is a duplicate prospect row on the next regional import
 
 ### Pending Todos
 
@@ -238,6 +243,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-08-02T15:19:08.946Z
-Stopped at: 07-07 complete (3/3 tasks); Task 3 resolved stay-dry-run, RETENTION_MODE unset, phase 07 awaiting verification
+Last session: 2026-08-02T19:28:37.773Z
+Stopped at: Completed 07-08-PLAN.md (FA-CMP-13-SOURCES closed, B-delete-source-rows)
 Resume file: None
