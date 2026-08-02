@@ -5,15 +5,15 @@ milestone_name: milestone
 current_phase: 07
 current_phase_name: lifecycle-reporting-retention
 status: executing
-stopped_at: Completed 07-08-PLAN.md (FA-CMP-13-SOURCES closed, B-delete-source-rows)
-last_updated: "2026-08-02T19:28:37.818Z"
+stopped_at: Completed 07-09-PLAN.md (WR-01/WR-02 closed)
+last_updated: "2026-08-02T19:38:54.074Z"
 last_activity: 2026-08-02
 last_activity_desc: Phase 07 execution started
 progress:
   total_phases: 8
   completed_phases: 7
   total_plans: 47
-  completed_plans: 45
+  completed_plans: 46
 ---
 
 # Project State
@@ -28,11 +28,11 @@ See: .planning/PROJECT.md (updated 2026-07-17)
 ## Current Position
 
 Phase: 07 (lifecycle-reporting-retention) — EXECUTING
-Plan: 2 of 10
+Plan: 3 of 10
 Status: Ready to execute
 Last activity: 2026-08-02 — Phase 07 execution started
 
-Progress: [██████████] 96%
+Progress: [██████████] 98%
 
 Closing the two verification gaps (see 07-VERIFICATION.md):
 
@@ -117,6 +117,7 @@ Next: `/gsd-execute-phase 07 --gaps-only` (sequential, one executor at a time)
 | Phase 07 P06 | ~1h10min | 2 tasks | 5 files |
 | Phase 07 P07 | ~40min | 3 tasks | 3 files |
 | Phase 07 P08 | 20min | 2 tasks | 4 files |
+| Phase 07 P09 | ~45min | 2 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -203,6 +204,9 @@ Recent decisions affecting current work:
 - [Phase ?]: 07-07 Task 2: .env.example left untouched — global permission settings deny all tool access to .env.* paths; RETENTION_MODE/RETENTION_MONTHS need a manual 2-line add before Task 3's deploy
 - [Phase ?]: [Phase 07-07] Task 3 resolved as stay-dry-run — RETENTION_MODE left unset per D-7-18's default, decided directly by Joshua without running the deploy/dashboard/dry-run/SQL evidence steps the task itself specifies; carried forward as WINDOWS.md #2
 - [Phase ?]: FA-CMP-13-SOURCES resolved as B-delete-source-rows: prospect_sources rows deleted outright during anonymise (not field-list-cleared) because overture_gers_id is not-null/unique and upsertOverturePlace's re-import match on it would silently undo an in-place clear; accepted cost is a duplicate prospect row on the next regional import
+- [Phase ?]: [Phase 07-09]: chunkIds() moved to a new dependency-free lib/chunk-ids.ts (not exported from lib/retention.ts) so getShortlist()'s admin read path never imports RETENTION_MODE's module-scope config resolution
+- [Phase ?]: [Phase 07-09]: getShortlist()'s chunked outreach rows are accumulated across all chunks and globally re-sorted by created_at before the last-write-wins draftedIds/latestOutreachStatus pass, never built incrementally inside the chunk loop
+- [Phase ?]: [Phase 07-09]: attributeBookingToProspect()'s two candidate queries dropped their .limit(2) cap entirely rather than raising it -- ambiguity is decided by the post-sent-gate set size (gatedIds.size), and the now-uncapped query's own DoS exposure is accepted (T-07-09-03), not chunked, since it is bounded in practice by one mailbox's shared prospect count
 
 ### Pending Todos
 
@@ -243,6 +247,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-08-02T19:28:37.773Z
-Stopped at: Completed 07-08-PLAN.md (FA-CMP-13-SOURCES closed, B-delete-source-rows)
+Last session: 2026-08-02T19:38:54.062Z
+Stopped at: Completed 07-09-PLAN.md (WR-01/WR-02 closed)
 Resume file: None
