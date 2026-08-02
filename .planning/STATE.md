@@ -11,7 +11,7 @@ last_activity: 2026-08-02
 last_activity_desc: Plans 07-03 … 07-06 executed; 07-07 paused at its blocking gate
 progress:
   total_phases: 8
-  completed_phases: 8
+  completed_phases: 7
   total_plans: 44
   completed_plans: 44
 ---
@@ -28,11 +28,19 @@ See: .planning/PROJECT.md (updated 2026-07-17)
 ## Current Position
 
 Phase: 07 (lifecycle-reporting-retention) — EXECUTING
-Plan: 7 of 7 (07-07 at 2/3 tasks — Task 3 blocking checkpoint unresolved)
-Status: Awaiting human decision on the retention write mode
-Last activity: 2026-08-02 — Plans 07-03 … 07-06 executed; 07-07 paused at its blocking gate
+Plan: 7 of 7 (all plans complete)
+Status: VERIFICATION FAILED — gaps_found, 3/5 must-haves. Phase NOT complete.
+Last activity: 2026-08-02 — Phase 07 executed and verified; criterion 4 (retention) has gaps
 
-Progress: [██████████] 100%
+Progress: [█████████░] 98%
+
+Blocking phase completion (see 07-VERIFICATION.md):
+1. The retention cron is committed to vercel.json but never deployed — nothing expires on a schedule yet.
+2. Anonymise mode never clears `prospect_sources`, whose raw_name/raw_address/raw_website_url stay
+   joinable to the "anonymised" prospect by prospect_id. Delete mode is unaffected (ON DELETE CASCADE).
+   Self-flagged as FA-CMP-13-SOURCES; needs the pending LIA's legal input, not just a code change.
+
+Next: `/gsd-plan-phase 07 --gaps`
 
 ## Performance Metrics
 
