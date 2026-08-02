@@ -5,7 +5,7 @@ milestone_name: milestone
 current_phase: 07
 current_phase_name: lifecycle-reporting-retention
 status: executing
-stopped_at: Completed 07-09-PLAN.md (WR-01/WR-02 closed)
+stopped_at: 07-10 blocked at Tasks 1-2 (human-only — .env.example hand-add + production deploy and evidence); 07-08/07-09 complete
 last_updated: "2026-08-02T19:38:54.074Z"
 last_activity: 2026-08-02
 last_activity_desc: Phase 07 execution started
@@ -28,11 +28,28 @@ See: .planning/PROJECT.md (updated 2026-07-17)
 ## Current Position
 
 Phase: 07 (lifecycle-reporting-retention) — EXECUTING
-Plan: 3 of 10
-Status: Ready to execute
-Last activity: 2026-08-02 — Phase 07 execution started
+Plan: 9 of 10 complete (07-08, 07-09 done; 07-10 at 0/3, blocked on human action)
+Status: BLOCKED — awaiting Joshua's deploy and evidence
+Last activity: 2026-08-02 — gap waves 7-8 executed; wave 9 handed over at its human gate
 
-Progress: [██████████] 98%
+Progress: [█████████░] 98%
+
+07-10 Tasks 1 and 2 are human-only and were handed over together:
+1. Append RETENTION_MODE= and RETENTION_MONTHS= (both empty, with their comment lines) to
+   .env.example. No agent can do this — tool access to .env.* paths is denied per
+   .claude/rules/secrets.md.
+2. `npx vercel --prod` from repo root (not git-connected — a push ships nothing), then four
+   evidence steps: dashboard shows five crons including /api/cron/retention at `0 3 1 * *`;
+   one authenticated GET returning `mode` = the non-writing default; the same GET unauthenticated
+   returning a refusal; and a Supabase SQL count that references all three clock sources
+   (outreach_messages.sent_at, scans.created_at, prospects.created_at) matching the route's
+   `expiring` figure.
+
+Halt conditions: if `mode` reads a writing value, RETENTION_MODE is already set in the Vercel
+environment — stop, do not re-issue. If the SQL count disagrees with `expiring`, that is a finding
+about lib/retention.ts, not something to reconcile by adjusting the SQL.
+
+Next: paste the five evidence blocks back, then Task 3 transcribes them and closes the phase.
 
 Closing the two verification gaps (see 07-VERIFICATION.md):
 
