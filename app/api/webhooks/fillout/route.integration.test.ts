@@ -312,6 +312,100 @@ describe("POST /api/webhooks/fillout — booking attribution (TRK-04)", () => {
     expect(b.booked_at).toBeNull();
   });
 
+  // 07-09 (closing 07-REVIEW.md WR-01): the previous .limit(2) candidate cap
+  // could never reach 3 candidates. These cases prove the post-gate set,
+  // not a query limit, decides the outcome now that the cap is removed.
+
+  it("3 candidates, 1 gated: a booking attributes to the sole sent-gated prospect even though the capped query would have missed it", async () => {
+    const sharedEmail = `shared3-${randomUUID()}@ambiguous.test`;
+    const prospectA = await seedProspect({ contactEmail: sharedEmail, domain: null });
+    const prospectB = await seedProspect({ contactEmail: sharedEmail, domain: null });
+    const prospectC = await seedProspect({ contactEmail: sharedEmail, domain: null });
+    // Neither A nor B (the two rows a .limit(2) query would have returned,
+    // in insertion order) has any sent outreach — only C, the third
+    // candidate, does.
+    await seedOutreach(prospectA, "draft");
+    await seedOutreach(prospectB, "draft");
+    await seedOutreach(prospectC, "sent");
+
+    const res = await postBooking(sharedEmail);
+    const body = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(body.prospectAttribution).toBe("attributed");
+    const a = await getProspect(prospectA);
+    const b = await getProspect(prospectB);
+    const c = await getProspect(prospectC);
+    expect(c.booked_at).not.toBeNull();
+    expect(c.booked_match_method).toBe("email");
+    expect(a.booked_at).toBeNull();
+    expect(b.booked_at).toBeNull();
+  });
+
+  it("3 candidates, 2 gated: ambiguous, no booked_at written to any of the three", async () => {
+    const sharedEmail = `shared3-${randomUUID()}@ambiguous.test`;
+    const prospectA = await seedProspect({ contactEmail: sharedEmail, domain: null });
+    const prospectB = await seedProspect({ contactEmail: sharedEmail, domain: null });
+    const prospectC = await seedProspect({ contactEmail: sharedEmail, domain: null });
+    await seedOutreach(prospectA, "sent");
+    await seedOutreach(prospectB, "sent");
+    await seedOutreach(prospectC, "draft");
+
+    const res = await postBooking(sharedEmail);
+    const body = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(body.prospectAttribution).toBe("ambiguous");
+    expect((await getProspect(prospectA)).booked_at).toBeNull();
+    expect((await getProspect(prospectB)).booked_at).toBeNull();
+    expect((await getProspect(prospectC)).booked_at).toBeNull();
+  });
+
+  it("3 candidates, 0 gated: no_sent_outreach, no booked_at written to any of the three", async () => {
+    const sharedEmail = `shared3-${randomUUID()}@ambiguous.test`;
+    const prospectA = await seedProspect({ contactEmail: sharedEmail, domain: null });
+    const prospectB = await seedProspect({ contactEmail: sharedEmail, domain: null });
+    const prospectC = await seedProspect({ contactEmail: sharedEmail, domain: null });
+    await seedOutreach(prospectA, "draft");
+    await seedOutreach(prospectB, "draft");
+    await seedOutreach(prospectC, "draft");
+
+    const res = await postBooking(sharedEmail);
+    const body = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(body.prospectAttribution).toBe("no_sent_outreach");
+    expect((await getProspect(prospectA)).booked_at).toBeNull();
+    expect((await getProspect(prospectB)).booked_at).toBeNull();
+    expect((await getProspect(prospectC)).booked_at).toBeNull();
+  });
+
+  it("step 1 never falls through to step 2: three ungated same-address prospects block attribution even though a fourth, domain-only prospect is sent-gated", async () => {
+    const sharedEmail = `shared3-${randomUUID()}@ambiguous.test`;
+    const sharedDomain = sharedEmail.split("@")[1];
+    const prospectA = await seedProspect({ contactEmail: sharedEmail, domain: null });
+    const prospectB = await seedProspect({ contactEmail: sharedEmail, domain: null });
+    const prospectC = await seedProspect({ contactEmail: sharedEmail, domain: null });
+    await seedOutreach(prospectA, "draft");
+    await seedOutreach(prospectB, "draft");
+    await seedOutreach(prospectC, "draft");
+    // Shares only the domain half of the booking address, not the address
+    // itself, and IS sent-gated — a domain-fallback attribution here would
+    // be a wrong hand-off to a business that merely shares a domain.
+    const domainOnlyProspect = await seedProspect({ contactEmail: null, domain: sharedDomain });
+    await seedOutreach(domainOnlyProspect, "sent");
+
+    const res = await postBooking(sharedEmail);
+    const body = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(body.prospectAttribution).toBe("no_sent_outreach");
+    expect((await getProspect(prospectA)).booked_at).toBeNull();
+    expect((await getProspect(prospectB)).booked_at).toBeNull();
+    expect((await getProspect(prospectC)).booked_at).toBeNull();
+    expect((await getProspect(domainOnlyProspect)).booked_at).toBeNull();
+  });
+
   it("leaves the pre-existing leads behaviour and response fields unchanged, and adds prospectAttribution", async () => {
     const domain = fixtureDomain();
     const email = `info@${domain}`;

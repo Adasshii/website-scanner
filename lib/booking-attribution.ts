@@ -36,18 +36,33 @@ const NO_MATCH: BookingAttribution = { outcome: "no_match", prospectId: null, ma
  * sent-gate allows it, writes that prospect's `booked_at`/`booked_match_method`.
  *
  * Candidate resolution:
- *   1. Email-exact match on `contact_email` (a bounded, two-row-capped array
- *      query, never a Supabase terminator that throws on >1 row —
- *      `contact_email` carries no unique index, so a shared mailbox is an
- *      ordinary data state, not an anomaly. This closes FA-TRK-04.)
- *   2. Only when step 1 finds nothing: domain fallback on `domain`, also a
- *      bounded, two-row-capped array query, screened through the same
- *      aggregator-domain helper `upsertOverturePlace()` uses so this module
- *      never grows a second denylist.
+ *   1. Email-exact match on `contact_email` — an unbounded array query
+ *      (07-09, closing 07-REVIEW.md WR-01), never a Supabase terminator that
+ *      throws on >1 row: `contact_email` carries no unique index, so a
+ *      shared mailbox is an ordinary data state, not an anomaly. This closes
+ *      FA-TRK-04.
+ *   2. Only when step 1 finds nothing: domain fallback on `domain`, also an
+ *      unbounded array query, screened through the same aggregator-domain
+ *      helper `upsertOverturePlace()` uses so this module never grows a
+ *      second denylist.
  * A found-but-not-attributable prospect from step 1 is not a miss — this
  * never falls through to step 2 once step 1 found rows, even if the contact
  * gate below then rejects them. Falling through would hand the booking to a
  * different prospect that merely shares the domain.
+ *
+ * Neither candidate query is capped. Ambiguity is a property of the
+ * post-gate candidate set (`gatedIds.size` below), not of a query limit — a
+ * `.limit(2)` here could return two ungated rows while the one genuinely
+ * gated prospect fell outside the fetched set, silently reporting
+ * `no_sent_outreach` or crediting the wrong prospect once 3+ prospects share
+ * an email (07-REVIEW.md WR-01). The candidate set this removal exposes the
+ * function to is bounded honestly, not left unbounded: it is as large as the
+ * number of prospects sharing one mailbox address, which at 10-50 prospects
+ * a week over roughly 800 rows is a handful — well under
+ * SHORTLIST_ID_CHUNK_SIZE, the threshold lib/triage-candidates.ts documents
+ * for the same `.in()` shape elsewhere. That is the accepted reason no
+ * chunking is added here; revisit only if a single address is ever observed
+ * on more than a few dozen prospects.
  */
 export async function attributeBookingToProspect(
   sb: SupabaseClient,
@@ -61,8 +76,7 @@ export async function attributeBookingToProspect(
   const { data: emailMatches, error: emailError } = await sb
     .from("prospects")
     .select("id")
-    .eq("contact_email", address)
-    .limit(2);
+    .eq("contact_email", address);
   if (emailError) throw emailError;
 
   let candidateIds: string[];
@@ -83,8 +97,7 @@ export async function attributeBookingToProspect(
     const { data: domainMatches, error: domainError } = await sb
       .from("prospects")
       .select("id")
-      .eq("domain", domain)
-      .limit(2);
+      .eq("domain", domain);
     if (domainError) throw domainError;
 
     if (!domainMatches || domainMatches.length === 0) {
