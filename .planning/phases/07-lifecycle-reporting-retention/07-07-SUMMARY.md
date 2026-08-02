@@ -13,7 +13,8 @@ provides:
   - deleteProspects() — FK-safe three-statement delete pass, proven load-bearing by a dedicated test
   - runRetention() with all three modes wired (dry-run, anonymize, delete)
   - vercel.json monthly cron entry for /api/cron/retention (0 3 1 * *)
-affects: [phase-closure, LIA/legal-review, future retention-window changes]
+  - Task 3 decision on record: RETENTION_MODE stays unset (stay-dry-run)
+affects: [phase-closure, LIA/legal-review, future retention-window changes, production-deploy]
 
 # Tech tracking
 tech-stack:
@@ -33,9 +34,10 @@ key-decisions:
   - "Kept the uncommitted executor's chunking fix for both anonymizeProspects() and deleteProspects() — matches the existing read-side pattern and prevents the same URI-too-long failure at RETENTION_MAX_BATCH scale that 07-06 already found for reads."
   - "Reworded the deleteProspects() doc comment to stop naming the two dead migration-001 retention functions literally (delete_expired_scans / delete_expired_leads) — Task 1's own prohibition check (`grep -c 'delete_expired' lib/retention.ts` returns 0) is a literal string-absence check with no comment exclusion, and the uncommitted comment tripped it."
   - "Removed an unused ANONYMIZED_OUTREACH_FIELDS import left over in the test file from Task 1 (the outreach anonymise test hardcodes draft_subject/draft_body instead of iterating the constant) — this was a pre-existing lint error blocking npm run build, which is a hard acceptance criterion for Task 2."
-  - ".env.example was not touched. This session's global Claude Code permission settings deny all Read/Bash access to any path matching .env.* — including .env.example, which carries no secrets — with no override available inside this session. Documented below as a deferred item for Joshua to add by hand."
+  - ".env.example was not touched. This session's global Claude Code permission settings deny all Read/Bash access to any path matching .env.* — including .env.example, which carries no secrets — with no override available inside this session. Carried as WINDOWS.md entry #1 for Joshua to add by hand."
+  - "Task 3 resolved as stay-dry-run WITHOUT running its own evidence-gathering steps (deploy, dashboard cron confirmation, authenticated dry-run read, SQL cross-check). Joshua answered the decision directly; the continuation executor was explicitly instructed not to deploy. See 'Task 3 Resolution' below for exactly what was and was not done."
 
-requirements-completed: []  # CMP-13/14/15 not marked complete — Task 3's decision is what phase-level checks (line 632 of the plan) treat as closing them; see 'Next Phase Readiness' below.
+requirements-completed: []  # CMP-13/14/15 deliberately NOT marked complete — see 'Task 3 Resolution': the decision is on record but its own evidence steps (deploy, dashboard, live dry-run, SQL count) were not run, and the plan's own cons text for stay-dry-run says the CMP-13 gap ("a job that reports rather than a job that expires") must be recorded as an open item, not implied closed.
 
 coverage:
   - id: D1
@@ -75,35 +77,36 @@ coverage:
     requirement: "CMP-13/14/15 (phase closure)"
     verification: []
     human_judgment: true
-    rationale: "Task 3 is a blocking checkpoint:decision by design (D-7-16's one-way-door reversibility). It requires a live Vercel deploy, a dashboard check, an authenticated production HTTP call, and a hand-run SQL count — none of which this executor may perform without a human decision on the record."
+    rationale: "Task 3 is a blocking checkpoint:decision by design (D-7-16's one-way-door reversibility). Joshua answered the decision directly as stay-dry-run — the option D-7-18 specifies as the default — without the continuation executor running the deploy, dashboard check, authenticated production HTTP call, or hand-run SQL count the task's own acceptance criteria call for. RETENTION_MODE is unset everywhere and no deploy was performed. The evidence gap is carried forward, not silently closed — see 'Task 3 Resolution' below."
 
 # Metrics
-duration: ~35min (this session; Task 1 was completed in a prior interrupted session)
+duration: ~40min (this session: ~35min Tasks 1-2 in a prior interrupted session, plus this continuation resolving Task 3)
 completed: 2026-08-02
-status: blocked
+status: complete
 ---
 
 # Phase 7 Plan 07: Retention anonymise/delete modes and the monthly cron Summary
 
-**Delete mode's FK-safe three-statement order (null latest_scan_id, delete scans, delete prospects) proven load-bearing by a dedicated test, both writing modes chunked at RETENTION_ID_CHUNK_SIZE, and a fifth vercel.json cron entry — Task 3's production mode decision deliberately left unresolved.**
+**Delete mode's FK-safe three-statement order (null latest_scan_id, delete scans, delete prospects) proven load-bearing by a dedicated test, both writing modes chunked at RETENTION_ID_CHUNK_SIZE, a fifth vercel.json cron entry, and Task 3 resolved as stay-dry-run — decided directly by Joshua, without the deploy/dashboard/dry-run/SQL evidence steps the task itself calls for.**
 
 ## Performance
 
-- **Duration:** ~35 min this session (resuming Task 2, uncommitted on disk at session start)
-- **Started:** 2026-08-02T14:32Z (this session)
-- **Completed:** 2026-08-02T14:41Z (Task 2 committed; Task 3 checkpoint reached)
-- **Tasks:** 2 of 3 complete (Task 3 is a blocking checkpoint, intentionally not executed)
+- **Duration:** ~35 min Tasks 1-2 (prior session) + this continuation resolving Task 3
+- **Started:** 2026-08-02T14:32Z (Tasks 1-2 session)
+- **Completed:** 2026-08-02 (Task 3 resolved, plan closed)
+- **Tasks:** 3 of 3 complete
 - **Files modified:** 3 (lib/retention.ts, lib/retention.integration.test.ts, vercel.json)
 
 ## Accomplishments
 
 - Verified Task 1 (`anonymizeProspects()`, the three field-list constants, the anonymise test block) was already complete and committed as `f501195` — not redone.
-- Reviewed the ~307 lines of uncommitted Task 2 work found on disk at session start, corrected two defects (see Deviations), and committed it as one atomic commit.
+- Reviewed the ~307 lines of uncommitted Task 2 work found on disk at session start, corrected two defects (see Deviations), and committed it as one atomic commit (`a275b18`).
 - `deleteProspects()` — nulls `prospects.latest_scan_id`, deletes the owned scans, deletes the prospects (outreach cascades via migration 012's `ON DELETE CASCADE`) — the only order migration 013's reciprocal no-`ON DELETE` foreign keys permit.
 - A dedicated test proves the naive order (deleting scans before nulling `latest_scan_id`) actually raises a foreign-key error, satisfying `07-VALIDATION.md`'s requirement for "an explicit assertion on FK-safe delete ordering, not merely 'the job completed without throwing'."
 - `vercel.json` carries a fifth cron entry, `/api/cron/retention` at `0 3 1 * *`, added with no change to the four existing entries.
 - Full suite: `npx vitest run` — 41 files, 459 tests, all passing. `npx tsc --noEmit` clean. `npm run build` succeeds.
 - `npx vitest run lib/retention.integration.test.ts -t suppression` selects 5 tests across dry-run/anonymize/delete and all pass — CMP-15's gate.
+- **Task 3 resolved:** Joshua chose `stay-dry-run`. `RETENTION_MODE` stays unset. See "Task 3 Resolution" below for exactly what evidence was and was not gathered before that decision.
 
 ## Task Commits
 
@@ -111,8 +114,7 @@ Each task was committed atomically:
 
 1. **Task 1: Anonymise mode — field lists and the three-table pass** - `f501195` (feat) — completed in a prior, interrupted session; verified, not redone.
 2. **Task 2: Delete mode, the FK-safe order, and the monthly schedule** - `a275b18` (feat)
-
-**Task 3 (checkpoint:decision, gate="blocking") was reached and deliberately NOT executed.** No plan-metadata commit exists yet; it will follow once Task 3 resolves.
+3. **Task 3: Deploy, read one real dry-run, and decide whether retention starts writing** - resolved by decision, no code change (`RETENTION_MODE` is not set anywhere). See below.
 
 ## Files Created/Modified
 
@@ -120,9 +122,25 @@ Each task was committed atomically:
 - `lib/retention.integration.test.ts` - delete-mode describe block (9 tests), placeholder `mode: "delete"` rejection test removed, unused import removed
 - `vercel.json` - fifth cron entry for `/api/cron/retention`
 
+## Task 3 Resolution
+
+**Decision: `stay-dry-run`.** `RETENTION_MODE` is deliberately left unset, in every file and every environment. The retention job stays in dry-run and remains structurally incapable of writing a row. This is the option D-7-18 specifies as the default, and it is what the phase was designed to deliver absent a production go-ahead.
+
+**What was NOT done, stated plainly:**
+
+Task 3's own acceptance criteria call for five things before a mode is chosen: a production deploy (`npx vercel --prod`), a Vercel dashboard confirmation that `/api/cron/retention` shows `0 3 1 * *`, an authenticated GET to the deployed route with its JSON body recorded, a matching SQL count taken in the Supabase Dashboard SQL Editor, and only then a choice among the three options. **None of the five were performed in this continuation.** Joshua answered the decision directly (`stay-dry-run`) without the deploy or the verification reads, and this continuation executor was explicitly instructed not to run `npx vercel --prod` or any other deploy command — that authorization is his to give, not this executor's to assume, and it was not given.
+
+**What this means, concretely:**
+
+- The monthly cron entry added to `vercel.json` in Task 2 is committed to this branch but **not live**. It has never been deployed, so it is not yet registered in Vercel's Cron Jobs view and has never fired against production.
+- The retention clock (`selectExpiringProspects()`'s cutoff logic, built in 07-06) has never been validated against real production data. No authenticated call to `/api/cron/retention` was made, no `expiring` count was read, and no SQL cross-check against the Supabase Dashboard was run. Whether the clock's cutoff computation matches what a human would call "old enough to expire" against the real ~800-row prospects table is unconfirmed.
+- Because `stay-dry-run` was chosen without ever seeing the job report a number, the choice itself is not evidence-backed in the way the plan intends it to be — it is a decision to keep the door closed, made without first looking through it. That is a materially weaker basis than "we looked at the number and it made sense," but it carries no destructive risk, since dry-run cannot write.
+
+**Consequence for anyone who later moves this job to `anonymize` or `delete`:** run Task 3's five steps first, in order — deploy, dashboard confirmation, authenticated dry-run read, SQL cross-check, magnitude sanity-check against ~10-50 prospects/week intake — before setting `RETENTION_MODE` to a writing value. Skipping straight to a writing mode on the strength of this plan's code alone would be exactly the failure D-7-16's one-way-door framing and D-7-18's dry-run mitigation exist to prevent. The code is ready to be exercised; it has not yet been exercised.
+
 ## Decisions Made
 
-See `key-decisions` in frontmatter. Summary: kept the uncommitted chunking fix (matches an established pattern and closes a real production-scale hazard), reworded one doc comment to satisfy a literal grep-based prohibition check, removed one unused import that blocked the build, and left `.env.example` untouched because this session's Claude Code permission settings globally deny any tool from reading or writing `.env.*` paths.
+See `key-decisions` in frontmatter. Summary: kept the uncommitted chunking fix (matches an established pattern and closes a real production-scale hazard), reworded one doc comment to satisfy a literal grep-based prohibition check, removed one unused import that blocked the build, left `.env.example` untouched because this session's Claude Code permission settings globally deny any tool from reading or writing `.env.*` paths, and resolved Task 3 as `stay-dry-run` on Joshua's direct answer without running the task's own deploy/verification evidence steps.
 
 ## Deviations from Plan
 
@@ -152,14 +170,23 @@ See `key-decisions` in frontmatter. Summary: kept the uncommitted chunking fix (
 - **Verification:** `grep -c 'delete_expired' lib/retention.ts` returns 0
 - **Committed in:** `a275b18`
 
+### Not Auto-fixed — Recorded as Residuals
+
+**4. [Rule 4 - Architectural/authorization boundary] Task 3's decision was made without its own evidence-gathering steps**
+- **Found during:** This continuation, resolving the Task 3 blocking checkpoint
+- **Issue:** Task 3's acceptance criteria require a production deploy, a Vercel dashboard cron confirmation, an authenticated production dry-run read, and a matching SQL count before any option is selected. Joshua answered the decision (`stay-dry-run`) directly, and this continuation was explicitly instructed not to deploy.
+- **Resolution:** Recorded honestly rather than treated as done. See "Task 3 Resolution" above and the corresponding WINDOWS.md entry for the unrun verification steps.
+- **Files modified:** None (no code change — `RETENTION_MODE` remains unset everywhere, confirmed by `grep -c 'RETENTION_MODE' vercel.json` returning 0).
+- **Committed in:** This plan-closure commit (docs-only).
+
 ---
 
-**Total deviations:** 3 auto-fixed (1 kept-and-verified correctness improvement, 2 blocking build/grep fixes)
-**Impact on plan:** All three necessary for the acceptance criteria to actually pass (build, vitest, grep checks). No scope creep — none touch the anonymise/delete field lists, the FK order, or the cron schedule the plan specifies.
+**Total deviations:** 3 auto-fixed (Tasks 1-2) + 1 residual (Task 3, recorded not fixed)
+**Impact on plan:** The three auto-fixes were all necessary for Tasks 1-2's acceptance criteria to pass (build, vitest, grep checks) and touch nothing outside the anonymise/delete field lists, the FK order, or the cron schedule. The Task 3 residual is a deliberate authorization boundary, not a defect in the code — the code is correct and untriggered; the evidence that would justify triggering it has not been gathered.
 
 ## Issues Encountered
 
-**`.env.example` could not be modified.** Task 2's action requires documenting `RETENTION_MODE` and `RETENTION_MONTHS` by name with empty values in `.env.example`, matching how `GEMINI_API_KEY` was documented in Phase 6. This executor's session has a global Claude Code permission setting (`.claude/settings.json` → `permissions.deny: ["Read(.env.*)", ...]`) that blocks every tool — `Read`, `Bash cat`, `Bash grep`, `Bash wc` — from touching any path matching `.env.*`, including `.env.example` itself, which carries no secrets. This is deliberate security hardening (see the sibling project's `secrets.md` rule about never printing `.env` files to a transcript) and this executor did not attempt to route around it.
+**`.env.example` could not be modified.** Task 2's action requires documenting `RETENTION_MODE` and `RETENTION_MONTHS` by name with empty values in `.env.example`, matching how `GEMINI_API_KEY` was documented in Phase 6. This executor's session has a global Claude Code permission setting (`.claude/settings.json` → `permissions.deny: ["Read(.env.*)", ...]`) that blocks every tool — `Read`, `Bash cat`, `Bash grep`, `Bash wc` — from touching any path matching `.env.*`, including `.env.example` itself, which carries no secrets. This is deliberate security hardening (see the sibling project's `secrets.md` rule about never printing `.env` files to a transcript) and this executor did not attempt to route around it. Still open — tracked as WINDOWS.md entry #1.
 
 **What's needed:** add these two lines to `.env.example` by hand (content per the plan's Task 2 action — exact values are empty, matching the existing convention):
 
@@ -171,24 +198,26 @@ RETENTION_MODE=
 RETENTION_MONTHS=
 ```
 
-This is a doc-only, non-functional gap — no code, test, or migration depends on `.env.example`'s contents. It does not block Task 3 or the retention job's correctness. It should be closed before or alongside Task 3's resolution so the file matches what actually got deployed.
+This is a doc-only, non-functional gap — no code, test, or migration depends on `.env.example`'s contents. It does not block the code's correctness. It should be closed by hand before any future deploy that intends to actually run the retention job's evidence-gathering steps.
+
+**Task 3's evidence steps were not run.** See "Task 3 Resolution" above — no deploy, no dashboard confirmation, no authenticated dry-run read, no SQL cross-check. Tracked as a second WINDOWS.md entry (kind: unrun-verify).
 
 ## User Setup Required
 
-None from Tasks 1-2 - no new external service configuration. Task 3 (below, unresolved) requires a production deploy and manual dashboard/SQL verification by Joshua; see Next Phase Readiness.
+None. Task 3's remaining work — a production deploy, a Vercel dashboard cron confirmation, an authenticated dry-run read, and a Supabase SQL cross-check — is deferred, not required to close this plan. It becomes required only if and when someone (Joshua) decides to move `RETENTION_MODE` off dry-run in the future; see "Task 3 Resolution" for the exact steps to run first.
 
 ## Next Phase Readiness
 
-**Task 3 (`checkpoint:decision`, `gate="blocking"`) was reached and is returned to the orchestrator unresolved — see the CHECKPOINT REACHED block in this executor's final message.** It requires: `npx vercel --prod` deploy, a Vercel dashboard confirmation that `/api/cron/retention` shows `0 3 1 * *`, one authenticated GET to the deployed route with its JSON body recorded, a matching SQL count from the Supabase Dashboard SQL Editor, and an explicit choice among `stay-dry-run` / `anonymize` / `delete`.
+**Plan 07-07 is complete: 3 of 3 tasks resolved.** Task 3's decision (`stay-dry-run`) is on record. `RETENTION_MODE` remains unset in every environment this plan touches — `grep -c 'RETENTION_MODE' vercel.json` returns 0, confirmed.
 
-Until Task 3 resolves:
-- Phase 7 is not closed. The plan's own success criteria and the phase-level checks (07-07-PLAN.md line ~632) treat CMP-13/14/15 as finished by Task 3, not by Tasks 1-2 alone.
-- `RETENTION_MODE` remains unset in every environment this plan touches — `grep -c 'RETENTION_MODE' vercel.json` returns 0, confirmed.
-- `.env.example`'s two-line gap (above) should be closed by hand before Task 3's deploy, so the deployed environment's documentation matches what's live.
+What is carried forward, not closed by this plan:
+- `.env.example`'s two-line gap (WINDOWS.md #1) — a hand-add, doc-only.
+- Task 3's unrun evidence steps (WINDOWS.md #2, new) — deploy, dashboard confirmation, authenticated dry-run read, SQL cross-check. Required before any future move off dry-run, not required for this plan's own completion.
+- Whether phase 7 as a whole is ready to close is a verification-step question, not decided by this plan closure — the phase's own success criteria (`07-07-PLAN.md`'s "Phase-level checks") name the deployed job's live dashboard confirmation as part of what closes CMP-13/14/15, and that has not happened.
 
 ---
 *Phase: 07-lifecycle-reporting-retention*
-*Completed: 2026-08-02 (Tasks 1-2 only; Task 3 pending)*
+*Completed: 2026-08-02*
 
 ## Self-Check: PASSED
 
@@ -198,3 +227,4 @@ Until Task 3 resolves:
 - FOUND: lib/retention.integration.test.ts
 - FOUND: vercel.json
 - FOUND: .planning/phases/07-lifecycle-reporting-retention/07-07-SUMMARY.md
+- FOUND: RETENTION_MODE unset — `grep -c 'RETENTION_MODE' vercel.json` returns 0
