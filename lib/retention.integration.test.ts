@@ -237,6 +237,35 @@ async function seedLead(scanId: string, domain: string, createdAtIso: string): P
   return data.id as string;
 }
 
+// Task 2 addition (FA-CMP-13-SOURCES) — seeds a prospect_sources row
+// directly, mirroring how this suite seeds every other fixture rather than
+// routing through upsertOverturePlace. overture_gers_id is `not null
+// unique` (migration 011), so each call needs its own value.
+async function seedProspectSource(
+  prospectId: string,
+  overrides: Record<string, unknown> = {}
+): Promise<{ id: string; gersId: string }> {
+  counter += 1;
+  const gersId = `${DOMAIN_PREFIX}gers-${counter}`;
+  const { data, error } = await sb
+    .from("prospect_sources")
+    .insert({
+      prospect_id: prospectId,
+      overture_gers_id: gersId,
+      raw_name: "Test Business Raw",
+      raw_address: "123 Raw Street",
+      raw_website_url: "https://raw-source.test",
+      raw_category: "restaurant",
+      raw_region: "Noord-Holland",
+      raw_country: "NL",
+      ...overrides,
+    })
+    .select("id")
+    .single();
+  if (error) throw error;
+  return { id: data.id as string, gersId };
+}
+
 async function seedSuppression(createdAtIso: string): Promise<string> {
   counter += 1;
   const email = `contact@${DOMAIN_PREFIX}${counter}.test`;
@@ -330,9 +359,10 @@ describe("runRetention — scope (D-7-16, D-7-R5)", () => {
 });
 
 describe("runRetention — allowlist (CMP-15, D-7-19)", () => {
-  it("RETENTION_TABLE_ALLOWLIST holds exactly 3 entries and the suppression table is not among them", () => {
-    expect(RETENTION_TABLE_ALLOWLIST.length).toBe(3);
+  it("RETENTION_TABLE_ALLOWLIST holds exactly 4 entries (Task 2 added prospect_sources, FA-CMP-13-SOURCES) and neither suppressions nor leads is among them", () => {
+    expect(RETENTION_TABLE_ALLOWLIST.length).toBe(4);
     expect((RETENTION_TABLE_ALLOWLIST as readonly string[]).includes("suppressions")).toBe(false);
+    expect((RETENTION_TABLE_ALLOWLIST as readonly string[]).includes("leads")).toBe(false);
   });
 
   it("retentionFrom() throws when handed the suppression table name cast past the compiler", () => {
@@ -661,7 +691,7 @@ describe("anonymizeProspects — field lists (D-7-17, Task 1)", () => {
     const { id: scanId } = await seedScan(prospectId, isoMonthsAgo(20));
 
     const first = await anonymizeProspects(sb, [prospectId]);
-    expect(first).toEqual({ prospects: 1, outreach: 1, scans: 1 });
+    expect(first).toEqual({ prospects: 1, outreach: 1, scans: 1, sources: 0 });
 
     const afterFirstProspect = await sb.from("prospects").select("*").eq("id", prospectId).single();
     if (afterFirstProspect.error) throw afterFirstProspect.error;
@@ -671,7 +701,7 @@ describe("anonymizeProspects — field lists (D-7-17, Task 1)", () => {
     if (afterFirstScan.error) throw afterFirstScan.error;
 
     const second = await anonymizeProspects(sb, [prospectId]);
-    expect(second).toEqual({ prospects: 1, outreach: 1, scans: 1 });
+    expect(second).toEqual({ prospects: 1, outreach: 1, scans: 1, sources: 0 });
 
     const afterSecondProspect = await sb.from("prospects").select("*").eq("id", prospectId).single();
     if (afterSecondProspect.error) throw afterSecondProspect.error;
@@ -698,6 +728,74 @@ describe("anonymizeProspects — field lists (D-7-17, Task 1)", () => {
     expect(result.scansAnonymized).toBeGreaterThan(0);
     expect(result.prospectsDeleted).toBe(0);
     expect(result.scansDeleted).toBe(0);
+  });
+});
+
+/**
+ * FA-CMP-13-SOURCES (Task 2, closing 07-REVIEW.md WR-03). Task 1 selected
+ * B-delete-source-rows: migration 011's overture_gers_id is `not null
+ * unique` and cannot be nulled in place, so anonymizeProspects() deletes
+ * the prospect's prospect_sources rows outright rather than blanking three
+ * columns and leaving that public identifier (and, via
+ * upsertOverturePlace's re-import match on it, the raw fields themselves)
+ * reachable again by the next regional import. Full rationale and the
+ * accepted IMP-03 idempotency cost live in 07-DECISION-RECORD.md.
+ *
+ * Every case here drives runRetention() directly (never
+ * anonymizeProspects()/deleteProspects() in isolation), with the same
+ * months:200 + 250-month-old-fixture isolation the existing wiring tests
+ * use, so the assertion is proven from the job's real entry point without
+ * touching this suite's real local prospect rows.
+ */
+describe("runRetention — prospect_sources (FA-CMP-13-SOURCES, Task 2)", () => {
+  it("anonymize: a source row for a prospect past the window is deleted outright, not blanked", async () => {
+    const { id: prospectId } = await seedProspect(isoMonthsAgo(250), { name: "Sources Anon Fixture" });
+    const { id: sourceId, gersId } = await seedProspectSource(prospectId);
+
+    const result = await runRetention(sb, { mode: "anonymize", months: 200 });
+    expect(result.sourcesAnonymized).toBeGreaterThan(0);
+
+    const after = await sb.from("prospect_sources").select("id").eq("prospect_id", prospectId).maybeSingle();
+    if (after.error) throw after.error;
+    expect(after.data).toBeNull();
+
+    // Confirmed gone by id and by its would-be idempotency key too — no
+    // orphaned row surviving under a different lookup path.
+    const byId = await sb.from("prospect_sources").select("id").eq("id", sourceId).maybeSingle();
+    if (byId.error) throw byId.error;
+    expect(byId.data).toBeNull();
+    const byGers = await sb.from("prospect_sources").select("id").eq("overture_gers_id", gersId).maybeSingle();
+    if (byGers.error) throw byGers.error;
+    expect(byGers.data).toBeNull();
+  });
+
+  it("anonymize: a source row for a prospect inside the window is untouched, column for column", async () => {
+    const { id: inWindowId } = await seedProspect(isoMonthsAgo(1), { name: "Sources Still Live" });
+    const { id: sourceId } = await seedProspectSource(inWindowId);
+    // Companion far-past fixture guarantees the scoped run actually executes
+    // a write pass rather than trivially finding nothing to anonymise.
+    await seedProspect(isoMonthsAgo(250));
+
+    const before = await sb.from("prospect_sources").select("*").eq("id", sourceId).single();
+    if (before.error) throw before.error;
+
+    await runRetention(sb, { mode: "anonymize", months: 200 });
+
+    const after = await sb.from("prospect_sources").select("*").eq("id", sourceId).single();
+    if (after.error) throw after.error;
+    expect(after.data).toEqual(before.data);
+  });
+
+  it("delete: a source row for a prospect past the window is gone via migration 011's ON DELETE CASCADE", async () => {
+    const { id: prospectId } = await seedProspect(isoMonthsAgo(250), { name: "Sources Delete Fixture" });
+    await seedProspectSource(prospectId);
+
+    const result = await runRetention(sb, { mode: "delete", months: 200 });
+    expect(result.prospectsDeleted).toBeGreaterThan(0);
+
+    const after = await sb.from("prospect_sources").select("id").eq("prospect_id", prospectId).maybeSingle();
+    if (after.error) throw after.error;
+    expect(after.data).toBeNull();
   });
 });
 

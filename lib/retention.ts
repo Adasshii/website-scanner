@@ -42,6 +42,7 @@ export interface RetentionResult {
   outreachAnonymized: number;
   scansAnonymized: number;
   scansDeleted: number;
+  sourcesAnonymized: number;
 }
 
 /**
@@ -221,17 +222,32 @@ export async function selectExpiringProspects(
  * Re-processing an already-anonymised row is harmless for exactly that
  * reason, and it is what makes the job safe against Vercel's best-effort
  * cron delivery with no lock or dedup logic.
+ *
+ * Also deletes this id set's `prospect_sources` rows (FA-CMP-13-SOURCES,
+ * Task 1 decision: B-delete-source-rows — see
+ * 07-DECISION-RECORD.md). `overture_gers_id` is `not null unique`
+ * (migration 011) and cannot be nulled in place, so clearing the row is the
+ * only way to remove the public identifier it holds; a field-list update
+ * like the three tables above would leave that identifier — and, via
+ * `upsertOverturePlace`'s re-import match on it, the raw name/address/URL
+ * columns too — intact and reachable again by the next regional import.
+ * Accepted cost: deleting the row breaks IMP-03 idempotency for this
+ * prospect, so a later import of the same region creates a second,
+ * unlinked prospect row for the same business rather than matching this
+ * one. This is the one exception to "anonymise never deletes" in this
+ * module.
  */
 export async function anonymizeProspects(
   sb: SupabaseClient,
   ids: string[]
-): Promise<{ prospects: number; outreach: number; scans: number }> {
-  if (ids.length === 0) return { prospects: 0, outreach: 0, scans: 0 };
+): Promise<{ prospects: number; outreach: number; scans: number; sources: number }> {
+  if (ids.length === 0) return { prospects: 0, outreach: 0, scans: 0, sources: 0 };
 
   const idChunks = chunkIds(ids, RETENTION_ID_CHUNK_SIZE);
   let prospects = 0;
   let outreach = 0;
   let scans = 0;
+  let sources = 0;
 
   for (const idChunk of idChunks) {
     const { data: prospectRows, error: prospectError } = await retentionFrom(sb, "prospects")
@@ -259,9 +275,16 @@ export async function anonymizeProspects(
       .select("id");
     if (scansError) throw scansError;
     scans += (scanRows ?? []).length;
+
+    const { data: sourceRows, error: sourcesError } = await retentionFrom(sb, "prospect_sources")
+      .delete()
+      .in("prospect_id", idChunk)
+      .select("id");
+    if (sourcesError) throw sourcesError;
+    sources += (sourceRows ?? []).length;
   }
 
-  return { prospects, outreach, scans };
+  return { prospects, outreach, scans, sources };
 }
 
 /**
@@ -395,6 +418,7 @@ export async function runRetention(
     outreachAnonymized: 0,
     scansAnonymized: 0,
     scansDeleted: 0,
+    sourcesAnonymized: 0,
   };
 
   if (mode === "dry-run") {
@@ -403,10 +427,11 @@ export async function runRetention(
 
   if (mode === "anonymize") {
     const ids = expiring.map((row) => row.id);
-    const { prospects, outreach, scans } = await anonymizeProspects(sb, ids);
+    const { prospects, outreach, scans, sources } = await anonymizeProspects(sb, ids);
     result.prospectsAnonymized = prospects;
     result.outreachAnonymized = outreach;
     result.scansAnonymized = scans;
+    result.sourcesAnonymized = sources;
     return result;
   }
 

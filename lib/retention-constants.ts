@@ -72,8 +72,23 @@ export const RETENTION_MONTHS: number = resolveRetentionMonths();
  *
  * `leads` is absent for the same class of reason: it belongs to the public
  * scanner, which D-7-R5 puts outside this job's blast radius.
+ *
+ * `prospect_sources` was added by this plan (FA-CMP-13-SOURCES, closing
+ * 07-REVIEW.md WR-03): migration 011's raw_name/raw_address/raw_website_url
+ * columns sat one join away from an anonymised prospect, undetected by
+ * either writing mode. anonymizeProspects() deletes this table's rows
+ * outright rather than nulling them — see the call site in lib/retention.ts
+ * for why. The decision, its rationale, and the accepted cost (a later
+ * regional re-import creates a second prospect row rather than matching the
+ * anonymised one) are recorded in
+ * .planning/phases/07-lifecycle-reporting-retention/07-DECISION-RECORD.md.
  */
-export const RETENTION_TABLE_ALLOWLIST = ["prospects", "outreach_messages", "scans"] as const;
+export const RETENTION_TABLE_ALLOWLIST = [
+  "prospects",
+  "outreach_messages",
+  "scans",
+  "prospect_sources",
+] as const;
 
 export type RetentionTable = (typeof RETENTION_TABLE_ALLOWLIST)[number];
 
