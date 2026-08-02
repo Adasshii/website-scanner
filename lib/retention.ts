@@ -268,22 +268,33 @@ export async function anonymizeProspects(
  * Delete mode (D-7-16, Task 2). Three separate PostgREST calls, in this
  * order and no other:
  *
- * 1. Null `prospects.latest_scan_id` for every id — clears the only inbound
- *    reference from an expiring prospect to its own scan.
- * 2. Delete the scans this id set owns — now safe, since step 1 already
- *    cleared the one column that could still point at them.
- * 3. Delete the prospects themselves — `outreach_messages` cascades via its
- *    own `prospect_id ON DELETE CASCADE` (migration 012), so no explicit
- *    outreach delete statement exists in this module.
+ * 1. Null `prospects.latest_scan_id` for every id — clears one of the two
+ *    inbound references from an expiring prospect's rows to its own scan.
+ * 2. Delete this id set's `outreach_messages` — clears the other one,
+ *    `outreach_messages.scan_id`, and is why no step here relies on the
+ *    migration-012 cascade.
+ * 3. Delete the scans this id set owns — now safe, since steps 1 and 2
+ *    cleared both columns that could still point at them.
+ * 4. Delete the prospects themselves.
  *
  * The order is not a style choice: migration 013 added `scans.prospect_id`
  * and `prospects.latest_scan_id` as reciprocal foreign keys with no
  * `ON DELETE` clause, so both default to Postgres `NO ACTION` and together
  * form a two-table reference cycle. A prospect's `latest_scan_id` only ever
- * points at its own scan, so step 1 makes step 2 safe for every row in the
+ * points at its own scan, so step 1 makes step 3 safe for every row in the
  * same id set. `lib/retention.integration.test.ts` proves the naive order
  * (deleting scans first) actually raises a foreign-key error — a dry-run
  * can never surface this, because a SELECT never trips a foreign key.
+ *
+ * Step 2 exists because `outreach_messages` holds a SECOND no-action foreign
+ * key onto `scans` — `scan_id`, declared inline in migration 012 with no
+ * `ON DELETE` clause. The migration-012 cascade only covers the
+ * `prospect_id` edge, and it only fires once the prospects go, which is
+ * after the scans delete. So leaving outreach to that cascade meant step 3
+ * ran while outreach rows still pointed at the very scans it was deleting,
+ * raising `outreach_messages_scan_id_fkey`. That is not a rare shape:
+ * `lib/draft-on-scan-complete.ts` sets `scan_id` on every draft it inserts,
+ * so every prospect that reached the draft stage carries one.
  *
  * Not atomic, and not claimed to be: these are three separate PostgREST
  * calls and nothing spans them. A failure between steps leaves prospects
@@ -310,23 +321,26 @@ export async function deleteProspects(
   let scans = 0;
 
   for (const idChunk of idChunks) {
-    // Counted before the cascade removes them — outreach_messages rows are
-    // never deleted by a statement of this module's own, so this is the
-    // only point at which their count is still observable.
-    const { data: outreachRows, error: outreachError } = await retentionFrom(sb, "outreach_messages")
-      .select("id")
-      .in("prospect_id", idChunk);
-    if (outreachError) throw outreachError;
-    outreach += (outreachRows ?? []).length;
-
-    // 1. Clear the only inbound reference from these prospects to their
-    // own scans.
+    // 1. Clear one of the two inbound references from these prospects'
+    // rows to their own scans.
     const { error: nullError } = await retentionFrom(sb, "prospects")
       .update({ latest_scan_id: null })
       .in("id", idChunk);
     if (nullError) throw nullError;
 
-    // 2. Delete the scans this id set owns.
+    // 2. Delete this id set's outreach, clearing the other one
+    // (outreach_messages.scan_id). Deleted explicitly rather than left to
+    // the migration-012 cascade, which fires too late to unblock step 3.
+    // The returned rows are the exact set removed, so this doubles as the
+    // count the caller reports.
+    const { data: outreachRows, error: outreachError } = await retentionFrom(sb, "outreach_messages")
+      .delete()
+      .in("prospect_id", idChunk)
+      .select("id");
+    if (outreachError) throw outreachError;
+    outreach += (outreachRows ?? []).length;
+
+    // 3. Delete the scans this id set owns.
     const { data: scanRows, error: scansError } = await retentionFrom(sb, "scans")
       .delete()
       .in("prospect_id", idChunk)
@@ -335,8 +349,7 @@ export async function deleteProspects(
     if (scansError) throw scansError;
     scans += (scanRows ?? []).length;
 
-    // 3. Delete the prospects. Outreach rows go with them via the
-    // migration-012 cascade.
+    // 4. Delete the prospects.
     const { data: prospectRows, error: prospectError } = await retentionFrom(sb, "prospects")
       .delete()
       .in("id", idChunk)

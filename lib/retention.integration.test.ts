@@ -79,20 +79,35 @@ afterEach(async () => {
     const { error } = await sb.from("leads").delete().in("id", leadIds);
     if (error) throw error;
   }
+  // Two no-action FKs point at scans and both must be cleared before the
+  // scan delete below: prospects.latest_scan_id (migration 013) and
+  // outreach_messages.scan_id (migration 012). Fixtures set both, so
+  // neither can be dismissed as unreachable here.
+  if (prospectIds.length) {
+    const { error } = await sb
+      .from("prospects")
+      .update({ latest_scan_id: null })
+      .in("id", prospectIds)
+      .not("latest_scan_id", "is", null);
+    if (error) throw error;
+  }
+  // Deleted explicitly rather than left to the migration-012 prospect_id
+  // cascade: that cascade only fires at the prospect delete, which is after
+  // the scan delete, so it cannot clear the scan_id edge in time.
+  if (prospectIds.length) {
+    const { error } = await sb.from("outreach_messages").delete().in("prospect_id", prospectIds);
+    if (error) throw error;
+  }
   // Scans reference prospects with no ON DELETE clause (migration 013) —
   // scan fixtures (including the public-scanner one, matched by domain
   // prefix since its prospect_id is null) must be deleted before their
   // owning prospects, or the prospect delete fails on
-  // scans_prospect_id_fkey. This suite never sets prospects.latest_scan_id,
-  // so the reciprocal FK (prospects_latest_scan_id_fkey) never blocks a
-  // scan delete and needs no clearing step.
+  // scans_prospect_id_fkey.
   if (scanIds.length) {
     const { error } = await sb.from("scans").delete().in("id", scanIds);
     if (error) throw error;
   }
   if (prospectIds.length) {
-    // outreach_messages cascades via prospect_id ON DELETE CASCADE
-    // (migration 012), so no separate outreach delete is needed.
     const { error } = await sb.from("prospects").delete().in("id", prospectIds);
     if (error) throw error;
   }
@@ -177,12 +192,18 @@ async function seedOutreach(
     draftBody?: string | null;
     approvedAt?: string | null;
     approvedBy?: string | null;
+    // outreach_messages.scan_id is a SECOND no-action FK onto scans
+    // (migration 012, declared inline with no ON DELETE clause).
+    // lib/draft-on-scan-complete.ts sets it on every draft it inserts, so
+    // leaving it null here models a shape production does not produce.
+    scanId?: string | null;
   }
 ): Promise<{ id: string }> {
   const { data, error } = await sb
     .from("outreach_messages")
     .insert({
       prospect_id: prospectId,
+      scan_id: overrides.scanId ?? null,
       status: overrides.status,
       sent_at: overrides.sentAt ?? null,
       created_at: overrides.createdAt ?? new Date().toISOString(),
@@ -719,6 +740,40 @@ describe("deleteProspects — FK order and cascade (D-7-16, Task 2)", () => {
     const counts = await deleteProspects(sb, [prospectId]);
     expect(counts).toEqual({ prospects: 1, outreach: 1, scans: 1 });
 
+    const prospectAfter = await sb.from("prospects").select("id").eq("id", prospectId).maybeSingle();
+    if (prospectAfter.error) throw prospectAfter.error;
+    expect(prospectAfter.data).toBeNull();
+
+    const scanAfter = await sb.from("scans").select("id").eq("id", scanId).maybeSingle();
+    if (scanAfter.error) throw scanAfter.error;
+    expect(scanAfter.data).toBeNull();
+
+    const outreachAfter = await sb.from("outreach_messages").select("id").eq("id", outreachId).maybeSingle();
+    if (outreachAfter.error) throw outreachAfter.error;
+    expect(outreachAfter.data).toBeNull();
+  });
+
+  // The production shape every earlier fixture in this describe missed:
+  // seedOutreach used to leave scan_id null, but
+  // lib/draft-on-scan-complete.ts sets it on every draft it inserts, so any
+  // prospect that reached the draft stage carries one. With outreach left to
+  // the migration-012 cascade, the scans delete ran while this row still
+  // pointed at the scan and raised outreach_messages_scan_id_fkey. A dry-run
+  // could never surface it: a SELECT does not trip a foreign key.
+  it("a prospect whose outreach row carries scan_id (every drafted prospect) deletes cleanly rather than raising outreach_messages_scan_id_fkey", async () => {
+    const { id: prospectId } = await seedProspect(isoMonthsAgo(20));
+    const { id: scanId } = await seedScan(prospectId, isoMonthsAgo(20));
+    const link = await sb.from("prospects").update({ latest_scan_id: scanId }).eq("id", prospectId);
+    if (link.error) throw link.error;
+    const { id: outreachId } = await seedOutreach(prospectId, {
+      status: "draft",
+      scanId,
+    });
+
+    const counts = await deleteProspects(sb, [prospectId]);
+    expect(counts).toEqual({ prospects: 1, outreach: 1, scans: 1 });
+
+    // All three rows gone, not merely the prospect.
     const prospectAfter = await sb.from("prospects").select("id").eq("id", prospectId).maybeSingle();
     if (prospectAfter.error) throw prospectAfter.error;
     expect(prospectAfter.data).toBeNull();
