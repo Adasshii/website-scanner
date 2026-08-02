@@ -5,14 +5,14 @@ milestone_name: milestone
 current_phase: 07
 current_phase_name: lifecycle-reporting-retention
 status: executing
-stopped_at: 07-07 complete (3/3 tasks); Task 3 resolved stay-dry-run, RETENTION_MODE unset, phase 07 awaiting verification
-last_updated: "2026-08-02T15:19:08.960Z"
+stopped_at: Phase 07 gap plans 07-08/09/10 written and checked; ready to execute --gaps-only
+last_updated: "2026-08-02T18:05:00.000Z"
 last_activity: 2026-08-02
-last_activity_desc: Plans 07-03 … 07-06 executed; 07-07 paused at its blocking gate
+last_activity_desc: Verification gaps planned — 3 gap-closure plans created (waves 7-9)
 progress:
   total_phases: 8
   completed_phases: 7
-  total_plans: 44
+  total_plans: 47
   completed_plans: 44
 ---
 
@@ -28,19 +28,25 @@ See: .planning/PROJECT.md (updated 2026-07-17)
 ## Current Position
 
 Phase: 07 (lifecycle-reporting-retention) — EXECUTING
-Plan: 7 of 7 (all plans complete)
-Status: VERIFICATION FAILED — gaps_found, 3/5 must-haves. Phase NOT complete.
-Last activity: 2026-08-02 — Phase 07 executed and verified; criterion 4 (retention) has gaps
+Plan: 7 of 10 complete (07-01…07-07 done; gap plans 07-08/09/10 planned, not started)
+Status: Ready to execute — gap closure
+Last activity: 2026-08-02 — 3 gap-closure plans written (waves 7-9), plan-checker passed
 
-Progress: [█████████░] 98%
+Progress: [█████████░] 94%
 
-Blocking phase completion (see 07-VERIFICATION.md):
-1. The retention cron is committed to vercel.json but never deployed — nothing expires on a schedule yet.
-2. Anonymise mode never clears `prospect_sources`, whose raw_name/raw_address/raw_website_url stay
-   joinable to the "anonymised" prospect by prospect_id. Delete mode is unaffected (ON DELETE CASCADE).
-   Self-flagged as FA-CMP-13-SOURCES; needs the pending LIA's legal input, not just a code change.
+Closing the two verification gaps (see 07-VERIFICATION.md):
+1. 07-08 (wave 7) — `prospect_sources` anonymisation. Blocking decision checkpoint (clear the raw_*
+   columns / delete the source rows / record permanently out of scope), then the code path and a test
+   that pins whichever branch is chosen. Note `overture_gers_id` is not-null-unique and resolves to
+   the business publicly, so under two of the three options this is pseudonymisation, not anonymisation.
+2. 07-09 (wave 8) — candidate-set correctness. Folds in code-review WR-02 (unchunked `.in()` in
+   getShortlist, same PostgREST URI-length bug retention already fixed) and WR-01 (booking attribution
+   `.limit(2)` misattributes at 3+ shared emails).
+3. 07-10 (wave 9) — deploy the cron, gather six separately-checkable evidence steps, hand-add the
+   .env.example lines, close both WINDOWS entries. Marks CMP-14 complete; CMP-13 stays Partial because
+   stay-dry-run means the job reports rather than expires.
 
-Next: `/gsd-plan-phase 07 --gaps`
+Next: `/gsd-execute-phase 07 --gaps-only` (sequential, one executor at a time)
 
 ## Performance Metrics
 
