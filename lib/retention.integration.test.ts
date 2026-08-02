@@ -25,7 +25,6 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { createServerClient } from "@/lib/supabase";
 import { BULK_SCAN_IP_HASH } from "@/lib/bulk-scan-constants";
 import {
-  ANONYMIZED_OUTREACH_FIELDS,
   ANONYMIZED_PROSPECT_FIELDS,
   ANONYMIZED_SCAN_FIELDS,
   ANONYMIZED_SCAN_SENTINEL_DOMAIN,
@@ -33,7 +32,7 @@ import {
   RETENTION_TABLE_ALLOWLIST,
   type RetentionTable,
 } from "@/lib/retention-constants";
-import { anonymizeProspects, retentionFrom, runRetention } from "./retention";
+import { anonymizeProspects, deleteProspects, retentionFrom, runRetention } from "./retention";
 
 process.env.NEXT_PUBLIC_SUPABASE_URL = "http://127.0.0.1:54321";
 process.env.SUPABASE_SERVICE_ROLE_KEY =
@@ -408,17 +407,18 @@ describe("runRetention — dry-run inertness (D-7-18)", () => {
   // with an explicit `months` override so only synthetic fixtures can ever
   // match — lives in the "anonymizeProspects" describe below.
 
-  it("runRetention(sb, { mode: 'delete' }) rejects and leaves the seeded row unchanged", async () => {
-    const { id: prospectId } = await seedProspect(isoMonthsAgo(20));
-    const before = await sb.from("prospects").select("*").eq("id", prospectId).single();
-    if (before.error) throw before.error;
-
-    await expect(runRetention(sb, { mode: "delete" })).rejects.toThrow();
-
-    const after = await sb.from("prospects").select("*").eq("id", prospectId).single();
-    if (after.error) throw after.error;
-    expect(after.data).toEqual(before.data);
-  });
+  // The 07-06 placeholder here asserted `mode: "delete"` rejected and left
+  // the seeded row untouched. Task 2 wires that arm to a real write, and
+  // this exact test — run once during this plan's own verification —
+  // called runRetention(sb, { mode: "delete" }) with no `months` override,
+  // which ran the default 12-month window against the whole local
+  // `prospects` table and hard-deleted 4 real local rows before this
+  // comment replaced it. Removed for the same reason the anonymize
+  // placeholder above was: a call with no explicit scope is unsafe to run
+  // at all against this shared local database. Delete mode's own coverage
+  // — every call scoped with an explicit `months` override or driven
+  // directly through deleteProspects() with an explicit id array — lives
+  // in the "deleteProspects" describe below.
 });
 
 /**
@@ -677,5 +677,159 @@ describe("anonymizeProspects — field lists (D-7-17, Task 1)", () => {
     expect(result.scansAnonymized).toBeGreaterThan(0);
     expect(result.prospectsDeleted).toBe(0);
     expect(result.scansDeleted).toBe(0);
+  });
+});
+
+/**
+ * Every test below calls `deleteProspects(sb, ids)` directly with an
+ * explicit, tightly-scoped id list, for the same reason the
+ * anonymizeProspects describe above does — this suite's local Postgres
+ * carries real prospect rows, and an unscoped `runRetention(sb, { mode:
+ * "delete" })` call already hard-deleted 4 of them once during this plan's
+ * own verification (see the removed placeholder test above the
+ * dry-run-inertness describe). The one full-pipeline wiring test uses the
+ * same months:200 + 250-month-old-fixture isolation the anonymise wiring
+ * test uses.
+ */
+describe("deleteProspects — FK order and cascade (D-7-16, Task 2)", () => {
+  it("deleting the scan before nulling latest_scan_id raises a foreign-key error naming the constraint — the ordering is load-bearing, not incidental", async () => {
+    const { id: prospectId } = await seedProspect(isoMonthsAgo(20));
+    const { id: scanId } = await seedScan(prospectId, isoMonthsAgo(20));
+    const link = await sb.from("prospects").update({ latest_scan_id: scanId }).eq("id", prospectId);
+    if (link.error) throw link.error;
+
+    const naive = await sb.from("scans").delete().eq("id", scanId);
+    expect(naive.error).not.toBeNull();
+    expect(naive.error?.message ?? "").toMatch(/foreign key|latest_scan_id/i);
+
+    // Clear the link so this fixture's own scan/prospect rows can still be
+    // removed by the shared afterEach — the naive delete above left the
+    // scan in place and the prospect still pointing at it.
+    const clear = await sb.from("prospects").update({ latest_scan_id: null }).eq("id", prospectId);
+    if (clear.error) throw clear.error;
+  });
+
+  it("a prospect past the window with its own latest_scan_id and one outreach message: delete removes all three rows", async () => {
+    const { id: prospectId } = await seedProspect(isoMonthsAgo(20));
+    const { id: scanId } = await seedScan(prospectId, isoMonthsAgo(20));
+    const link = await sb.from("prospects").update({ latest_scan_id: scanId }).eq("id", prospectId);
+    if (link.error) throw link.error;
+    const { id: outreachId } = await seedOutreach(prospectId, { status: "sent", sentAt: isoMonthsAgo(19) });
+
+    const counts = await deleteProspects(sb, [prospectId]);
+    expect(counts).toEqual({ prospects: 1, outreach: 1, scans: 1 });
+
+    const prospectAfter = await sb.from("prospects").select("id").eq("id", prospectId).maybeSingle();
+    if (prospectAfter.error) throw prospectAfter.error;
+    expect(prospectAfter.data).toBeNull();
+
+    const scanAfter = await sb.from("scans").select("id").eq("id", scanId).maybeSingle();
+    if (scanAfter.error) throw scanAfter.error;
+    expect(scanAfter.data).toBeNull();
+
+    const outreachAfter = await sb.from("outreach_messages").select("id").eq("id", outreachId).maybeSingle();
+    if (outreachAfter.error) throw outreachAfter.error;
+    expect(outreachAfter.data).toBeNull();
+  });
+
+  it("a prospect with no scan and no outreach deletes cleanly", async () => {
+    const { id: prospectId } = await seedProspect(isoMonthsAgo(20));
+
+    const counts = await deleteProspects(sb, [prospectId]);
+    expect(counts).toEqual({ prospects: 1, outreach: 0, scans: 0 });
+
+    const after = await sb.from("prospects").select("id").eq("id", prospectId).maybeSingle();
+    if (after.error) throw after.error;
+    expect(after.data).toBeNull();
+  });
+
+  it("a prospect whose scan exists but whose latest_scan_id was never set still deletes cleanly (step 1 is a no-op update, not a required precondition)", async () => {
+    const { id: prospectId } = await seedProspect(isoMonthsAgo(20));
+    const { id: scanId } = await seedScan(prospectId, isoMonthsAgo(20));
+
+    const counts = await deleteProspects(sb, [prospectId]);
+    expect(counts).toEqual({ prospects: 1, outreach: 0, scans: 1 });
+
+    const scanAfter = await sb.from("scans").select("id").eq("id", scanId).maybeSingle();
+    if (scanAfter.error) throw scanAfter.error;
+    expect(scanAfter.data).toBeNull();
+  });
+
+  it("deleteProspects(sb, []) returns three zeros and issues no queries", async () => {
+    const counts = await deleteProspects(sb, []);
+    expect(counts).toEqual({ prospects: 0, outreach: 0, scans: 0 });
+  });
+
+  it("a public-scanner scan (prospect_id null) and its leads row, both older than the window, survive a delete run", async () => {
+    const { id: unrelatedProspectId } = await seedProspect(isoMonthsAgo(20));
+    const { domain: publicDomain, id: publicScanId } = await seedScan(null, isoMonthsAgo(24), {
+      ip_hash: "07-07-visitor-ip-hash",
+    });
+    const leadId = await seedLead(publicScanId, publicDomain, isoMonthsAgo(24));
+
+    await deleteProspects(sb, [unrelatedProspectId]);
+
+    const scanAfter = await sb.from("scans").select("id").eq("id", publicScanId).maybeSingle();
+    if (scanAfter.error) throw scanAfter.error;
+    expect(scanAfter.data).not.toBeNull();
+
+    const leadAfter = await sb.from("leads").select("id").eq("id", leadId).maybeSingle();
+    if (leadAfter.error) throw leadAfter.error;
+    expect(leadAfter.data).not.toBeNull();
+  });
+
+  it("a suppression row older than the retention window survives, unmodified, after a delete run", async () => {
+    const { id: unrelatedProspectId } = await seedProspect(isoMonthsAgo(20));
+    const suppressionId = await seedSuppression(isoMonthsAgo(24));
+    const before = await sb.from("suppressions").select("*").eq("id", suppressionId).single();
+    if (before.error) throw before.error;
+
+    await deleteProspects(sb, [unrelatedProspectId]);
+
+    const after = await sb.from("suppressions").select("*").eq("id", suppressionId).single();
+    if (after.error) throw after.error;
+    expect(after.data).toEqual(before.data);
+  });
+
+  it("running delete twice over the same fixture reports zero on the second pass and raises nothing", async () => {
+    const { id: prospectId } = await seedProspect(isoMonthsAgo(20));
+    const { id: scanId } = await seedScan(prospectId, isoMonthsAgo(20));
+    const link = await sb.from("prospects").update({ latest_scan_id: scanId }).eq("id", prospectId);
+    if (link.error) throw link.error;
+    await seedOutreach(prospectId, { status: "sent", sentAt: isoMonthsAgo(19) });
+
+    const first = await deleteProspects(sb, [prospectId]);
+    expect(first).toEqual({ prospects: 1, outreach: 1, scans: 1 });
+
+    await expect(deleteProspects(sb, [prospectId])).resolves.toEqual({ prospects: 0, outreach: 0, scans: 0 });
+  });
+
+  it("a prospect inside the window is untouched by a full delete run wired through runRetention()", async () => {
+    const { id: inWindowId } = await seedProspect(isoMonthsAgo(1), { name: "Still Live" });
+    // A companion far-past fixture guarantees the scoped run below actually
+    // executes a write pass rather than trivially finding nothing.
+    await seedProspect(isoMonthsAgo(250));
+
+    await runRetention(sb, { mode: "delete", months: 200 });
+
+    const after = await sb.from("prospects").select("id").eq("id", inWindowId).maybeSingle();
+    if (after.error) throw after.error;
+    expect(after.data).not.toBeNull();
+  });
+
+  it("wired through runRetention(): reports non-zero prospectsDeleted and scansDeleted matching the seeded fixtures, a non-zero outreach delete count, and prospectsAnonymized at 0", async () => {
+    const { id: prospectId } = await seedProspect(isoMonthsAgo(250), { name: "Delete Wiring Fixture" });
+    const { id: scanId } = await seedScan(prospectId, isoMonthsAgo(250));
+    const link = await sb.from("prospects").update({ latest_scan_id: scanId }).eq("id", prospectId);
+    if (link.error) throw link.error;
+    await seedOutreach(prospectId, { status: "sent", sentAt: isoMonthsAgo(250) });
+
+    const result = await runRetention(sb, { mode: "delete", months: 200 });
+
+    expect(result.mode).toBe("delete");
+    expect(result.prospectsDeleted).toBeGreaterThan(0);
+    expect(result.scansDeleted).toBeGreaterThan(0);
+    expect(result.outreachAnonymized).toBeGreaterThan(0);
+    expect(result.prospectsAnonymized).toBe(0);
   });
 });

@@ -204,6 +204,13 @@ export async function selectExpiringProspects(
  * 0 }` immediately on an empty `ids`, so an empty run issues no queries at
  * all.
  *
+ * Chunked at `RETENTION_ID_CHUNK_SIZE` like `computeExpiringProspects()`'s
+ * own `.in()` lookups: PostgREST encodes an `.in()` filter into the request
+ * URL for UPDATE/DELETE exactly as it does for SELECT, so a candidate set
+ * near `RETENTION_MAX_BATCH` (1000) overflows the same "URI too long" limit
+ * 07-06 found for reads — the id set here is the same one, just later in
+ * the same run.
+ *
  * The pass is idempotent by construction: every write assigns a constant
  * value rather than deriving one from the row's current state, so a repeat
  * run over the same ids writes the same values again and reports the same
@@ -221,33 +228,124 @@ export async function anonymizeProspects(
 ): Promise<{ prospects: number; outreach: number; scans: number }> {
   if (ids.length === 0) return { prospects: 0, outreach: 0, scans: 0 };
 
-  const { data: prospectRows, error: prospectError } = await retentionFrom(sb, "prospects")
-    .update(ANONYMIZED_PROSPECT_FIELDS)
-    .in("id", ids)
-    .select("id");
-  if (prospectError) throw prospectError;
+  const idChunks = chunkIds(ids, RETENTION_ID_CHUNK_SIZE);
+  let prospects = 0;
+  let outreach = 0;
+  let scans = 0;
 
-  const { data: outreachRows, error: outreachError } = await retentionFrom(sb, "outreach_messages")
-    .update(ANONYMIZED_OUTREACH_FIELDS)
-    .in("prospect_id", ids)
-    .select("id");
-  if (outreachError) throw outreachError;
+  for (const idChunk of idChunks) {
+    const { data: prospectRows, error: prospectError } = await retentionFrom(sb, "prospects")
+      .update(ANONYMIZED_PROSPECT_FIELDS)
+      .in("id", idChunk)
+      .select("id");
+    if (prospectError) throw prospectError;
+    prospects += (prospectRows ?? []).length;
 
-  // The `.not("prospect_id", "is", null)` filter is redundant by one layer
-  // — SQL `IN` already excludes nulls — but it stays because it is D-7-16's
-  // scope line written where a reader and a grep can both find it.
-  const { data: scanRows, error: scansError } = await retentionFrom(sb, "scans")
-    .update(ANONYMIZED_SCAN_FIELDS)
-    .in("prospect_id", ids)
-    .not("prospect_id", "is", null)
-    .select("id");
-  if (scansError) throw scansError;
+    const { data: outreachRows, error: outreachError } = await retentionFrom(sb, "outreach_messages")
+      .update(ANONYMIZED_OUTREACH_FIELDS)
+      .in("prospect_id", idChunk)
+      .select("id");
+    if (outreachError) throw outreachError;
+    outreach += (outreachRows ?? []).length;
 
-  return {
-    prospects: (prospectRows ?? []).length,
-    outreach: (outreachRows ?? []).length,
-    scans: (scanRows ?? []).length,
-  };
+    // The `.not("prospect_id", "is", null)` filter is redundant by one
+    // layer — SQL `IN` already excludes nulls — but it stays because it is
+    // D-7-16's scope line written where a reader and a grep can both find
+    // it.
+    const { data: scanRows, error: scansError } = await retentionFrom(sb, "scans")
+      .update(ANONYMIZED_SCAN_FIELDS)
+      .in("prospect_id", idChunk)
+      .not("prospect_id", "is", null)
+      .select("id");
+    if (scansError) throw scansError;
+    scans += (scanRows ?? []).length;
+  }
+
+  return { prospects, outreach, scans };
+}
+
+/**
+ * Delete mode (D-7-16, Task 2). Three separate PostgREST calls, in this
+ * order and no other:
+ *
+ * 1. Null `prospects.latest_scan_id` for every id — clears the only inbound
+ *    reference from an expiring prospect to its own scan.
+ * 2. Delete the scans this id set owns — now safe, since step 1 already
+ *    cleared the one column that could still point at them.
+ * 3. Delete the prospects themselves — `outreach_messages` cascades via its
+ *    own `prospect_id ON DELETE CASCADE` (migration 012), so no explicit
+ *    outreach delete statement exists in this module.
+ *
+ * The order is not a style choice: migration 013 added `scans.prospect_id`
+ * and `prospects.latest_scan_id` as reciprocal foreign keys with no
+ * `ON DELETE` clause, so both default to Postgres `NO ACTION` and together
+ * form a two-table reference cycle. A prospect's `latest_scan_id` only ever
+ * points at its own scan, so step 1 makes step 2 safe for every row in the
+ * same id set. `lib/retention.integration.test.ts` proves the naive order
+ * (deleting scans first) actually raises a foreign-key error — a dry-run
+ * can never surface this, because a SELECT never trips a foreign key.
+ *
+ * Not atomic, and not claimed to be: these are three separate PostgREST
+ * calls and nothing spans them. A failure between steps leaves prospects
+ * whose `latest_scan_id` is already null and whose scans are already gone;
+ * the next monthly run re-selects them (neither step moves the D-7-15
+ * clock) and completes. Self-healing is the claim; atomic is not.
+ *
+ * Do not reach for the two retention SQL functions defined in
+ * `supabase/migrations/001_create_scans_and_leads.sql` at lines 43 and 51,
+ * for atomicity or as a pattern — both are dead
+ * code that predates `scans.prospect_id` and carries no prospect-ownership
+ * filter (07-PATTERNS.md Q7); using or imitating either would delete
+ * public-scanner scans and the whole `leads` table.
+ */
+export async function deleteProspects(
+  sb: SupabaseClient,
+  ids: string[]
+): Promise<{ prospects: number; outreach: number; scans: number }> {
+  if (ids.length === 0) return { prospects: 0, outreach: 0, scans: 0 };
+
+  const idChunks = chunkIds(ids, RETENTION_ID_CHUNK_SIZE);
+  let prospects = 0;
+  let outreach = 0;
+  let scans = 0;
+
+  for (const idChunk of idChunks) {
+    // Counted before the cascade removes them — outreach_messages rows are
+    // never deleted by a statement of this module's own, so this is the
+    // only point at which their count is still observable.
+    const { data: outreachRows, error: outreachError } = await retentionFrom(sb, "outreach_messages")
+      .select("id")
+      .in("prospect_id", idChunk);
+    if (outreachError) throw outreachError;
+    outreach += (outreachRows ?? []).length;
+
+    // 1. Clear the only inbound reference from these prospects to their
+    // own scans.
+    const { error: nullError } = await retentionFrom(sb, "prospects")
+      .update({ latest_scan_id: null })
+      .in("id", idChunk);
+    if (nullError) throw nullError;
+
+    // 2. Delete the scans this id set owns.
+    const { data: scanRows, error: scansError } = await retentionFrom(sb, "scans")
+      .delete()
+      .in("prospect_id", idChunk)
+      .not("prospect_id", "is", null)
+      .select("id");
+    if (scansError) throw scansError;
+    scans += (scanRows ?? []).length;
+
+    // 3. Delete the prospects. Outreach rows go with them via the
+    // migration-012 cascade.
+    const { data: prospectRows, error: prospectError } = await retentionFrom(sb, "prospects")
+      .delete()
+      .in("id", idChunk)
+      .select("id");
+    if (prospectError) throw prospectError;
+    prospects += (prospectRows ?? []).length;
+  }
+
+  return { prospects, outreach, scans };
 }
 
 /**
@@ -258,10 +356,10 @@ export async function anonymizeProspects(
  * re-evaluating a module-scope read.
  *
  * The dry-run arm returns the result with all five write counters at 0 and
- * issues no write of any kind. The delete arm still throws until Task 2 —
- * deliberately, not a silent no-op: a job that accepted a writing mode and
- * expired nothing would look healthy and be doing nothing, which is the
- * same plausible-looking absence D-7-13 rejects elsewhere in this phase.
+ * issues no write of any kind. Both writing arms now run — a job that
+ * accepted a writing mode and expired nothing would look healthy and be
+ * doing nothing, the same plausible-looking absence D-7-13 rejects
+ * elsewhere in this phase, which is why no arm silently no-ops.
  */
 export async function runRetention(
   sb: SupabaseClient,
@@ -299,5 +397,15 @@ export async function runRetention(
     return result;
   }
 
-  throw new Error(`runRetention: mode "${mode}" is not implemented until plan 07-07`);
+  // mode === "delete" (RetentionMode is a closed 3-value union and the two
+  // arms above already handled the other two). RetentionResult carries a
+  // single outreach counter (`outreachAnonymized`) shared by both writing
+  // modes rather than a second `outreachDeleted` field — delete mode's
+  // cascaded outreach count is mapped onto it here.
+  const ids = expiring.map((row) => row.id);
+  const { prospects, outreach, scans } = await deleteProspects(sb, ids);
+  result.prospectsDeleted = prospects;
+  result.outreachAnonymized = outreach;
+  result.scansDeleted = scans;
+  return result;
 }
