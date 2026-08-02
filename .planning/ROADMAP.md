@@ -326,7 +326,7 @@ Notes:
   4. Prospect, scan, and outreach data past the retention window expires on a schedule, deleting or anonymising by config rather than by hardcoding (CMP-13, CMP-14)
   5. Suppression records survive the retention job and are flagged in code as permanently exempt (CMP-15)
 
-**Plans**: 7/7 plans executed
+**Plans**: 7/10 plans executed (07-01…07-07 done; 07-08…07-10 are gap-closure plans for success criterion 4, added 2026-08-02 after verification scored 3/5)
 **UI hint**: yes
 
 Plans:
@@ -354,6 +354,18 @@ Plans:
 **Wave 6** *(blocked on Wave 5 completion)*
 
 - [x] 07-07-PLAN.md — Anonymise and delete modes, the monthly schedule, and the flip decision
+
+**Wave 7** *(gap closure — blocked on Wave 6 completion)*
+
+- [ ] 07-08-PLAN.md — `prospect_sources` anonymisation: the decision, the code path, and the test that pins it (closes FA-CMP-13-SOURCES / WR-03)
+
+**Wave 8** *(gap closure — blocked on Wave 7 completion)*
+
+- [ ] 07-09-PLAN.md — Candidate-set correctness: chunked `getShortlist()` lookup and uncapped booking attribution (closes WR-02, WR-01)
+
+**Wave 9** *(gap closure — blocked on Wave 8 completion)*
+
+- [ ] 07-10-PLAN.md — Deploy the retention cron and gather its four evidence steps; close both broken windows and correct CMP-13/14 status
 
 Notes:
 
