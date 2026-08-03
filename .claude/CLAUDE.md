@@ -478,3 +478,28 @@ Do not make direct repo edits outside a GSD workflow unless the user explicitly 
 > Profile not yet configured. Run `/gsd-profile-user` to generate your developer profile.
 > This section is managed by `generate-claude-profile` -- do not edit manually.
 <!-- GSD:profile-end -->
+
+<!-- Custom:tooling-division-start -->
+## Tooling division: GSD vs Superpowers
+
+This project uses both GSD and Superpowers together. Follow this division strictly:
+
+- Discuss and Plan phases: GSD only. Do not trigger Superpowers skills
+  (brainstorming, writing-plans, using-git-worktrees) during these phases,
+  even if they seem relevant.
+
+- Execute phase: run inside GSD's phase structure, but apply these
+  Superpowers skills within it: test-driven-development,
+  subagent-driven-development, dispatching-parallel-agents,
+  requesting-code-review.
+
+- Verify phase: run inside GSD's verify step, but apply these
+  Superpowers skills within it: systematic-debugging,
+  verification-before-completion, receiving-code-review.
+
+- Ship phase: GSD only. Do not let Superpowers' finishing-a-development-branch
+  skill take over this step.
+
+If you are ever unsure whether a Superpowers skill would overlap with what GSD
+is already doing in the current phase, stop and ask before proceeding.
+<!-- Custom:tooling-division-end -->
