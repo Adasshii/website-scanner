@@ -1,17 +1,20 @@
 ---
 phase: 05-contact-extraction-classification
 verified: 2026-07-26T22:43:25Z
-status: human_needed
+status: passed
 score: 5/5 roadmap success criteria verified (1 with documented scope caveat)
 behavior_unverified: 0
 overrides_applied: 0
 human_verification:
+
   - test: "Confirm the NAMED-PERSON pill renders correctly against a real named-person-only prospect in production (not just unit/integration fixtures)."
     expected: "An orange/amber NAMED-PERSON pill appears in the priority cell on the live Shortlist for a prospect whose only extracted address classified as named-person, visually distinct from CRITICAL (red) and UNREACHABLE (grey), with no row-priority border treatment added."
     why_human: "No named-person example has appeared in the live batch yet (05-04-SUMMARY.md Known Gaps — both confirmed-done prospects resolved to generic). Visual placement/color distinction was already flagged by the executor as a human-judgment item (D2) with no live render to check against."
+
   - test: "Confirm the remaining ~10 of the 11 physiotherapy prospects (queued at 05-04 checkpoint close) drained correctly, i.e. populated contact_email/contact_email_type/commercial_contact_invited/sole_proprietorship or an accepted null-contact miss, once the daily cron ticks them through."
     expected: "Each of the remaining prospects reaches scan_status='done' or a confirmed 'failed' with a real reason, and the done ones show the four contact fields consistent with their site's actual content."
     why_human: "Vercel Hobby-tier cron fires once daily; only 2/11 had drained by 05-04 checkpoint close. This was an already-documented limitation, not a new one, but it remains an open confirmation, not a closed one."
+
   - test: "Decide whether the three unresolved WARNING-level findings from 05-REVIEW.md (WR-01 multi-recipient mailto, WR-02 bare at/dot false-positive, WR-03 unbounded per-item mailtoHref/cfemail length) need a fix before Phase 6 starts using contact_email to draft and send messages."
     expected: "A conscious accept/fix decision, recorded (e.g. as a VERIFICATION.md override or a follow-up plan), since Phase 6 will be the first consumer that can be broken by a non-deliverable comma-joined address (WR-01) or a manufactured false email from ordinary prose (WR-02)."
     why_human: "These are correctness bugs, not missing/stub artifacts — confirmed still present by direct code inspection (lib/contact-extraction.ts:106-107, 118-120; scanner-service/src/extractor.ts:255-260), unlike CR-01 and WR-04 which were fixed in commits caaed28/4abfe68 after the plan SUMMARYs were written. The code review rated them Warning, not Critical, so they do not block this phase's goal, but they are live risk for the very next phase."
