@@ -5,8 +5,8 @@ milestone_name: milestone
 current_phase: 07
 current_phase_name: lifecycle-reporting-retention
 status: executing
-stopped_at: Completed 07-10-PLAN.md
-last_updated: "2026-08-03T10:35:21.835Z"
+stopped_at: Completed quick task 260803-lh0 (fix silent 1000-row PostgREST truncation)
+last_updated: "2026-08-03T13:53:38.759Z"
 last_activity: 2026-08-02
 last_activity_desc: gap waves 7-8 executed; wave 9 handed over at its human gate
 progress:
@@ -138,6 +138,7 @@ Next: `/gsd-execute-phase 07 --gaps-only` (sequential, one executor at a time)
 | Phase 07 P08 | 20min | 2 tasks | 4 files |
 | Phase 07 P09 | ~45min | 2 tasks | 8 files |
 | Phase 07 P10 | ~15min | 3 tasks | 3 files |
+| Phase quick P260803-lh0 | ~45min | 2 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -229,6 +230,7 @@ Recent decisions affecting current work:
 - [Phase ?]: [Phase 07-09]: attributeBookingToProspect()'s two candidate queries dropped their .limit(2) cap entirely rather than raising it -- ambiguity is decided by the post-sent-gate set size (gatedIds.size), and the now-uncapped query's own DoS exposure is accepted (T-07-09-03), not chunked, since it is bounded in practice by one mailbox's shared prospect count
 - [Phase ?]: RETENTION_MODE stays unset (dry-run) deliberately: 12-month window is a placeholder pending the LIA, candidates is currently 0 so there is nothing to prove by arming the writing path, and 39 integration tests already cover the write path. Daily job's first non-zero expiring figure is the trigger to revisit.
 - [Phase ?]: D-7-20 superseded (recorded, not made, by this task): retention cron moved from monthly (0 3 1 * *) to daily (0 3 * * *) after Vercel Hobby silently dropped the day-of-month cron entry on first deploy.
+- [Phase ?]: [Quick 260803-lh0]: Paginated getReportingData()'s scans read too (beyond plan's locked scope) after live local DB (1045 scans in 30-day window) reproduced the identical PostgREST 1000-row cap on a third read the plan assumed was already safe
 
 ### Pending Todos
 
@@ -269,6 +271,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-08-03T10:35:21.821Z
-Stopped at: Completed 07-10-PLAN.md
+Last session: 2026-08-03T13:53:38.730Z
+Stopped at: Completed quick task 260803-lh0 (fix silent 1000-row PostgREST truncation)
 Resume file: None
