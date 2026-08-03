@@ -2,13 +2,13 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_phase: 07
-current_phase_name: lifecycle-reporting-retention
-status: executing
+current_phase: 8
+current_phase_name: Send — GATED
+status: planning
 stopped_at: Completed quick task 260803-lh0 (fix silent 1000-row PostgREST truncation)
-last_updated: "2026-08-03T13:53:38.759Z"
-last_activity: 2026-08-02
-last_activity_desc: gap waves 7-8 executed; wave 9 handed over at its human gate
+last_updated: "2026-08-03T14:15:34.541Z"
+last_activity: 2026-08-03
+last_activity_desc: Phase 07 complete, transitioned to Phase 8
 progress:
   total_phases: 8
   completed_phases: 8
@@ -23,58 +23,50 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-17)
 
 **Core value:** Joshua opens the tool and finds businesses genuinely worth pitching, with the proof already written, so that outreach costs him minutes instead of hours.
-**Current focus:** Phase 07 — lifecycle-reporting-retention
+**Current focus:** Phase 8 — Send (GATED)
 
 ## Current Position
 
-Phase: 07 (lifecycle-reporting-retention) — EXECUTING
-Plan: 10 of 10 complete (07-08, 07-09 done; 07-10 at 0/3, blocked on human action)
-Status: BLOCKED — awaiting Joshua's deploy and evidence
-Last activity: 2026-08-02 — gap waves 7-8 executed; wave 9 handed over at its human gate
+Phase: 8 — Send — GATED
+Plan: Not started
+Status: Ready to plan
+Last activity: 2026-08-03 — Phase 07 complete, transitioned to Phase 8
 
 Progress: [██████████] 100%
 
-07-10 Tasks 1 and 2 are human-only and were handed over together:
+Phase 07 closed 2026-08-03 at 5/5 must-haves, zero gaps (07-VERIFICATION.md, third pass).
+All 10 plans executed, including gap plans 07-08/09/10 and quick task 260803-lh0.
 
-1. Append RETENTION_MODE= and RETENTION_MONTHS= (both empty, with their comment lines) to
-   .env.example. No agent can do this — tool access to .env.* paths is denied per
-   .claude/rules/secrets.md.
+What closed the last two failing criteria: `getReportingData()` was reading `prospects` and
+`outreach_messages` with unbounded `.select()`. PostgREST caps at 1000 rows and returns 200 with
+no error, so the funnel counts (TRK-05) and booked tally (TRK-04) were silently truncated. The
+outreach case was worse than an undercount, since `created_at` ASC plus a newest-wins Map meant
+truncation dropped the *newest* rows. All three reads now page through `fetchAllPages()` with
+unique-PK tiebreakers. Proven fail-first by the verifier against the pre-fix file, not accepted
+from the summary.
 
-2. `npx vercel --prod` from repo root (not git-connected — a push ships nothing), then four
-   evidence steps: dashboard shows five crons including /api/cron/retention at `0 3 1 * *`;
-   one authenticated GET returning `mode` = the non-writing default; the same GET unauthenticated
-   returning a refusal; and a Supabase SQL count that references all three clock sources
-   (outreach_messages.sent_at, scans.created_at, prospects.created_at) matching the route's
-   `expiring` figure.
+The confounder, worth remembering: the "1006 prospects" that made this visible was almost entirely
+test pollution. `lib/outreach-queue.integration.test.ts` discarded every cleanup error and built an
+unchunked 1000-UUID `.in()`, so it leaked permanently and self-amplified to 1121 leaked prospects
+against 5 real ones. Purged, and the cleanup now releases `latest_scan_id` first, deletes in FK-safe
+order, chunks via `chunkIds()`, and throws (54223a1). Do not cite the old row counts as evidence
+about production volume.
 
-Halt conditions: if `mode` reads a writing value, RETENTION_MODE is already set in the Vercel
-environment — stop, do not re-issue. If the SQL count disagrees with `expiring`, that is a finding
-about lib/retention.ts, not something to reconcile by adjusting the SQL.
+Production is current: dpl_Hj47paoR7pLYNS2jxgvNjuYtxEzT, aliased to scan.adashi.io, shipped after
+the fix. Full suite 475 passed / 42 files, `tsc` clean, `npm run build` compiles.
 
-Next: paste the five evidence blocks back, then Task 3 transcribes them and closes the phase.
+Carried forward, not gaps: CMP-13 stays Partial by design pending the Legitimate Interest
+Assessment (blocked on external counsel; `RETENTION_MODE` stays unset, the 12-month window is a
+placeholder). GC-01/02/03 and WINDOWS.md #3 remain deferred with rationale in 07-VERIFICATION.md.
 
-Closing the two verification gaps (see 07-VERIFICATION.md):
-
-1. 07-08 (wave 7) — `prospect_sources` anonymisation. Blocking decision checkpoint (clear the raw_*
-   columns / delete the source rows / record permanently out of scope), then the code path and a test
-   that pins whichever branch is chosen. Note `overture_gers_id` is not-null-unique and resolves to
-   the business publicly, so under two of the three options this is pseudonymisation, not anonymisation.
-
-2. 07-09 (wave 8) — candidate-set correctness. Folds in code-review WR-02 (unchunked `.in()` in
-   getShortlist, same PostgREST URI-length bug retention already fixed) and WR-01 (booking attribution
-   `.limit(2)` misattributes at 3+ shared emails).
-
-3. 07-10 (wave 9) — deploy the cron, gather six separately-checkable evidence steps, hand-add the
-   .env.example lines, close both WINDOWS entries. Marks CMP-14 complete; CMP-13 stays Partial because
-   stay-dry-run means the job reports rather than expires.
-
-Next: `/gsd-execute-phase 07 --gaps-only` (sequential, one executor at a time)
+Next: `/gsd-plan-phase 8` — Send (GATED). Note the standing roadmap decision that the
+provider/legal-basis track gates this phase specifically.
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 37
+- Total plans completed: 47
 - Average duration: —
 - Total execution time: —
 
@@ -89,6 +81,7 @@ Next: `/gsd-execute-phase 07 --gaps-only` (sequential, one executor at a time)
 | 04.1 | 2 | - | - |
 | 05 | 4 | - | - |
 | 6 | 8 | - | - |
+| 07 | 10 | - | - |
 
 **Recent Trend:**
 
