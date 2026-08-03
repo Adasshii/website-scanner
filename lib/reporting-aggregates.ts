@@ -2,7 +2,7 @@
 // sent-gate boolean the Reporting tab renders (TRK-01/02/03). Follows
 // lib/triage-candidates.ts's convention: an injected SupabaseClient first
 // parameter, a typed return, no route-level JSON shaping inside this file.
-import type { SupabaseClient } from "@supabase/supabase-js";
+import type { PostgrestError, SupabaseClient } from "@supabase/supabase-js";
 import {
   deriveLifecycleState,
   FUNNEL_GROUPS,
@@ -64,13 +64,49 @@ function build30DayWindow(now: Date): string[] {
   return days;
 }
 
+// PostgREST silently caps an unbounded select at this many rows per page and
+// returns HTTP 200 with no error — the same cap RETENTION_MAX_BATCH's doc
+// comment (lib/retention-constants.ts) names as PostgREST's default page
+// size. Retention asserts against that cap because a partial expiry run must
+// fail loudly; the Reporting tab has the opposite requirement — it must keep
+// working past 1000 rows, not go dark — so this file pages through the cap
+// instead of refusing at it.
+const REPORTING_PAGE_SIZE = 1000;
+
 /**
- * Reads every prospect and every outreach_messages row (all rows; ~800
- * prospects at this project's scale, so counting in TypeScript is correct
- * per CONTEXT.md's Claude's Discretion), derives each prospect's fine
- * lifecycle state via `deriveLifecycleState()`, and tallies through
- * `FUNNEL_GROUPS`. `sentGateOpen` is a read-time gate (D-7-13) — never a
- * stored flag — derived from whether any fetched outreach_messages row has
+ * Pages through `queryPage(from, to)` until a page shorter than
+ * `REPORTING_PAGE_SIZE` comes back, accumulating every row. Throws on the
+ * first page-level error rather than returning a partial result.
+ */
+async function fetchAllPages<Row>(
+  queryPage: (
+    from: number,
+    to: number
+  ) => PromiseLike<{ data: Row[] | null; error: PostgrestError | null }>
+): Promise<Row[]> {
+  const rows: Row[] = [];
+  let from = 0;
+  while (true) {
+    const to = from + REPORTING_PAGE_SIZE - 1;
+    const { data, error } = await queryPage(from, to);
+    if (error) throw error;
+    const page = data ?? [];
+    rows.push(...page);
+    if (page.length < REPORTING_PAGE_SIZE) break;
+    from += REPORTING_PAGE_SIZE;
+  }
+  return rows;
+}
+
+/**
+ * Reads every prospect and every outreach_messages row, derives each
+ * prospect's fine lifecycle state via `deriveLifecycleState()`, and tallies
+ * through `FUNNEL_GROUPS`. Both reads are paginated (see
+ * `REPORTING_PAGE_SIZE`) — the counting itself still happens in TypeScript,
+ * but PostgREST silently truncates an unbounded select, so a single
+ * `.select()` cannot be trusted once either table crosses the cap.
+ * `sentGateOpen` is a read-time gate (D-7-13) — never a stored flag —
+ * derived from whether any fetched outreach_messages row has
  * `status === "sent"`.
  */
 export async function getReportingData(sb: SupabaseClient): Promise<ReportingPayload> {
@@ -78,31 +114,48 @@ export async function getReportingData(sb: SupabaseClient): Promise<ReportingPay
   const dayWindow = build30DayWindow(now); // newest first
   const windowStartIso = `${dayWindow[dayWindow.length - 1]}T00:00:00.000Z`;
 
-  const { data: prospectRows, error: prospectError } = await sb
-    .from("prospects")
-    .select(
-      "id, lifecycle_state, triage_checked_at, scan_released_at, scan_status, booked_at, booked_match_method, created_at"
-    );
-  if (prospectError) throw prospectError;
+  const prospectRows = await fetchAllPages((from, to) =>
+    sb
+      .from("prospects")
+      .select(
+        "id, lifecycle_state, triage_checked_at, scan_released_at, scan_status, booked_at, booked_match_method, created_at"
+      )
+      .order("id", { ascending: true })
+      .range(from, to)
+  );
 
-  const { data: outreachRows, error: outreachError } = await sb
-    .from("outreach_messages")
-    .select("prospect_id, status, created_at, sent_at")
-    .order("created_at", { ascending: true });
-  if (outreachError) throw outreachError;
+  // `created_at` alone is not unique, so a second `order("id")` tiebreak is
+  // required before `.range()` — otherwise rows sharing a `created_at` can
+  // straddle a page boundary and be skipped or duplicated, leaving the
+  // newest-wins fold wrong in a quieter way than an outright undercount.
+  // Ties resolve in `id` order — arbitrary but deterministic, which is all
+  // the fold needs.
+  const outreachRows = await fetchAllPages((from, to) =>
+    sb
+      .from("outreach_messages")
+      .select("prospect_id, status, created_at, sent_at")
+      .order("created_at", { ascending: true })
+      .order("id", { ascending: true })
+      .range(from, to)
+  );
 
   // scanned (D-7-16's scope line applied to reporting): `.not("prospect_id",
   // "is", null)` excludes the public scanner's own scans, which are not
-  // prospect activity. Restricted to the 30-day window via `.gte()` so this
-  // query does not widen as the table grows — the funnel queries above stay
-  // unbounded because they describe where every prospect stands now, not a
-  // per-day rate.
-  const { data: scanRows, error: scanError } = await sb
-    .from("scans")
-    .select("created_at")
-    .not("prospect_id", "is", null)
-    .gte("created_at", windowStartIso);
-  if (scanError) throw scanError;
+  // prospect activity. Restricted to the 30-day window via `.gte()`, but a
+  // time window bounds *when* a row was created, not *how many* rows exist
+  // in it — this project's local dev DB alone holds over 1000 scans in the
+  // last 30 days, so this read hits the identical PostgREST cap the other
+  // two reads do and must page the same way, ordered by `id` (migration
+  // 001's uuid primary key) as the unique tiebreaker.
+  const scanRows = await fetchAllPages<{ created_at: string | null }>((from, to) =>
+    sb
+      .from("scans")
+      .select("created_at")
+      .not("prospect_id", "is", null)
+      .gte("created_at", windowStartIso)
+      .order("id", { ascending: true })
+      .range(from, to)
+  );
 
   // Keep the LAST write per prospect (ascending order + Map overwrite),
   // which yields the newest row — migration 012 declares no UNIQUE
@@ -110,7 +163,7 @@ export async function getReportingData(sb: SupabaseClient): Promise<ReportingPay
   // prospect would be unsafe here.
   const latestOutreachStatus = new Map<string, LifecycleInputs["outreachStatus"]>();
   let sentGateOpen = false;
-  for (const message of outreachRows ?? []) {
+  for (const message of outreachRows) {
     latestOutreachStatus.set(
       message.prospect_id as string,
       message.status as LifecycleInputs["outreachStatus"]
@@ -141,7 +194,7 @@ export async function getReportingData(sb: SupabaseClient): Promise<ReportingPay
     });
   }
 
-  for (const prospect of prospectRows ?? []) {
+  for (const prospect of prospectRows) {
     const fine = deriveLifecycleState({
       lifecycle_state: prospect.lifecycle_state as string,
       triage_checked_at: prospect.triage_checked_at as string | null,
@@ -181,14 +234,14 @@ export async function getReportingData(sb: SupabaseClient): Promise<ReportingPay
     }
   }
 
-  for (const scan of scanRows ?? []) {
+  for (const scan of scanRows) {
     const createdAt = scan.created_at as string | null;
     if (!createdAt) continue;
     const day = dayMap.get(utcDay(createdAt));
     if (day) day.scanned += 1;
   }
 
-  for (const message of outreachRows ?? []) {
+  for (const message of outreachRows) {
     const sentAt = message.sent_at as string | null;
     if (!sentAt) continue;
     const day = dayMap.get(utcDay(sentAt));
