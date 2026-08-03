@@ -30,6 +30,7 @@ import {
   MAX_DRAFT_BODY_LENGTH,
 } from "./outreach-queue";
 import type { ScanScores, ScanSummary } from "@/types/scanner";
+import { chunkIds } from "./chunk-ids";
 
 process.env.NEXT_PUBLIC_SUPABASE_URL = "http://127.0.0.1:54321";
 process.env.SUPABASE_SERVICE_ROLE_KEY =
@@ -41,13 +42,57 @@ beforeAll(() => {
   sb = createServerClient();
 });
 
+// Deletes in an order that satisfies the FK graph, chunks every `.in()`, and
+// throws on any failure. Mirrors the cleanup in
+// reporting-aggregates.integration.test.ts (fixed 2026-08-02) — the same bug
+// lived here and went unfixed, which is what actually leaked.
+//
+// This suite is the one that provably creates the cycle: the regenerate tests
+// below set prospects.latest_scan_id (migration 013, ON DELETE NO ACTION), so
+// the scans delete is rejected until that edge is released.
+//
+// How the leak became permanent: none of the four calls read `error`. The
+// scans delete failed on the latest_scan_id FK, the prospects delete then
+// failed on scans.prospect_id, both errors were discarded, and cleanup
+// reported success. Survivors were prefix-matched again next run, so the set
+// only ever grew. Past ~1000 survivors the unchunked `.in()` also overflowed
+// the gateway's URI limit (the same limit lib/retention.ts documents), so
+// cleanup could no longer succeed even once the FK order was right. It
+// self-amplified: 1121 leaked prospects, purged 2026-08-03.
+//
+// Chunking keeps the recovery path open; throwing fails the run that caused a
+// leak instead of the next one.
 afterEach(async () => {
-  const { data: prospects } = await sb.from("prospects").select("id").like("domain", "test-outreach-queue-%");
+  const { data: prospects, error: selectError } = await sb
+    .from("prospects")
+    .select("id")
+    .like("domain", "test-outreach-queue-%");
+  if (selectError) throw selectError;
   const ids = (prospects ?? []).map((p) => p.id as string);
-  if (ids.length > 0) {
-    await sb.from("outreach_messages").delete().in("prospect_id", ids);
-    await sb.from("scans").delete().in("prospect_id", ids);
-    await sb.from("prospects").delete().in("id", ids);
+  if (ids.length === 0) return;
+
+  for (const batch of chunkIds(ids, 150)) {
+    // Release prospects.latest_scan_id before deleting scans, or the delete
+    // below is rejected and takes every other fixture row down with it.
+    const { error: unlinkError } = await sb
+      .from("prospects")
+      .update({ latest_scan_id: null })
+      .in("id", batch)
+      .not("latest_scan_id", "is", null);
+    if (unlinkError) throw unlinkError;
+
+    // outreach_messages first: it carries FKs to both prospects and scans.
+    const { error: outreachError } = await sb
+      .from("outreach_messages")
+      .delete()
+      .in("prospect_id", batch);
+    if (outreachError) throw outreachError;
+
+    const { error: scanError } = await sb.from("scans").delete().in("prospect_id", batch);
+    if (scanError) throw scanError;
+
+    const { error: prospectError } = await sb.from("prospects").delete().in("id", batch);
+    if (prospectError) throw prospectError;
   }
 });
 
