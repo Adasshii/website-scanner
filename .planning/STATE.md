@@ -52,8 +52,11 @@ against 5 real ones. Purged, and the cleanup now releases `latest_scan_id` first
 order, chunks via `chunkIds()`, and throws (54223a1). Do not cite the old row counts as evidence
 about production volume.
 
-Production is current: dpl_Hj47paoR7pLYNS2jxgvNjuYtxEzT, aliased to scan.adashi.io, shipped after
-the fix. Full suite 475 passed / 42 files, `tsc` clean, `npm run build` compiles.
+Production is current: dpl_55Fp6dFhbJg9pbKKZXHJdxJdtFAf (2026-08-03 16:34), aliased to
+scan.adashi.io. It supersedes dpl_Hj47paoR7pLYNS2jxgvNjuYtxEzT, which is the deployment the
+closed 07-VERIFICATION.md record names — that record is still accurate for the item it closed;
+this one additionally ships 0b33191, the `fetchAllPages()` empty-page termination fix.
+Full suite 479 passed / 43 files, `tsc` clean, `npm run build` compiles.
 
 Carried forward, not gaps: CMP-13 stays Partial by design pending the Legitimate Interest
 Assessment (blocked on external counsel; `RETENTION_MODE` stays unset, the 12-month window is a
