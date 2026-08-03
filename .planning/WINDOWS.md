@@ -1,10 +1,10 @@
 ---
 schema_version: 1
-open_count: 2
+open_count: 1
 waived_count: 0
-fixed_count: 0
-total_count: 2
-last_updated: 2026-08-02T15:18:53.617Z
+fixed_count: 2
+total_count: 3
+last_updated: 2026-08-03T10:29:34.333Z
 ---
 
 # Broken Windows Ledger
@@ -15,8 +15,9 @@ last_updated: 2026-08-02T15:18:53.617Z
 
 | id | phase | kind | file | line | description | status | reason | recorded_at | resolved_at |
 |----|-------|------|------|------|-------------|--------|--------|-------------|-------------|
-| 1 | 07 | deviation | .env.example |  | RETENTION_MODE and RETENTION_MONTHS not documented — global permission settings denied all tool access to .env.* paths this session; needs a 2-line hand-add before Task 3's deploy | open |  | 2026-08-02T14:42:35.119Z |  |
-| 2 | 07 | unrun-verify | 07-07-PLAN.md |  | Task 3's deploy/dashboard-cron-confirmation/authenticated-dry-run-read/SQL-cross-check steps were not run before RETENTION_MODE stay-dry-run decision; required before any future move off dry-run | open |  | 2026-08-02T15:18:53.617Z |  |
+| 1 | 07 | deviation | .env.example |  | RETENTION_MODE and RETENTION_MONTHS not documented — global permission settings denied all tool access to .env.* paths this session; needs a 2-line hand-add before Task 3's deploy | fixed |  | 2026-08-02T14:42:35.119Z | 2026-08-03T10:29:23.979Z |
+| 2 | 07 | unrun-verify | 07-07-PLAN.md |  | Task 3's deploy/dashboard-cron-confirmation/authenticated-dry-run-read/SQL-cross-check steps were not run before RETENTION_MODE stay-dry-run decision; required before any future move off dry-run | fixed |  | 2026-08-02T15:18:53.617Z | 2026-08-03T10:29:24.064Z |
+| 3 | 07 | deviation | app/api/cron/retention/route.ts |  | Daily dry-run retention job reports expiring/candidates only into Vercel function logs, which nobody reads routinely — a job reporting into a void is not a monitor. Surface the expiring figure somewhere Joshua actually looks (likely the Reporting tab) before RETENTION_MODE is ever considered for a writing value. | open |  | 2026-08-03T10:29:34.333Z |  |
 
 ````json
 [
@@ -27,10 +28,10 @@ last_updated: 2026-08-02T15:18:53.617Z
     "file": ".env.example",
     "line": null,
     "description": "RETENTION_MODE and RETENTION_MONTHS not documented — global permission settings denied all tool access to .env.* paths this session; needs a 2-line hand-add before Task 3's deploy",
-    "status": "open",
+    "status": "fixed",
     "reason": "",
     "recorded_at": "2026-08-02T14:42:35.119Z",
-    "resolved_at": null
+    "resolved_at": "2026-08-03T10:29:23.979Z"
   },
   {
     "id": 2,
@@ -39,9 +40,21 @@ last_updated: 2026-08-02T15:18:53.617Z
     "file": "07-07-PLAN.md",
     "line": null,
     "description": "Task 3's deploy/dashboard-cron-confirmation/authenticated-dry-run-read/SQL-cross-check steps were not run before RETENTION_MODE stay-dry-run decision; required before any future move off dry-run",
-    "status": "open",
+    "status": "fixed",
     "reason": "",
     "recorded_at": "2026-08-02T15:18:53.617Z",
+    "resolved_at": "2026-08-03T10:29:24.064Z"
+  },
+  {
+    "id": 3,
+    "kind": "deviation",
+    "phase": "07",
+    "file": "app/api/cron/retention/route.ts",
+    "line": null,
+    "description": "Daily dry-run retention job reports expiring/candidates only into Vercel function logs, which nobody reads routinely — a job reporting into a void is not a monitor. Surface the expiring figure somewhere Joshua actually looks (likely the Reporting tab) before RETENTION_MODE is ever considered for a writing value.",
+    "status": "open",
+    "reason": "",
+    "recorded_at": "2026-08-03T10:29:34.333Z",
     "resolved_at": null
   }
 ]

@@ -84,8 +84,8 @@
 - [ ] **CMP-10**: The send layer refuses a first-touch send unless the Article 14 notice flag is true
 - [ ] **CMP-11**: Every send persists an immutable record: prospect, resolved address and classification, timestamp, the message content actually sent, legal basis, approver, and the suppression-check result
 - [ ] **CMP-12**: Joshua can answer "why were we allowed to email this business?" per prospect in seconds, from the audit trail rather than from logs
-- [ ] **CMP-13**: A scheduled retention job expires prospect, scan, and outreach data (placeholder: 12 months from last contact, pending the LIA — not a legal fact)
-- [ ] **CMP-14**: Retention expiry can delete or anonymise by config, not hardcoded
+- [ ] **CMP-13**: A scheduled retention job expires prospect, scan, and outreach data (placeholder: 12 months from last contact, pending the LIA — not a legal fact). **Partial:** the job is deployed, registered daily in Vercel (`0 3 * * *`), and validated against production — but it ships in its non-writing `dry-run` mode, so it reports what it would expire and expires nothing. Remaining condition: setting `RETENTION_MODE` to a writing value, a deliberate standing decision to defer, not outstanding work. See `07-DEPLOY-EVIDENCE.md`.
+- [x] **CMP-14**: Retention expiry can delete or anonymise by config, not hardcoded
 - [x] **CMP-15**: Suppression records are exempt from retention deletion and retained indefinitely, flagged explicitly in code so nobody silently changes it
 - [x] **CMP-16**: Legal-basis rules live in a per-country config table (`country_code`, `spam_law_regime`, `notes_url`), never hardcoded NL logic
 - [x] **CMP-17**: The scan pipeline does not separately index, profile, or reuse incidental personal data (staff photos, named bios) captured in screenshots
@@ -206,8 +206,8 @@ Populated during roadmap creation. See `.planning/ROADMAP.md` for phase detail.
 | CMP-10 | Phase 8 | Pending (gated) |
 | CMP-11 | Phase 8 | Pending (gated) |
 | CMP-12 | Phase 8 | Pending (gated) |
-| CMP-13 | Phase 7 | In Progress |
-| CMP-14 | Phase 7 | In Progress |
+| CMP-13 | Phase 7 | Partial — schedule live and validated in production, `RETENTION_MODE` deliberately unset (see `07-DEPLOY-EVIDENCE.md`) |
+| CMP-14 | Phase 7 | Complete |
 | CMP-15 | Phase 7 | Complete |
 | CMP-16 | Phase 2 | Complete |
 | CMP-17 | Phase 4 | Complete |
