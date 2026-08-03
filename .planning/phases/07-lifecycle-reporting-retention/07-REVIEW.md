@@ -38,6 +38,29 @@ findings:
   info: 2
   total: 5
 status: issues_found
+
+gap_closure_reviewed: 2026-08-03T10:44:26Z
+gap_closure_plans: ["07-08", "07-09", "07-10"]
+gap_closure_depth: standard
+gap_closure_commit_range: "0656ece..HEAD"
+gap_closure_files_reviewed: 10
+gap_closure_files_reviewed_list:
+  - lib/chunk-ids.ts
+  - lib/chunk-ids.test.ts
+  - lib/retention.ts
+  - lib/retention-constants.ts
+  - lib/triage-candidates.ts
+  - lib/triage-candidates.integration.test.ts
+  - lib/booking-attribution.ts
+  - lib/retention.integration.test.ts
+  - app/api/webhooks/fillout/route.integration.test.ts
+  - vercel.json
+gap_closure_findings:
+  critical: 0
+  warning: 2
+  info: 2
+  total: 4
+gap_closure_status: issues_found
 ---
 
 # Phase 07: Code Review Report
@@ -116,6 +139,8 @@ const { data: emailMatches, error: emailError } = await sb
 ```
 Apply the same change to the domain-fallback query.
 
+**GAP-CLOSURE UPDATE (2026-08-03): CLOSED CORRECTLY.** See the "Gap-Closure Review" section below.
+
 ### WR-02: `getShortlist()`'s unbounded `.in()` reproduces the exact PostgREST "URI too long" bug this phase found and fixed in `lib/retention.ts`
 
 **File:** `lib/triage-candidates.ts:104-112`
@@ -157,6 +182,8 @@ for (const chunk of idChunks) {
 (`chunkIds` is currently unexported from `lib/retention.ts`; export it or move it to a small
 shared module so both callers use one implementation.)
 
+**GAP-CLOSURE UPDATE (2026-08-03): CLOSED CORRECTLY**, with one over-claimed test-coverage note. See below.
+
 ### WR-03: Anonymise mode never touches `prospect_sources`, leaving the original name/address/URL joinable after "anonymisation"
 
 **File:** `lib/retention-constants.ts:76` (`RETENTION_TABLE_ALLOWLIST`), `lib/retention.ts` (no
@@ -178,6 +205,9 @@ mattered but will the moment anonymise mode is turned on.
 allowlist with its own field list, or (b) an explicit, documented decision that
 `prospect_sources` is out of scope forever (not just "not yet decided"). Track this as a release
 gate, not a code defect to silently ship past.
+
+**GAP-CLOSURE UPDATE (2026-08-03): CLOSED CORRECTLY**, with one new reporting-accuracy gap
+introduced alongside the fix (GC-01 below). See the "Gap-Closure Review" section.
 
 ## Info
 
@@ -207,3 +237,216 @@ completeness only; not counted in the findings totals.
 _Reviewed: 2026-08-02T17:30:00Z_
 _Reviewer: Claude (gsd-code-reviewer)_
 _Depth: standard_
+
+---
+
+# Gap-Closure Review (Plans 07-08, 07-09, 07-10)
+
+**Reviewed:** 2026-08-03T10:44:26Z
+**Depth:** standard
+**Commit range:** `0656ece..HEAD`
+**Files Reviewed:** 10 production + test files (see `gap_closure_files_reviewed_list` in frontmatter)
+**Status:** issues_found (4 new findings; all three original warnings closed)
+
+## Summary
+
+This pass reviews only what plans 07-08, 07-09, and 07-10 changed: `lib/chunk-ids.ts` (new),
+`lib/retention.ts`'s `prospect_sources` delete inside `anonymizeProspects()`, the widened
+`RETENTION_TABLE_ALLOWLIST`, `getShortlist()`'s chunked outreach lookup with its
+accumulate-then-sort pass, `attributeBookingToProspect()`'s uncapped candidate queries, and the
+daily-cron `vercel.json` change. I traced each of the four areas of particular concern by hand
+against the actual code (not the SUMMARY prose), cross-checked the integration tests that claim
+to pin each fix, and read `07-DECISION-RECORD.md` for the two binding decisions this pass
+enforces.
+
+**WR-01, WR-02, and WR-03 are all closed, and closed correctly** — verified by direct code
+reading plus tests that exercise the specific failure mode each original finding described (3+
+candidate booking attribution, a >150-row chunk boundary on the Shortlist read, and a real
+`prospect_sources` row surviving/not-surviving an anonymise pass). None of the three original
+defects is still present. Two new issues surfaced during verification, both introduced by this
+gap-closure work itself rather than left over from the original review, plus two informational
+notes worth recording so the next reader doesn't over-trust claims made in the plan SUMMARYs.
+
+### Closure verdicts
+
+- **WR-01 (booking-attribution 2-row cap): closed correctly.** `lib/booking-attribution.ts:76-79`
+  and `:97-100` both dropped `.limit(2)` entirely — not raised to a larger fixed number, which
+  would only have moved the same bug to a higher threshold. Ambiguity is decided from
+  `gatedIds.size` (the post-sent-gate set), confirmed by four new integration cases
+  (`app/api/webhooks/fillout/route.integration.test.ts:319-407`) that seed exactly 3 candidates
+  with 1/2/0 of them sent-gated, plus a fourth case proving step 1 never falls through to the
+  domain step once step 1 finds any row. `prospects.domain`'s partial unique index
+  (`supabase/migrations/010_create_prospects.sql:39`) confirmed the domain-fallback query can
+  never itself return more than one row, so removing its `.limit(2)` was for symmetry, not a
+  live bug fix — consistent with what the plan's own decisions log claims.
+- **WR-02 (unbounded Shortlist `.in()`): closed correctly**, with one over-claimed test-coverage
+  note — see GC-03 (Info) below. `getShortlist()` now chunks via the shared `chunkIds()` at
+  `SHORTLIST_ID_CHUNK_SIZE` (150), and `lib/triage-candidates.integration.test.ts:324-360` proves
+  completeness and correct `stage`/`has_outreach_draft` across a `SHORTLIST_ID_CHUNK_SIZE + 5`
+  fixture set — the exact scenario WR-02 said was untested and would fail.
+- **WR-03 (`prospect_sources` untouched by anonymise mode): closed correctly** on the write path
+  — `anonymizeProspects()` deletes each chunk's `prospect_sources` rows
+  (`lib/retention.ts:272-277`) inside the same bounded `idChunk` loop as the other three tables,
+  cannot run outside `mode === "anonymize"` (the dry-run arm returns before any writer is called;
+  `runRetention()`'s dispatch at `lib/retention.ts:417-429` confirms this), and counts rows
+  actually returned by `.select("id")` rather than rows attempted. Proven by
+  `lib/retention.integration.test.ts:750-799` (past-window deletion by three different lookup
+  keys, in-window survival column-for-column, delete-mode cascade re-assertion). The decision
+  itself (B-delete-source-rows, accepting the IMP-03 duplicate-prospect cost) is recorded in
+  `07-DECISION-RECORD.md` exactly as the plan claims. **However**, the write path's correctness
+  is undercut by a reporting gap on the observability side — see GC-01 below, which is new to
+  this gap-closure pass and not one of the original three findings.
+
+## Warnings
+
+### GC-01: `RetentionResult.sourcesAnonymized` stays 0 after a delete-mode run, even though `prospect_sources` rows were actually deleted by cascade
+
+**File:** `lib/retention.ts:431-441` (the `delete` branch of `runRetention()`)
+**Issue:** `runRetention()`'s anonymize branch sets `result.sourcesAnonymized = sources` from
+`anonymizeProspects()`'s return value. The delete branch does not:
+```ts
+const ids = expiring.map((row) => row.id);
+const { prospects, outreach, scans } = await deleteProspects(sb, ids);
+result.prospectsDeleted = prospects;
+result.outreachAnonymized = outreach;
+result.scansDeleted = scans;
+return result;
+```
+`result.sourcesAnonymized` is left at its `0` default (set at `lib/retention.ts:414`) for every
+delete-mode run. But delete mode *does* remove `prospect_sources` rows — via migration 011's
+`ON DELETE CASCADE` when `deleteProspects()`'s step 4 deletes the owning `prospects` row, exactly
+as `lib/retention.integration.test.ts:789-799` ("delete: a source row for a prospect past the
+window is gone via migration 011's ON DELETE CASCADE") proves. So the actual deletion is correct,
+but the job's own reported counters are wrong for that mode: an operator reading
+`GET /api/cron/retention`'s JSON response (the exact surface `07-DEPLOY-EVIDENCE.md` treats as
+compliance evidence) after a delete-mode run sees `sourcesAnonymized: 0` regardless of how many
+source rows the cascade actually removed. No test in either `lib/retention.integration.test.ts`'s
+`anonymizeProspects` describe or its `deleteProspects` describe asserts a non-zero
+`sourcesAnonymized`/equivalent in delete mode — the delete-mode wiring test at
+`lib/retention.integration.test.ts:973-987` checks `prospectsDeleted`, `scansDeleted`, and
+`outreachAnonymized`, but never a sources counter, so this gap has no regression guard.
+**Fix:** Either have `deleteProspects()` return a `sources` count from the cascade (requires
+selecting affected `prospect_sources` ids before the cascading `prospects` delete removes them,
+since a cascade delete does not itself return the child rows to the caller — e.g., a
+`retentionFrom(sb, "prospect_sources").select("id").in("prospect_id", idChunk)` immediately before
+step 4, or a `.delete()` on `prospect_sources` explicit in `deleteProspects()` mirroring
+`anonymizeProspects()`'s own explicit delete rather than relying on the cascade at all), or
+document explicitly in the `RetentionResult` type/comment that `sourcesAnonymized` is
+anonymize-mode-only and rename it accordingly (e.g., add a dedicated `sourcesDeleted` field, or
+note in a comment that delete mode's cascade count is intentionally unreported, matching the
+existing "counted separately" convention `outreachAnonymized` already documents for its own
+dual-mode reuse).
+
+### GC-02: `chunkIds()` loops forever for a chunk size of `0` or a negative size
+
+**File:** `lib/chunk-ids.ts:8-14`
+**Issue:**
+```ts
+export function chunkIds(ids: string[], size: number): string[][] {
+  const chunks: string[][] = [];
+  for (let i = 0; i < ids.length; i += size) {
+    chunks.push(ids.slice(i, i + size));
+  }
+  return chunks;
+}
+```
+For `size === 0` and any non-empty `ids`, `i` never advances past `0` (`i += 0`), so the loop
+never terminates — the function hangs the calling request forever (or until a platform timeout
+kills the process). For a negative `size`, `i` decreases every iteration and diverges away from
+`ids.length` in the wrong direction, also never terminating. Both call sites today pass a
+hardcoded literal (`RETENTION_ID_CHUNK_SIZE = 150`, `SHORTLIST_ID_CHUNK_SIZE = 150`), so this is
+not reachable in the current codebase — but this function is now explicitly positioned as "the
+one dependency-free chunking helper this codebase has" (its own header comment) shared across a
+cron write path and an admin read path, specifically so a future caller reuses it rather than
+writing a third implementation. `lib/chunk-ids.test.ts`'s five cases cover empty input and the
+below/at/above-boundary cases (per its own comments) but never a non-positive `size`, so nothing
+guards this edge going forward. This matches area-of-concern #4's explicit ask to check
+"chunk size of 0 or negative."
+**Fix:** Guard at the top of the function rather than relying on every future caller to pass a
+sane constant:
+```ts
+export function chunkIds(ids: string[], size: number): string[][] {
+  if (size <= 0) throw new Error(`chunkIds: size must be positive, got ${size}`);
+  const chunks: string[][] = [];
+  for (let i = 0; i < ids.length; i += size) {
+    chunks.push(ids.slice(i, i + size));
+  }
+  return chunks;
+}
+```
+Add a `chunkIds([...], 0)` / `chunkIds([...], -1)` throw-assertion to `lib/chunk-ids.test.ts`.
+
+## Info
+
+### GC-03: `getShortlist()`'s global re-sort of accumulated outreach rows is currently unreachable by any test — the coverage claim in `07-09-SUMMARY.md` overstates what's proven
+
+**File:** `lib/triage-candidates.ts:118-132`; `07-09-SUMMARY.md` (frontmatter `coverage` id D2,
+and the "Decisions Made" section)
+**Issue:** This was the area of particular concern flagged as highest-risk in the review brief,
+so it's worth stating precisely what the trace found. The code is:
+```ts
+const idChunks = chunkIds(rawRows.map((r) => r.id), SHORTLIST_ID_CHUNK_SIZE);
+const outreachRows: { prospect_id: string; status: string; created_at: string }[] = [];
+for (const idChunk of idChunks) {
+  const { data, error } = await sb
+    .from("outreach_messages")
+    .select("prospect_id, status, created_at")
+    .in("prospect_id", idChunk)
+    .order("created_at", { ascending: true });
+  if (error) throw error;
+  outreachRows.push(...(data ?? []));
+}
+outreachRows.sort((a, b) => Date.parse(a.created_at) - Date.parse(b.created_at));
+```
+The re-sort is present, sorts on `created_at` ascending (the correct key and direction for a
+last-write-wins reduction that must end on the newest row), and would be needed *if* a single
+prospect's outreach rows could ever be split across two different chunk queries. But
+`idChunks` partitions `rawRows.map(r => r.id)` — every prospect's `id` appears in exactly one
+element of `idChunks`, since a prospect row is not duplicated in `rawRows`. Each chunk's
+`.in("prospect_id", idChunk)` query therefore returns *all* of a given prospect's
+`outreach_messages` rows within that single chunk's own result set, which is already sorted
+ascending by that chunk's own `.order()`. So for any single prospect, its rows arrive in the
+correct ascending order in the concatenated array with or without the final global
+`outreachRows.sort(...)` — the per-prospect order the last-write-wins reduction actually depends
+on was never at risk from the chunking change in the first place. Deleting the global sort line
+would not make any existing test fail, including the two chunk-boundary tests
+(`lib/triage-candidates.integration.test.ts:324-360`) that were written specifically to prove
+this: the second of the two (`"resolves stage from the newest of two outreach rows for one
+prospect even when the fixture set spans two chunks"`) seeds its target prospect via a single,
+separate `seedProspect()` call, so that one prospect's `id` — like every other prospect's — still
+lands in exactly one chunk; its two outreach rows are never actually split across the chunk
+boundary the test's own name claims to exercise. This is consistent with `07-09-SUMMARY.md`'s
+own "Decisions Made" section, which candidly says the sort is "defensive... even though under
+this specific chunking-by-prospect-id partition a single prospect's rows can never actually
+straddle two chunks" — but the plan's `coverage` entry D2 and the WR-02 closure claim in the same
+SUMMARY ("proven by integration tests that exercise the real, previously-unreachable code paths —
+not by inspection") state more than that candid admission supports for this specific line. Not a
+functional bug: the code is correct, and the defensive sort costs nothing at this data volume.
+**Fix:** None required. Consider either removing the redundant sort with a comment explaining why
+it's provably unnecessary under the current id-based chunking (simpler, matches what's actually
+tested), or keeping it as insurance against a future chunking-strategy change but rewording the
+SUMMARY-level claim so a future reader doesn't treat "a test would fail if this were removed" as
+literally true for this line.
+
+### GC-04: `app/api/cron/retention/route.ts`'s doc comment is now stale after the D-7-20 schedule supersede, and isn't the tracked "known inconsistency"
+
+**File:** `app/api/cron/retention/route.ts:8-9` (unchanged by any of the three gap plans)
+**Issue:** The route's own header comment still reads "Runs monthly via Vercel cron (D-7-20) —
+data expiry does not need day resolution..." but `vercel.json`'s schedule for this exact route
+changed from `0 3 1 * *` (monthly) to `0 3 * * *` (daily) as part of plan 07-10, per
+`07-DECISION-RECORD.md`'s "D-7-20 superseded" section. `07-DECISION-RECORD.md` explicitly names
+one stale artifact left behind by this change (`07-07-PLAN.md` line 367's schedule assertion) but
+does not mention this route file's own comment, which makes the same now-incorrect claim in the
+one file most likely to be read when debugging the live cron. `route.ts` itself was not part of
+this gap-closure pass's file list (confirmed via `git diff 0656ece..HEAD -- app/api/cron/retention/route.ts`,
+which is empty), so this is a side effect of the `vercel.json` change rather than a defect
+introduced by editing this file.
+**Fix:** One-line comment update: `Runs daily via Vercel cron (D-7-20 superseded — see
+07-DECISION-RECORD.md) — a monthly schedule silently failed to register on Vercel Hobby.`
+
+---
+
+_Gap-closure reviewed: 2026-08-03T10:44:26Z_
+_Reviewer: Claude (gsd-code-reviewer)_
+_Depth: standard_
+_Scope: plans 07-08, 07-09, 07-10 (commit range 0656ece..HEAD)_
