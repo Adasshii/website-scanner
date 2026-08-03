@@ -268,6 +268,7 @@ Items acknowledged and carried forward from previous milestone close:
 | Date | Slug | Outcome |
 |------|------|---------|
 | 2026-08-02 | reporting-agg-cleanup-leak | `reporting-aggregates.integration.test.ts` `afterEach` swallowed a `scans_prospect_id_fkey` violation (migration 013 is `ON DELETE NO ACTION`), so one blocked row aborted the whole prospects delete and every fixture row survived, cumulatively, across runs. Cleanup now deletes in FK-safe order and throws on any error. |
+| 2026-08-03 | fix-silent-1000-row-postgrest-truncation | `getReportingData()` read `prospects` and `outreach_messages` with unbounded `.select()`; PostgREST caps at 1000 rows and returns 200 with no error, so the Reporting tab's funnel counts (TRK-05) and booked tally (TRK-04) were silently wrong. Outreach was worse than an undercount: `created_at` ASC + newest-wins Map meant truncation dropped the *newest* rows, corrupting resolved status and letting `sentGateOpen` read false while sends existed. Now paginated via a file-local `fetchAllPages()` `.range()` loop with unique-id tiebreakers; `scans` paginated too (deviation — live data showed 1045 rows already past the cap in the 30-day window). Commits `abf2b15`, `7710a57`. |
 
 ## Session Continuity
 
