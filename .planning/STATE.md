@@ -5,15 +5,15 @@ milestone_name: milestone
 current_phase: 07
 current_phase_name: lifecycle-reporting-retention
 status: executing
-stopped_at: 07-10 blocked at Tasks 1-2 (human-only — .env.example hand-add + production deploy and evidence); 07-08/07-09 complete
-last_updated: "2026-08-02T19:38:54.074Z"
+stopped_at: Completed 07-10-PLAN.md
+last_updated: "2026-08-03T10:35:21.835Z"
 last_activity: 2026-08-02
-last_activity_desc: Phase 07 execution started
+last_activity_desc: gap waves 7-8 executed; wave 9 handed over at its human gate
 progress:
   total_phases: 8
-  completed_phases: 7
+  completed_phases: 8
   total_plans: 47
-  completed_plans: 46
+  completed_plans: 47
 ---
 
 # Project State
@@ -28,16 +28,18 @@ See: .planning/PROJECT.md (updated 2026-07-17)
 ## Current Position
 
 Phase: 07 (lifecycle-reporting-retention) — EXECUTING
-Plan: 9 of 10 complete (07-08, 07-09 done; 07-10 at 0/3, blocked on human action)
+Plan: 10 of 10 complete (07-08, 07-09 done; 07-10 at 0/3, blocked on human action)
 Status: BLOCKED — awaiting Joshua's deploy and evidence
 Last activity: 2026-08-02 — gap waves 7-8 executed; wave 9 handed over at its human gate
 
-Progress: [█████████░] 98%
+Progress: [██████████] 100%
 
 07-10 Tasks 1 and 2 are human-only and were handed over together:
+
 1. Append RETENTION_MODE= and RETENTION_MONTHS= (both empty, with their comment lines) to
    .env.example. No agent can do this — tool access to .env.* paths is denied per
    .claude/rules/secrets.md.
+
 2. `npx vercel --prod` from repo root (not git-connected — a push ships nothing), then four
    evidence steps: dashboard shows five crons including /api/cron/retention at `0 3 1 * *`;
    one authenticated GET returning `mode` = the non-writing default; the same GET unauthenticated
@@ -135,6 +137,7 @@ Next: `/gsd-execute-phase 07 --gaps-only` (sequential, one executor at a time)
 | Phase 07 P07 | ~40min | 3 tasks | 3 files |
 | Phase 07 P08 | 20min | 2 tasks | 4 files |
 | Phase 07 P09 | ~45min | 2 tasks | 8 files |
+| Phase 07 P10 | ~15min | 3 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -224,6 +227,8 @@ Recent decisions affecting current work:
 - [Phase ?]: [Phase 07-09]: chunkIds() moved to a new dependency-free lib/chunk-ids.ts (not exported from lib/retention.ts) so getShortlist()'s admin read path never imports RETENTION_MODE's module-scope config resolution
 - [Phase ?]: [Phase 07-09]: getShortlist()'s chunked outreach rows are accumulated across all chunks and globally re-sorted by created_at before the last-write-wins draftedIds/latestOutreachStatus pass, never built incrementally inside the chunk loop
 - [Phase ?]: [Phase 07-09]: attributeBookingToProspect()'s two candidate queries dropped their .limit(2) cap entirely rather than raising it -- ambiguity is decided by the post-sent-gate set size (gatedIds.size), and the now-uncapped query's own DoS exposure is accepted (T-07-09-03), not chunked, since it is bounded in practice by one mailbox's shared prospect count
+- [Phase ?]: RETENTION_MODE stays unset (dry-run) deliberately: 12-month window is a placeholder pending the LIA, candidates is currently 0 so there is nothing to prove by arming the writing path, and 39 integration tests already cover the write path. Daily job's first non-zero expiring figure is the trigger to revisit.
+- [Phase ?]: D-7-20 superseded (recorded, not made, by this task): retention cron moved from monthly (0 3 1 * *) to daily (0 3 * * *) after Vercel Hobby silently dropped the day-of-month cron entry on first deploy.
 
 ### Pending Todos
 
@@ -264,6 +269,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-08-02T19:38:54.062Z
-Stopped at: Completed 07-09-PLAN.md (WR-01/WR-02 closed)
+Last session: 2026-08-03T10:35:21.821Z
+Stopped at: Completed 07-10-PLAN.md
 Resume file: None
