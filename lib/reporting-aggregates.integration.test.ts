@@ -198,6 +198,52 @@ describe("getReportingData", () => {
     expect(after.funnel.Contacted - before.funnel.Contacted).toBe(0);
   });
 
+  // PostgREST silently caps an unbounded select at 1000 rows and returns
+  // HTTP 200 with no error — there is no thrown error to catch, so an
+  // unpaginated read just returns a wrong answer. This proves the newest
+  // outreach row still wins (and the sent-gate still opens) once the table
+  // holds more than 1000 rows.
+  it("keeps the newest outreach row winning past the PostgREST 1000-row cap", async () => {
+    const { count: existing, error: countError } = await sb
+      .from("outreach_messages")
+      .select("*", { count: "exact", head: true });
+    if (countError) throw countError;
+
+    const before = await getReportingData(sb);
+
+    const id = await seedProspect(`${PREFIX}cap-1`);
+
+    // Filler rows sort to the very front of the ASC `created_at` order, so
+    // they never compete with the decisive row below for a spot in a
+    // truncated page.
+    const fillerCount = Math.max(0, 1000 - (existing ?? 0));
+    const filler = Array.from({ length: fillerCount }, () => ({
+      prospect_id: id,
+      status: "draft",
+      created_at: "2020-01-01T00:00:00Z",
+    }));
+    for (let i = 0; i < filler.length; i += 500) {
+      const { error } = await sb.from("outreach_messages").insert(filler.slice(i, i + 500));
+      if (error) throw error;
+    }
+
+    // The decisive row: newest `created_at` in the whole table, so it sorts
+    // last and is exactly what an unbounded (capped) read drops.
+    const { error: decisiveError } = await sb.from("outreach_messages").insert({
+      prospect_id: id,
+      status: "sent",
+      created_at: new Date().toISOString(),
+      sent_at: null,
+    });
+    if (decisiveError) throw decisiveError;
+
+    const after = await getReportingData(sb);
+
+    expect(after.sentGateOpen).toBe(true);
+    expect(after.funnel.Contacted - before.funnel.Contacted).toBe(1);
+    expect(after.funnel.Qualified - before.funnel.Qualified).toBe(0);
+  });
+
   it("counts a rejected prospect into Rejected only, never into a TRK-01 group", async () => {
     const before = await getReportingData(sb);
 
