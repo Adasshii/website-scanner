@@ -27,6 +27,14 @@ yarn-debug.log*
 yarn-error.log*
 
 # local env files
+# Catch-all: every .env variant is ignored, with .env.example the single
+# deliberate exception. Added 2026-08-03 after `vercel env pull` left
+# .env.vercel and .env.vercel.prod untracked-but-not-ignored in the working
+# tree, holding production CRON_SECRET / service-role keys one `git add -A`
+# away from a commit. A narrow `.env.vercel*` rule would only have moved the
+# hole to the next variant someone invents.
+.env*
+!.env.example
 .env
 
 # supabase CLI local artifacts
