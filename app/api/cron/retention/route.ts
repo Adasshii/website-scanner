@@ -7,9 +7,12 @@ export const maxDuration = 60;
 
 /**
  * Cron job: the retention job's scheduled entry point (CMP-13/14/15).
- * Runs monthly via Vercel cron (D-7-20) — data expiry does not need day
- * resolution, and keeping this off the existing crons means a retention
- * failure can never take out the scan drain.
+ * Runs daily at 03:00 UTC via Vercel cron. D-7-20 originally specified a
+ * monthly run on the grounds that data expiry does not need day resolution;
+ * Vercel Hobby silently refused to register the day-of-month expression on
+ * the first production deploy, so the schedule is daily. See the "D-7-20
+ * superseded" entry in 07-DECISION-RECORD.md. Keeping this off the existing
+ * crons still means a retention failure can never take out the scan drain.
  *
  * The handler reads only the `authorization` header. Mode and window come
  * from lib/retention-constants.ts — this route passes no options to
