@@ -74,11 +74,22 @@ function build30DayWindow(now: Date): string[] {
 const REPORTING_PAGE_SIZE = 1000;
 
 /**
- * Pages through `queryPage(from, to)` until a page shorter than
- * `REPORTING_PAGE_SIZE` comes back, accumulating every row. Throws on the
- * first page-level error rather than returning a partial result.
+ * Pages through `queryPage(from, to)` until an EMPTY page comes back,
+ * accumulating every row. Throws on the first page-level error rather than
+ * returning a partial result.
+ *
+ * Terminating on an empty page rather than on a short one is deliberate. A
+ * short page is ambiguous: it means either "this is the end" or "the server's
+ * own `max-rows` is smaller than what I asked for". Breaking on `page.length <
+ * REPORTING_PAGE_SIZE` reads the second case as the first and silently drops
+ * every remaining row — the exact class of bug this helper exists to close,
+ * one level down. Supabase's default `max-rows` is 1000 so the two agree
+ * today, but that is a server setting, not a guarantee.
+ *
+ * `from` therefore advances by the rows actually returned, never by the page
+ * size requested. Cost: one extra round trip at the end.
  */
-async function fetchAllPages<Row>(
+export async function fetchAllPages<Row>(
   queryPage: (
     from: number,
     to: number
@@ -91,9 +102,9 @@ async function fetchAllPages<Row>(
     const { data, error } = await queryPage(from, to);
     if (error) throw error;
     const page = data ?? [];
+    if (page.length === 0) break;
     rows.push(...page);
-    if (page.length < REPORTING_PAGE_SIZE) break;
-    from += REPORTING_PAGE_SIZE;
+    from += page.length;
   }
   return rows;
 }
