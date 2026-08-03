@@ -51,3 +51,8 @@ supabase/.temp/
 
 # git worktrees
 .worktrees/
+
+# GSD research cache — content-hashed fetch results, regenerated on demand.
+# Local scratch, not a planning artifact. Four of these were swept into a
+# phase-closure commit by an over-broad `git add .planning/` on 2026-08-03.
+.planning/research/.cache/
