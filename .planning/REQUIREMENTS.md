@@ -92,13 +92,40 @@
 
 ### Send — GATED
 
-> Blocked on the send-path decision. Resend is ruled out by its AUP. Channel and provider
-> are deliberately undecided. Everything upstream builds and ships without this.
+> The provider half of this gate closed 2026-08-04. There is no third-party dispatch
+> provider: Prospect Radar generates, renders, and gates the approved draft, and Joshua
+> sends it by hand from his own mailbox, at 10 to 50 sends per week. Resend stays exactly
+> where it already is, on the public scanner's transactional mail only, and never enters
+> the outreach path. The legal half is still open and still gates this phase: the
+> Telecommunicatiewet art. 11.7 question, the Legitimate Interest Assessment, and the
+> Article 14 notice wording are all unresolved. See `.planning/research/SEND-CHANNEL.md`
+> for the evidence trail behind the provider half.
 
 - [ ] **SND-01**: Approved messages dispatch via a channel whose own terms permit outreach
-- [ ] **SND-02**: Every electronic message carries `List-Unsubscribe` and `List-Unsubscribe-Post` (RFC 8058 one-click)
+
+  > Satisfied trivially: sending is manual from Joshua's own mailbox, so there is no
+  > third-party dispatch channel whose acceptable-use policy could prohibit outreach.
+
+- [ ] **SND-02**: Every message carries a working opt-out that is fast and free and takes one step
+
+  > RFC 8058 `List-Unsubscribe` and `List-Unsubscribe-Post` headers cannot be set from a
+  > manual mail client, and they were never a legal requirement in the first place.
+  > `LEGAL.md` §2.4 requires the opt-out to be "snel" and "gratis" and present in every
+  > message, and never mentions those headers at all. The RFC 8058 requirement entered this
+  > plan through the Google and Yahoo bulk-sender rules, which start at 5,000 messages per
+  > day to Gmail addresses, roughly 1,000x this project's volume. SND-02 is now met by a
+  > plain opt-out link in the message body, pointing at the unsubscribe endpoint Phase 2
+  > already built and already ships. If an automated channel is ever adopted, the headers
+  > come back cheaply, because that same endpoint already implements the one-click POST path
+  > correctly (see `02-04-SUMMARY.md`).
+
 - [ ] **SND-03**: The outreach channel is isolated from the existing scanner's transactional email, so an outreach problem cannot take down the live product's mail
 - [ ] **SND-04**: The chosen channel's acceptable-use policy is verified in writing before it is built against
+
+  > This is the written verification. Satisfied trivially for the same reason as SND-01:
+  > there is no third-party dispatch channel to verify against, since sending is manual.
+  > `.planning/research/SEND-CHANNEL.md` is the SND-04 artifact, holding the full provider
+  > comparison that produced this outcome.
 
 ### Tracking
 
