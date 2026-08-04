@@ -389,7 +389,11 @@ Notes:
 
 **Plans**: TBD (est. 3-4)
 
-> ⚠️ **BLOCKED on the legal gate.** The provider half of the Parallel Track closed 2026-08-04 (manual send, no provider). Do not plan or build this phase until counsel closes the legal half: the Telecommunicatiewet art. 11.7 question, the Legitimate Interest Assessment, and the Article 14 notice wording.
+> ⚠️ **BLOCKED on the legal gate, for shipping. Not for planning.** The provider half of the Parallel Track closed 2026-08-04 (manual send, no provider). The legal half is still open: the Telecommunicatiewet art. 11.7 question, the Legitimate Interest Assessment, and the Article 14 notice wording.
+>
+> **Narrowed 2026-08-04, on Joshua's explicit instruction.** This directive previously read "do not plan or build this phase until counsel closes the legal half." That block existed to stop a send pipeline being built and then thrown away, and that risk lived entirely in the provider decision, which is now closed. Manual send carries no provider-specific code, and counsel's output lands in fields the mechanism already has (`legal_basis`, `lia_version`, `tw_exemption_claimed` on the CMP-09 record). Planning and building the mechanism is therefore authorized now.
+>
+> **What stays blocked:** no real message may be sent to a real business until counsel closes the legal half. The plan must not invent Article 14 wording, must not author or version an LIA, and must not default `tw_exemption_claimed` to true. Those are counsel's outputs, and until they exist the send path stays shut by its own gates rather than by a note in this file. Build the gate, do not open it.
 
 Notes:
 
