@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-07-17)
 Phase: 8 — Send — GATED
 Plan: Not started
 Status: Ready to plan
-Last activity: 2026-08-03 — Phase 07 complete, transitioned to Phase 8
+Last activity: 2026-08-04: quick task 260804-n18, Phase 8 provider gate closed (manual send, no provider). Legal gate still open.
 
 Progress: [██████████] 100%
 
@@ -265,6 +265,7 @@ Items acknowledged and carried forward from previous milestone close:
 |------|------|---------|
 | 2026-08-02 | reporting-agg-cleanup-leak | `reporting-aggregates.integration.test.ts` `afterEach` swallowed a `scans_prospect_id_fkey` violation (migration 013 is `ON DELETE NO ACTION`), so one blocked row aborted the whole prospects delete and every fixture row survived, cumulatively, across runs. Cleanup now deletes in FK-safe order and throws on any error. |
 | 2026-08-03 | fix-silent-1000-row-postgrest-truncation | `getReportingData()` read `prospects` and `outreach_messages` with unbounded `.select()`; PostgREST caps at 1000 rows and returns 200 with no error, so the Reporting tab's funnel counts (TRK-05) and booked tally (TRK-04) were silently wrong. Outreach was worse than an undercount: `created_at` ASC + newest-wins Map meant truncation dropped the *newest* rows, corrupting resolved status and letting `sentGateOpen` read false while sends existed. Now paginated via a file-local `fetchAllPages()` `.range()` loop with unique-id tiebreakers; `scans` paginated too (deviation — live data showed 1045 rows already past the cap in the 30-day window). Commits `abf2b15`, `7710a57`. |
+| 2026-08-04 | record-manual-send-decision-for-phase-8 | Provider half of the Phase 8 send-path gate CLOSED. There is no third-party dispatch provider: Prospect Radar generates, renders and gates the draft, Joshua sends by hand from his own mailbox at 10-50/week. Driven by a provider AUP sweep (`.planning/research/SEND-CHANNEL.md`, the SND-04 artifact) which found the whole transactional-ESP category closed by contract, not just Resend: Mailgun §1c demands confirmed opt-in, SendGrid and Brevo the same, SES risks the whole AWS account. SND-02 rewritten off RFC 8058 headers (unsettable from a manual client, and never a legal requirement: `LEGAL.md` §2.4 wants opt-out "snel" and "gratis", not a header) onto a body link into the Phase 2 endpoint. Also corrected 5 stale copies of "the channel is deliberately undecided" across ROADMAP, PROJECT.md and the auto-loading `.claude/CLAUDE.md`. Legal half (Tw art. 11.7, LIA, Article 14) still OPEN and still gates the phase. Commits `8204ed7`, `3895617`, `3dcbd14`, `8c7b7a6`. |
 
 ## Session Continuity
 
