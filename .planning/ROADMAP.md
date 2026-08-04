@@ -4,7 +4,7 @@
 
 Prospect Radar is built as a pipeline, one working stage at a time, bolted onto a scanner that already works and already earns. Prospects come in from Overture, get triaged cheaply, and only the worst ones earn a full scan. That scan produces both the proof (a hosted report) and the contact (an email off the prospect's own site). From there a draft is written from real findings, Joshua approves it by hand, and — once the send path clears — it goes out with a full record of why it was allowed to.
 
-The compliance spine is not the last phase. Suppression and unsubscribe ship in parallel with the importer, before anything can be sent, because the ability to say "stop" has to exist before the first cold email, not after. The send phase is the only gated one: Resend is ruled out by its own AUP, the channel is deliberately undecided, and legal counsel runs alongside the build rather than in front of it. Every phase below Phase 8 ships without that decision landing.
+The compliance spine is not the last phase. Suppression and unsubscribe ship in parallel with the importer, before anything can be sent, because the ability to say "stop" has to exist before the first cold email, not after. The send phase is the only gated one: Resend is ruled out by its own AUP, the channel is decided as manual send from Joshua's own mailbox with no third-party provider, and legal counsel runs alongside the build rather than in front of it. Every phase below Phase 8 ships without that decision landing.
 
 ## Phases
 
@@ -22,17 +22,17 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 5: Contact Extraction & Classification** - Each scanned prospect carries a contact address whose legal status is known (completed 2026-07-27)
 - [x] **Phase 6: Draft Generation & Approval Queue** - A drafted message Joshua is willing to send, backed by evidence he can check (completed 2026-07-30)
 - [x] **Phase 7: Lifecycle, Reporting & Retention** - The funnel reports what it did, and old data expires on its own (completed 2026-08-03)
-- [ ] **Phase 8: Send — GATED** - An approved message reaches a business through a channel that permits it, with proof of why
+- [ ] **Phase 8: Send — GATED** - An approved message reaches a business by hand from Joshua's own mailbox, with proof of why it was allowed to reach them
 
 ## Parallel Track: Send-Path & Legal Decision (NOT a phase, NOT a blocker)
 
 This track runs alongside Phases 1–7 from day one. It gates **Phase 8 only**. No other phase waits on it, and no other phase may be re-sequenced behind it.
 
-| Item | Owner | Gates |
-|------|-------|-------|
-| Engage counsel on legitimate-interest basis, Article 14 wording, and the Tw art. 11.7 exemption question | Joshua + lawyer | Phase 8 |
-| Choose the outreach channel/provider and verify its AUP in writing (SND-04 is the deliverable) | Joshua | Phase 8 |
-| Stand up a separate outreach domain with SPF/DKIM/DMARC, warmed before target volume (Pitfall 1) | Joshua | Phase 8 |
+| Item | Owner | Gates | Status |
+|------|-------|-------|--------|
+| Engage counsel on legitimate-interest basis, Article 14 wording, and the Tw art. 11.7 exemption question | Joshua + lawyer | Phase 8 | OPEN |
+| Choose the outreach channel/provider and verify its AUP in writing (SND-04 is the deliverable) | Joshua | Phase 8 | CLOSED 2026-08-04 (manual send, no provider) |
+| Stand up a separate outreach domain with SPF/DKIM/DMARC, warmed before target volume (Pitfall 1) | Joshua | Phase 8 | Moot for manual send from an existing mailbox. Returns if an automated channel is ever adopted. |
 
 **Why this is not Phase 0:** research proposed a blocking gate ahead of everything. That was overridden deliberately. The legal and provider risk concentrates entirely in the send step; import, triage, scan, extract, and draft are low-risk and hold the value. Building them now avoids a send pipeline that may have to be thrown away.
 
@@ -381,23 +381,27 @@ Notes:
 **Requirements**: SND-01, SND-02, SND-03, SND-04, CMP-02, CMP-09, CMP-10, CMP-11, CMP-12
 **Success Criteria** (what must be TRUE):
 
-  1. Joshua approves a message and it dispatches through a channel whose own AUP permits outreach, verified in writing before any code was built against it (SND-01, SND-04)
-  2. Every electronic message carries `List-Unsubscribe` and `List-Unsubscribe-Post` one-click headers (SND-02)
+  1. Joshua approves a message, Prospect Radar prepares it for sending, and Joshua sends it by hand from his own mailbox. No third-party dispatch provider sits in the path, so no channel acceptable-use policy applies (SND-01, SND-04)
+  2. Every message carries a working opt-out that is fast and free and takes one step, delivered as a link in the message body pointing at the Phase 2 unsubscribe endpoint (SND-02)
   3. An outreach failure leaves the existing public scanner's transactional email untouched and working (SND-03)
   4. A send is refused when the address is suppressed at that moment, and a first-touch send is refused when the Article 14 notice flag is not true (CMP-02, CMP-10)
   5. Joshua answers "why were we allowed to email this business?" in seconds from an immutable per-send record holding the resolved address and classification, the content actually sent, legal basis, LIA version, Tw exemption claimed, approver, and the suppression-check result (CMP-09, CMP-11, CMP-12)
 
 **Plans**: TBD (est. 3-4)
 
-> ⚠️ **BLOCKED on the send-path decision.** Do not plan or build this phase until the Parallel Track closes.
+> ⚠️ **BLOCKED on the legal gate.** The provider half of the Parallel Track closed 2026-08-04 (manual send, no provider). Do not plan or build this phase until counsel closes the legal half: the Telecommunicatiewet art. 11.7 question, the Legitimate Interest Assessment, and the Article 14 notice wording.
 
 Notes:
 
-- **Resend is ruled out.** Its AUP prohibits "unsolicited messages of any kind, including cold outreach, purchased lists, or scraped contact data" (verified verbatim, current 2026-05-28). No low-volume carve-out. The channel and provider are deliberately **UNDECIDED**.
+- **Resend is ruled out.** Its AUP prohibits "unsolicited messages of any kind, including cold outreach, purchased lists, or scraped contact data" (verified verbatim, current 2026-05-28). No low-volume carve-out. The channel question is closed: see the manual-send decision below.
 - Resend stays exactly where it is: transactional email for the existing public scanner, untouched and uncontaminated. SND-03 is what enforces that separation.
 - Changing provider fixes the AUP problem. It does **not** fix the legal-basis problem — Telecommunicatiewet is indifferent to whether Resend, Gmail, or a human hand sent the message. These are two separate problems and this conflation has already come up twice.
 - CMP-02 checks suppression **immediately before dispatch**, not at draft time. A draft can sit in the queue for days while state changes underneath it.
-- The suppression design and the `List-Unsubscribe` pattern carry over to whatever channel is chosen. Only the dispatcher changes.
+- The Phase 2 suppression spine carries over unchanged. The opt-out moves from a header to a body link.
+- **Manual send, decided 2026-08-04.** There is no third-party dispatch provider. Prospect Radar generates, renders, and gates the approved draft, and Joshua sends it by hand from his own mailbox, at 10 to 50 sends per week. This closed the provider half of the Phase 8 gate.
+- CMP-02's phrase "immediately before dispatch" now means "at the moment the draft is prepared for copying." A residual window remains between copying the draft and actually sending it, but that window is smaller than the status quo it replaces, where a draft could sit in the approval queue for days while suppression state changed underneath it. The CMP-02 requirement text and its ID are unchanged.
+- CMP-09, CMP-11, and CMP-12's audit record is now written on an explicit mark-as-sent action rather than on a provider message ID. Delivery proof is lost. Legal-basis proof is not, and success criterion 5 only ever asked for legal-basis proof.
+- What is lost outright: automated bounce handling, reply detection, and delivery confirmation. All three are manageable by hand at 10 to 50 sends per week.
 
 ## Progress
 
@@ -416,7 +420,7 @@ Phase 8 does not begin until the Parallel Track closes, regardless of numeric or
 | 5. Contact Extraction & Classification | 4/4 | Complete    | 2026-07-27 |
 | 6. Draft Generation & Approval Queue | 8/8 | Complete    | 2026-07-30 |
 | 7. Lifecycle, Reporting & Retention | 10/10 | Complete    | 2026-08-03 |
-| 8. Send — GATED | 0/TBD | Blocked (send-path decision) | - |
+| 8. Send — GATED | 0/TBD | Blocked (legal gate only) | - |
 
 ## Coverage
 
