@@ -34,12 +34,15 @@ a drafted message he is willing to send.
 - **Scale**: 10–50 prospects per week. Deliberately small. Solutions sized for thousands
   are over-built and should be rejected on sight.
 
-- **Legal**: every send passes a human gate, carries `List-Unsubscribe`, and is checked
-  against the suppression list first. Non-negotiable.
+- **Legal**: every send passes a human gate, carries a working opt-out that is fast and
+  free and takes one step, and is checked against the suppression list first.
+  Non-negotiable.
 
-- **Provider policy**: the outreach channel must permit outreach under its own terms.
-  Resend does not. Any candidate channel is checked against its AUP before it is built
-  against, not after.
+- **Provider policy**: resolved 2026-08-04 by removing the third-party provider from the
+  send path entirely. There is no dispatch provider; Resend does not, and never did,
+  handle outreach. The principle stays in force for any future automated channel: it must
+  permit outreach under its own terms, checked against its AUP before it is built against,
+  not after.
 
 - **Blast radius**: nothing in this milestone may put the existing public scanner's email
   or scanning at risk. It works and it earns. Outreach failures must stay contained.

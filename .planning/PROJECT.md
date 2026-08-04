@@ -60,11 +60,13 @@ a drafted message he is willing to send.
 - [ ] Legal basis (Legitimate Interest Assessment) stored as a versioned artifact in the repo
 - [ ] Per-country legal-basis configuration, so expansion is a config decision with a paper trail
 
-**Gated — blocked on the send-path decision (see Key Decisions):**
+**Gated, blocked on the legal gate (see Key Decisions):**
 
-- [ ] Dispatch approved outreach via a channel that permits it, with `List-Unsubscribe` on
-      every electronic message. Provider and channel are deliberately UNDECIDED. Resend is
-      ruled out (see below). Everything upstream of this is unblocked and gets built first.
+- [ ] Dispatch approved outreach by hand from Joshua's own mailbox, with a working opt-out
+      link, fast, free, one step, in the body of every message. There is no third-party
+      dispatch provider; that half of the gate closed 2026-08-04. Resend is ruled out for
+      outreach (see below) and was never the provider on the manual-send path. Everything
+      upstream of this is unblocked and gets built first.
 - [ ] Track prospect lifecycle beyond scan result (new → qualified → contacted → replied → booked)
 - [ ] Measure reply rate and booked calls attributable to outreach
 - [ ] Country and locale are parameters throughout — no hardcoded geography
@@ -181,9 +183,10 @@ regardless. That is why the suppression table lives in Supabase as source of tru
 But Resend's **Acceptable Use Policy prohibits cold outreach outright**, so none of those
 mechanics are usable for this purpose on this account. Resend stays exactly where it is:
 transactional email for the existing public scanner, untouched and uncontaminated. The
-outreach channel is a separate, deliberately open decision. The `List-Unsubscribe`
-pattern and the suppression design carry over to whatever channel is chosen; only the
-dispatcher changes.
+outreach channel question is closed as of 2026-08-04: there is no third-party dispatch
+provider, and Joshua sends outreach by hand from his own mailbox (see Key Decisions). The
+suppression design carries over unchanged; the opt-out moves from a header to a body
+link.
 
 **Other verified pitfalls now shaping the build** (see `.planning/research/PITFALLS.md`):
 bulk-scanning strangers' sites from the same Railway IP that serves the live public
@@ -204,11 +207,14 @@ dedupe-by-domain and reachability verification belong to the import phase, not t
   pretend otherwise.
 - **Scale**: 10–50 prospects per week. Deliberately small. Solutions sized for thousands
   are over-built and should be rejected on sight.
-- **Legal**: every send passes a human gate, carries `List-Unsubscribe`, and is checked
-  against the suppression list first. Non-negotiable.
-- **Provider policy**: the outreach channel must permit outreach under its own terms.
-  Resend does not. Any candidate channel is checked against its AUP before it is built
-  against, not after.
+- **Legal**: every send passes a human gate, carries a working opt-out that is fast and
+  free and takes one step, and is checked against the suppression list first.
+  Non-negotiable.
+- **Provider policy**: resolved 2026-08-04 by removing the third-party provider from the
+  send path entirely. There is no dispatch provider; Resend does not, and never did,
+  handle outreach. The principle stays in force for any future automated channel: it must
+  permit outreach under its own terms, checked against its AUP before it is built against,
+  not after.
 - **Blast radius**: nothing in this milestone may put the existing public scanner's email
   or scanning at risk. It works and it earns. Outreach failures must stay contained.
 - **Geography**: country and locale are parameters, never hardcoded. NL is the first
