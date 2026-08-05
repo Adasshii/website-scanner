@@ -45,6 +45,33 @@ async function patchOutreach(
   }
 }
 
+/**
+ * Result shape from POST /api/admin/outreach/send. A 409 gate refusal is not
+ * a fetch failure — `refusal` is read straight from the response body and
+ * rendered into the same role="alert" banner every other action uses.
+ */
+async function prepareSend(
+  secret: string,
+  messageId: string
+): Promise<{ ok: boolean; refusal?: string; detail?: string }> {
+  try {
+    const res = await fetch("/api/admin/outreach/send", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-admin-secret": secret },
+      body: JSON.stringify({ id: messageId, action: "prepare" }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (res.ok && data.ok) return { ok: true };
+    return {
+      ok: false,
+      refusal: typeof data.refusal === "string" ? data.refusal : undefined,
+      detail: typeof data.detail === "string" ? data.detail : undefined,
+    };
+  } catch {
+    return { ok: false };
+  }
+}
+
 /** Same shape the removed native dialogs used to build: "Failed to {action}[: {detail}]." */
 function failureMessage(action: string, result: { error?: string }): string {
   return `Failed to ${action}${result.error ? `: ${result.error}` : ""}.`;
@@ -63,6 +90,7 @@ export function OutreachRowPanel({ row, secret, onRefetch }: OutreachRowPanelPro
   const [regenerating, setRegenerating] = useState(false);
   const [approving, setApproving] = useState(false);
   const [rejecting, setRejecting] = useState(false);
+  const [preparing, setPreparing] = useState(false);
   // Rendered inline with role="alert", replacing the native dialogs these
   // actions used to call — the in-app browser suppresses those silently,
   // which is exactly what hid the GEMINI_API_KEY config failure behind an
@@ -162,6 +190,27 @@ export function OutreachRowPanel({ row, secret, onRefetch }: OutreachRowPanelPro
 
   function handleReject() {
     setConfirmAction("reject");
+  }
+
+  /**
+   * Task 1: proves the refusal path end to end. On a 409 the refusal and
+   * detail render in the existing role="alert" banner as
+   * `Send refused: {refusal}. {detail}`. Rendering the copyable subject and
+   * body on `ok: true` is a later plan's job (D-02, D-03) — this button only
+   * proves the gate is reachable and shut.
+   */
+  async function handlePrepareSend() {
+    setPreparing(true);
+    const result = await prepareSend(secret, row.id);
+    setPreparing(false);
+    if (result.ok) {
+      setActionError(null);
+      onRefetch();
+    } else if (result.refusal) {
+      setActionError(`Send refused: ${result.refusal}.${result.detail ? ` ${result.detail}` : ""}`);
+    } else {
+      setActionError(failureMessage("prepare send", { error: result.detail }));
+    }
   }
 
   function handleConfirmAction() {
@@ -287,6 +336,15 @@ export function OutreachRowPanel({ row, secret, onRefetch }: OutreachRowPanelPro
             </button>
           </div>
           <div className="flex items-center gap-3">
+            {row.status === "approved" && (
+              <button
+                onClick={handlePrepareSend}
+                disabled={preparing}
+                className="bg-adashi-gulf hover:bg-adashi-blue text-white font-semibold px-4 py-2 rounded-xl transition-colors disabled:opacity-50"
+              >
+                {preparing ? "Preparing..." : "Prepare send"}
+              </button>
+            )}
             <button
               onClick={handleApprove}
               disabled={approving}
