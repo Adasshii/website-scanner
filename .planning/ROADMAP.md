@@ -429,7 +429,7 @@ Phase 8 does not begin until the Parallel Track closes, regardless of numeric or
 | 5. Contact Extraction & Classification | 4/4 | Complete    | 2026-07-27 |
 | 6. Draft Generation & Approval Queue | 8/8 | Complete    | 2026-07-30 |
 | 7. Lifecycle, Reporting & Retention | 10/10 | Complete    | 2026-08-03 |
-| 8. Send — GATED | 0/TBD | Blocked (legal gate only) | - |
+| 8. Send — GATED | 0/3 | Planned. Blocked on the legal gate for shipping only | - |
 
 ## Coverage
 

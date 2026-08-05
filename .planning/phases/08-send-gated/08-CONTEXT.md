@@ -15,7 +15,17 @@ The send itself is manual. There is no automated dispatch. What this phase build
 <decisions>
 ## Implementation Decisions
 
-### Channel: manual send, no provider
+Trackable decision list. Each is elaborated in the sections below.
+
+- **D-01:** Manual send, no third-party dispatch provider. Prospect Radar generates, renders and gates the draft; Joshua sends by hand from his own mailbox at 10 to 50 per week.
+- **D-02:** Draft handoff is a copy-subject action plus a copy-body action. A mailto link and an .eml download were both considered and rejected.
+- **D-03:** Preparing and recording are two distinct actions, Prepare then Mark as sent, never a single combined action.
+- **D-04:** Anything prepared but never marked as sent resurfaces in the queue as unresolved. Prepared state is short-lived and re-preparing re-runs the gates.
+- **D-05:** Both gates run at Prepare and refuse rather than warn. Suppression is checked against live state (CMP-02) and a first-touch send needs the Article 14 notice flag true (CMP-10).
+- **D-06:** The opt-out is a plain link in the message body pointing at the Phase 2 unsubscribe endpoint, inside the copied text, replacing the RFC 8058 headers that SND-02 previously required.
+- **D-07:** No legal content is authored in this phase. Counsel-supplied values stay unset, and the send path stays shut by its own gates until they exist.
+
+### D-01. Channel: manual send, no provider
 
 Locked 2026-08-04. There is no third-party dispatch provider. Prospect Radar generates, renders, and gates the approved draft. Joshua sends it by hand from his own mailbox, at 10 to 50 sends per week.
 
