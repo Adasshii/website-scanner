@@ -20,15 +20,18 @@ import { createHash } from "node:crypto";
 import { isSuppressed } from "@/lib/suppression";
 import { ARTICLE_14_NOTICE_EN, ARTICLE_14_NOTICE_NL, localeForCountry, type Locale } from "@/lib/draft-prompt";
 import { renderSendableBody } from "@/lib/opt-out-link";
+import { PREPARED_TTL_MINUTES } from "@/lib/send-gate-constants";
 
 /**
  * D-04: a Prepare from days ago must not be treated as still valid.
  * isPreparedFresh() below is the single definition of that freshness
  * comparison — lib/send-record.ts's markAsSent() calls it directly at Mark
  * time rather than reimplementing the comparison, so the rule has exactly
- * one home.
+ * one home. PREPARED_TTL_MINUTES itself lives in lib/send-gate-constants.ts
+ * (re-exported here) so a client component can read the TTL without
+ * pulling this module's node:crypto import into the browser bundle.
  */
-export const PREPARED_TTL_MINUTES = 30;
+export { PREPARED_TTL_MINUTES };
 
 /** True when `preparedAt` is set and no older than PREPARED_TTL_MINUTES. Null is never fresh. */
 export function isPreparedFresh(preparedAt: string | null, now: Date = new Date()): boolean {
