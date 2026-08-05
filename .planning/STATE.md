@@ -4,16 +4,16 @@ milestone: v1.0
 milestone_name: milestone
 current_phase: 8
 current_phase_name: Send — GATED
-status: planning
-stopped_at: Completed quick task 260803-lh0 (fix silent 1000-row PostgREST truncation)
+status: executed_gated
+stopped_at: Phase 8 executed, 3/3 plans. Verification human_needed. Shipping blocked on the legal gate.
 last_updated: "2026-08-03T14:15:34.541Z"
-last_activity: 2026-08-03
-last_activity_desc: Phase 07 complete, transitioned to Phase 8
+last_activity: 2026-08-05
+last_activity_desc: Phase 8 executed. Send mechanism built with the gate shut, pending counsel.
 progress:
   total_phases: 8
-  completed_phases: 8
-  total_plans: 47
-  completed_plans: 47
+  completed_phases: 7
+  total_plans: 50
+  completed_plans: 50
 ---
 
 # Project State
@@ -28,11 +28,26 @@ See: .planning/PROJECT.md (updated 2026-07-17)
 ## Current Position
 
 Phase: 8 — Send — GATED
-Plan: Not started
-Status: Ready to plan
-Last activity: 2026-08-04: quick task 260804-n18, Phase 8 provider gate closed (manual send, no provider). Legal gate still open.
+Plan: 3/3 executed (08-01, 08-02, 08-03)
+Status: Executed. Verification human_needed. The mechanism is built and the send path is deliberately shut.
+Last activity: 2026-08-05: Phase 8 executed. Prepare, Mark as sent, the immutable audit record, and the isolation guard all ship. Every Prepare on a real draft refuses with `legal-basis-unset`, which is the designed state until counsel supplies `legal_regimes.legal_basis` and `article_14_notice_approved`.
 
 Progress: [██████████] 100%
+
+Phase 8 executed 2026-08-05, 3/3 plans, verification `human_needed` (08-VERIFICATION.md). Four of the
+five success criteria are proven against real mechanism behaviour. The fifth (CMP-09/11/12, the audit
+answer) is wired and fixture-proven but cannot be exercised against real data by design: zero real
+`send_records` rows exist and none can until counsel supplies `legal_regimes.legal_basis` and sets
+`article_14_notice_approved`. Every Prepare on the one real approved draft refuses `legal-basis-unset`.
+
+What shipped: migration 020 (`send_records` + immutability trigger + RLS, the two counsel-supplied
+`legal_regimes` columns, `outreach_messages.prepared_at`), `evaluateSendGates`/`prepareSend`, the
+opt-out body link, `markAsSent` writing the immutable record, the copy-subject/copy-body handoff, the
+fourth `sent` queue filter with prepared-but-unsent resurfacing, the CMP-12 audit block, and
+`lib/outreach-isolation.test.ts` which the verifier broke on purpose to prove it fires.
+
+Migration 020 is applied LOCALLY only. Production DDL is a deferred manual step through the Supabase
+Dashboard SQL Editor. That is the one thing standing between this code and a production deploy.
 
 Phase 07 closed 2026-08-03 at 5/5 must-haves, zero gaps (07-VERIFICATION.md, third pass).
 All 10 plans executed, including gap plans 07-08/09/10 and quick task 260803-lh0.
@@ -62,8 +77,11 @@ Carried forward, not gaps: CMP-13 stays Partial by design pending the Legitimate
 Assessment (blocked on external counsel; `RETENTION_MODE` stays unset, the 12-month window is a
 placeholder). GC-01/02/03 and WINDOWS.md #3 remain deferred with rationale in 07-VERIFICATION.md.
 
-Next: `/gsd-plan-phase 8` — Send (GATED). Note the standing roadmap decision that the
-provider/legal-basis track gates this phase specifically.
+Next: counsel closes the legal half (Tw art. 11.7, the LIA, Article 14 wording). Until then Phase 8
+stays executed-but-unshipped by design. Two follow-ups recorded in 08-VERIFICATION.md: no test now
+proves `sentGateOpen` defaults false in isolation, and `lib/send-audit.integration.test.ts` names its
+permanent fixtures with the real country code `NL` rather than a fake one (harmless, it never touches
+`legal_regimes`, but inconsistent with the `XX`/`ZZ`/`QR` convention the other suites use).
 
 ## Performance Metrics
 
