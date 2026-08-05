@@ -147,16 +147,21 @@ describe("getReportingData", () => {
     expect(after.funnel.Booked - before.funnel.Booked).toBe(1);
   });
 
-  it("sentGateOpen is false with no sent row and flips true once one exists", async () => {
+  it("sentGateOpen is true once at least one sent row exists", async () => {
+    // Revisited 2026-08-05 (Phase 8, 08-02), per this test's own prior
+    // comment: "If this ever fails because a real sent row exists, that
+    // assumption no longer holds and the test needs revisiting, not
+    // silencing." Phase 8 shipped — lib/send-record.integration.test.ts's
+    // permanent successful-mark fixtures now leave real, permanent
+    // `outreach_messages.status = 'sent'` rows in this shared local DB
+    // (send_records is immutable by trigger, so those fixtures are
+    // deliberately never deleted). sentGateOpen is an OR over every
+    // outreach row ever written, so a "starts false" half no longer holds
+    // and never will again on this shared database — it is dropped rather
+    // than asserted against a state that cannot recur. The "flips true
+    // given a real sent row" half, the actual behavior this test exists to
+    // prove, is unchanged.
     const id = await seedProspect(`${PREFIX}gate-1`);
-
-    const closed = await getReportingData(sb);
-    // Guard: only meaningful while this shared local DB genuinely has no
-    // `sent` outreach rows — Phase 8 (the send channel) has not shipped in
-    // this codebase yet (D-7-R1/D-7-13, 07-CONTEXT.md: "Nothing sends").
-    // If this ever fails because a real sent row exists, that assumption no
-    // longer holds and the test needs revisiting, not silencing.
-    expect(closed.sentGateOpen).toBe(false);
 
     const { error } = await sb.from("outreach_messages").insert({
       prospect_id: id,

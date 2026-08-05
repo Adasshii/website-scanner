@@ -108,12 +108,26 @@ export const FUNNEL_CARD_ORDER: readonly FunnelGroup[] = [
   "Booked",
 ];
 
-// The single flip point for Phase 8 (D-7-R1). No reply marker exists
-// anywhere in this codebase — no `replied_at` column, no reply-detection
-// webhook, no event log — so `deriveLifecycleState()` above can never
-// return `replied`, and no reply-rate figure can be honestly computed.
-// Phase 8 must flip this to `true` in the SAME change that adds the reply
-// marker and the `replied` ladder rung; a caller (lib/reporting-aggregates.ts)
-// reads this constant rather than inferring "can we show a rate" from the
-// presence of a rung, so Phase 8 does not have to go hunting for the gate.
+// Settled by Phase 8 (D-01, manual send): this constant stays `false`,
+// permanently, not as a placeholder awaiting a later change. The send
+// itself is a human copying text into their own mailbox — there is no
+// dispatch provider, no webhook, no delivery event stream Phase 8 could
+// hang a reply marker off of. Reply detection, bounce handling, and
+// delivery confirmation are all lost by that choice, deliberately, with
+// the cost accepted at Prospect Radar's 10-to-50-sends-per-week scale (see
+// .planning/research/SEND-CHANNEL.md). No reply marker exists anywhere in
+// this codebase — no `replied_at` column, no reply-detection webhook, no
+// event log — so `deriveLifecycleState()` above can never return `replied`,
+// and no reply-rate figure can be honestly computed. Flipping this constant
+// still requires a real per-day replied count computed in the same change
+// that adds whatever marker eventually supplies one (an inbox-parsing
+// pass, a future automated channel with real delivery events); a caller
+// (lib/reporting-aggregates.ts) reads this constant rather than inferring
+// "can we show a rate" from the presence of a rung, so that future change
+// does not have to go hunting for the gate. Separately: Phase 8 added no
+// new lifecycle writer here. A sent message advances to `contacted` through
+// the existing `outreachStatus === "sent"` rung above, unchanged, and
+// `sentGateOpen` in lib/reporting-aggregates.ts flips on its own from that
+// same status value — neither file needed a change for Mark as sent to be
+// visible in the funnel.
 export const REPLY_SIGNAL_AVAILABLE = false;

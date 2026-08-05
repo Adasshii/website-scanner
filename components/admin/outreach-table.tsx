@@ -8,6 +8,7 @@ interface OutreachCounts {
   pending: number;
   approved: number;
   rejected: number;
+  sent: number;
 }
 
 interface OutreachTableProps {
@@ -50,6 +51,7 @@ const statusPillStyles = {
   edited: "bg-blue-100 text-blue-700 border-blue-200",
   approved: "bg-green-100 text-green-700 border-green-200",
   rejected: "bg-red-100 text-red-700 border-red-200",
+  sent: "bg-adashi-electric/30 text-adashi-gulf border-adashi-electric/50",
 } as const;
 
 function StatusPill({ status }: { status: keyof typeof statusPillStyles }) {
@@ -62,10 +64,31 @@ function StatusPill({ status }: { status: keyof typeof statusPillStyles }) {
   );
 }
 
+/**
+ * The Phase 8 unresolved marker (D-04): a message that was prepared and
+ * never marked sent must not sit silently in an ambiguous state. Also
+ * surfaces Task 1's one recoverable failure mode, where send_records was
+ * written but the outreach_messages.status update did not land — that row
+ * stays visibly `approved` with a `preparedAt`, exactly this badge's
+ * trigger condition.
+ */
+function PreparedNotSentPill({ preparedAt }: { preparedAt: string }) {
+  const elapsedMs = Date.now() - new Date(preparedAt).getTime();
+  const elapsedMinutes = Math.max(0, Math.round(elapsedMs / (1000 * 60)));
+  const elapsedLabel =
+    elapsedMinutes < 60 ? `${elapsedMinutes}m` : `${Math.round(elapsedMinutes / 60)}h`;
+  return (
+    <span className="inline-block text-xs font-semibold px-2 py-0.5 rounded-full border bg-amber-100 text-amber-700 border-amber-200 ml-1">
+      PREPARED, NOT SENT · {elapsedLabel}
+    </span>
+  );
+}
+
 const FILTERS: { value: OutreachFilter; label: string }[] = [
   { value: "pending", label: "Pending" },
   { value: "approved", label: "Approved" },
   { value: "rejected", label: "Rejected" },
+  { value: "sent", label: "Sent" },
 ];
 
 /**
@@ -90,14 +113,15 @@ export function OutreachTable({ rows, loading, secret, counts, onRefetch }: Outr
   }
 
   const refetchCurrentFilter = () => onRefetch(filter);
-  const total = counts.pending + counts.approved + counts.rejected;
+  const total = counts.pending + counts.approved + counts.rejected + counts.sent;
 
   return (
     <div>
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-2 sm:grid-cols-5 gap-4 mb-6">
         <StatCard label="Pending" value={counts.pending} />
         <StatCard label="Approved" value={counts.approved} />
         <StatCard label="Rejected" value={counts.rejected} />
+        <StatCard label="Sent" value={counts.sent} />
         <StatCard label="Total" value={total} />
       </div>
 
@@ -177,6 +201,9 @@ export function OutreachTable({ rows, loading, secret, counts, onRefetch }: Outr
                         <td className="px-4 py-3 text-gray-400 text-xs">{row.locale.toUpperCase()}</td>
                         <td className="px-4 py-3">
                           <StatusPill status={row.status as keyof typeof statusPillStyles} />
+                          {row.status === "approved" && row.preparedAt && (
+                            <PreparedNotSentPill preparedAt={row.preparedAt} />
+                          )}
                         </td>
                         <td className="px-4 py-3 text-gray-400 whitespace-nowrap">
                           {relativeDate(row.createdAt)}

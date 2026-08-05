@@ -28,13 +28,14 @@ import { generateDraft, buildReportUrl, type DraftDeps } from "@/lib/draft-gener
 
 // ── Filter + row shape ───────────────────────────────────────────────────
 
-export type OutreachFilter = "pending" | "approved" | "rejected";
+export type OutreachFilter = "pending" | "approved" | "rejected" | "sent";
 
-/** `pending` covers both `draft` and `edited` (D-6-04). */
+/** `pending` covers both `draft` and `edited` (D-6-04). `sent` is Phase 8's mark-as-sent terminal. */
 const STATUS_GROUPS: Record<OutreachFilter, string[]> = {
   pending: ["draft", "edited"],
   approved: ["approved"],
   rejected: ["rejected"],
+  sent: ["sent"],
 };
 
 export interface OutreachQueueRow {
@@ -47,6 +48,8 @@ export interface OutreachQueueRow {
   approvedBy: string | null;
   approvedAt: string | null;
   createdAt: string;
+  /** Phase 8's Prepare stamp (D-04) — null until the first Prepare, re-stamped on every re-prepare, never cleared by a mark. */
+  preparedAt: string | null;
   domain: string;
   country: string;
   contactEmail: string | null;
@@ -99,6 +102,7 @@ interface RawOutreachRow {
   approved_by: string | null;
   approved_at: string | null;
   created_at: string;
+  prepared_at: string | null;
   prospects: EmbeddedProspect | null;
   scans: EmbeddedScan | null;
 }
@@ -146,7 +150,7 @@ export async function listOutreachDrafts(
   const { data, error } = await sb
     .from("outreach_messages")
     .select(
-      `id, prospect_id, scan_id, draft_subject, draft_body, status, approved_by, approved_at, created_at,
+      `id, prospect_id, scan_id, draft_subject, draft_body, status, approved_by, approved_at, created_at, prepared_at,
        prospects ( name, domain, country, contact_email ),
        scans ( id, scores, summary, pages, issues_alt )`
     )
@@ -174,6 +178,7 @@ export async function listOutreachDrafts(
       approvedBy: row.approved_by,
       approvedAt: row.approved_at,
       createdAt: row.created_at,
+      preparedAt: row.prepared_at,
       domain: prospect.domain ?? "",
       country: prospect.country,
       contactEmail: prospect.contact_email,

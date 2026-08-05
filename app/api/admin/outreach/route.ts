@@ -12,7 +12,7 @@ import {
 
 export const runtime = "nodejs";
 
-const KNOWN_FILTERS: OutreachFilter[] = ["pending", "approved", "rejected"];
+const KNOWN_FILTERS: OutreachFilter[] = ["pending", "approved", "rejected", "sent"];
 
 function serializeError(e: unknown): string {
   // Supabase throws plain PostgrestError objects (not `instanceof Error`), so
@@ -26,8 +26,9 @@ function serializeError(e: unknown): string {
 }
 
 /**
- * GET /api/admin/outreach?status=pending|approved|rejected — defaults to
- * pending (D-6-04) when the param is absent or unrecognised.
+ * GET /api/admin/outreach?status=pending|approved|rejected|sent — defaults
+ * to pending (D-6-04) when the param is absent or unrecognised. `sent`
+ * joined the other three in Phase 8 (08-02) alongside OutreachFilter.
  */
 export async function GET(request: NextRequest) {
   const secret = request.headers.get("x-admin-secret");

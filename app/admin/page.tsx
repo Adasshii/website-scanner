@@ -16,7 +16,7 @@ import { isReleasable } from "@/lib/triage-eligibility";
 import type { OutreachFilter, OutreachQueueRow } from "@/lib/outreach-queue";
 import type { ReportingPayload } from "@/lib/reporting-aggregates";
 
-const OUTREACH_FILTERS: OutreachFilter[] = ["pending", "approved", "rejected"];
+const OUTREACH_FILTERS: OutreachFilter[] = ["pending", "approved", "rejected", "sent"];
 
 interface Stats {
   totalScans: number;
@@ -78,10 +78,16 @@ export default function AdminPage() {
   const [cutoff, setCutoff] = useState(DEFAULT_CUTOFF);
   const [outreachRows, setOutreachRows] = useState<OutreachQueueRow[]>([]);
   const [outreachLoading, setOutreachLoading] = useState(false);
-  const [outreachCounts, setOutreachCounts] = useState<{ pending: number; approved: number; rejected: number }>({
+  const [outreachCounts, setOutreachCounts] = useState<{
+    pending: number;
+    approved: number;
+    rejected: number;
+    sent: number;
+  }>({
     pending: 0,
     approved: 0,
     rejected: 0,
+    sent: 0,
   });
   const [reportingPayload, setReportingPayload] = useState<ReportingPayload | null>(null);
   const [reportingLoading, setReportingLoading] = useState(false);
@@ -168,11 +174,12 @@ export default function AdminPage() {
    * D-6-04's default (pending, worst-first) is already returned by the API
    * per filter, but the tab's stat cards need all three counts at once. The
    * existing GET route only returns one status group per call (06-06 is
-   * locked, no new backend surface here), so this fetches all three filters
-   * in parallel — three cheap Postgrest queries at this project's 10-50/week
+   * locked, no new backend surface here), so this fetches all four filters
+   * in parallel — four cheap Postgrest queries at this project's 10-50/week
    * scale, matching the near-zero-cost constraint, rather than adding a new
    * counts endpoint. Modelled on fetchShortlist for the secret header, 401
-   * handling and error-banner copy.
+   * handling and error-banner copy. `sent` (Phase 8) joined the original
+   * three (pending/approved/rejected) in 08-02.
    */
   const fetchOutreach = useCallback(
     async (filter: OutreachFilter = "pending") => {
@@ -200,18 +207,20 @@ export default function AdminPage() {
           return;
         }
 
-        const [pendingData, approvedData, rejectedData] = await Promise.all(
+        const [pendingData, approvedData, rejectedData, sentData] = await Promise.all(
           responses.map((res) => res.json())
         );
         const byFilter: Record<OutreachFilter, OutreachQueueRow[]> = {
           pending: pendingData.rows,
           approved: approvedData.rows,
           rejected: rejectedData.rows,
+          sent: sentData.rows,
         };
         setOutreachCounts({
           pending: byFilter.pending.length,
           approved: byFilter.approved.length,
           rejected: byFilter.rejected.length,
+          sent: byFilter.sent.length,
         });
         setOutreachRows(byFilter[filter]);
         setAuthenticated(true);

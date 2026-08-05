@@ -3,6 +3,7 @@ import {
   deriveLifecycleState,
   FUNNEL_CARD_ORDER,
   FUNNEL_GROUPS,
+  REPLY_SIGNAL_AVAILABLE,
   type FineLifecycleState,
   type LifecycleInputs,
 } from "./lifecycle";
@@ -78,6 +79,10 @@ describe("deriveLifecycleState", () => {
     expect(deriveLifecycleState(row({ outreachStatus: "approved" }))).toBe("approved");
   });
 
+  it("returns contacted for a sent outreach status (Phase 8: no new lifecycle writer, the existing rung)", () => {
+    expect(deriveLifecycleState(row({ outreachStatus: "sent" }))).toBe("contacted");
+  });
+
   it("treats an edited draft the same as a fresh draft", () => {
     expect(deriveLifecycleState(row({ outreachStatus: "edited" }))).toBe("drafted");
   });
@@ -112,6 +117,10 @@ describe("deriveLifecycleState", () => {
   it("FUNNEL_CARD_ORDER holds exactly the five TRK-01 groups in order", () => {
     expect(FUNNEL_CARD_ORDER).toHaveLength(5);
     expect(FUNNEL_CARD_ORDER).toEqual(["New", "Qualified", "Contacted", "Replied", "Booked"]);
+  });
+
+  it("REPLY_SIGNAL_AVAILABLE stays false — Phase 8 is manual send with no reply marker (D-01)", () => {
+    expect(REPLY_SIGNAL_AVAILABLE).toBe(false);
   });
 
   it("never returns replied for any input combination reachable in Phase 7", () => {
