@@ -22,11 +22,20 @@ import { ARTICLE_14_NOTICE_EN, ARTICLE_14_NOTICE_NL, localeForCountry, type Loca
 import { renderSendableBody } from "@/lib/opt-out-link";
 
 /**
- * D-04: a Prepare from days ago must not be treated as still valid. Nothing
- * in this module enforces the TTL directly (that is a UI/queue concern for a
- * later plan) — this constant is the single documented source for it.
+ * D-04: a Prepare from days ago must not be treated as still valid.
+ * isPreparedFresh() below is the single definition of that freshness
+ * comparison — lib/send-record.ts's markAsSent() calls it directly at Mark
+ * time rather than reimplementing the comparison, so the rule has exactly
+ * one home.
  */
 export const PREPARED_TTL_MINUTES = 30;
+
+/** True when `preparedAt` is set and no older than PREPARED_TTL_MINUTES. Null is never fresh. */
+export function isPreparedFresh(preparedAt: string | null, now: Date = new Date()): boolean {
+  if (!preparedAt) return false;
+  const ageMinutes = (now.getTime() - new Date(preparedAt).getTime()) / 60_000;
+  return ageMinutes <= PREPARED_TTL_MINUTES;
+}
 
 export type SendGateRefusal =
   | "not-approved"
