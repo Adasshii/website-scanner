@@ -387,7 +387,12 @@ Notes:
   4. A send is refused when the address is suppressed at that moment, and a first-touch send is refused when the Article 14 notice flag is not true (CMP-02, CMP-10)
   5. Joshua answers "why were we allowed to email this business?" in seconds from an immutable per-send record holding the resolved address and classification, the content actually sent, legal basis, LIA version, Tw exemption claimed, approver, and the suppression-check result (CMP-09, CMP-11, CMP-12)
 
-**Plans**: TBD (est. 3-4)
+**Plans**: 3 plans
+
+Plans:
+- [ ] 08-01-PLAN.md — Send gate spine: migration 020 (send_records, the two counsel-supplied legal_regimes columns, prepared_at), gate evaluation, the opt-out link, and the Prepare action (CMP-02, CMP-10, SND-02)
+- [ ] 08-02-PLAN.md — Mark as sent: the immutable per-send audit record, the copy handoff, and prepared-but-unsent resurfacing (CMP-02, CMP-09, CMP-11)
+- [ ] 08-03-PLAN.md — The audit answer and the isolation guard: why-were-we-allowed per prospect, plus tests that fail if a dispatch provider enters the outreach path (CMP-12, SND-01, SND-03, SND-04)
 
 > ⚠️ **BLOCKED on the legal gate, for shipping. Not for planning.** The provider half of the Parallel Track closed 2026-08-04 (manual send, no provider). The legal half is still open: the Telecommunicatiewet art. 11.7 question, the Legitimate Interest Assessment, and the Article 14 notice wording.
 >
