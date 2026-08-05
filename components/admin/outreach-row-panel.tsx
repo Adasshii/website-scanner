@@ -7,6 +7,10 @@ import { ARTICLE_14_NOTICE_EN, ARTICLE_14_NOTICE_NL, appendArticle14Notice } fro
 // (computePreparedHash's createHash), which fails Next.js's client-bundle
 // webpack build. See lib/send-gate-constants.ts's header comment.
 import { PREPARED_TTL_MINUTES } from "@/lib/send-gate-constants";
+// `import type` only — erased at build time, so this never pulls
+// lib/send-audit.ts's runtime code (or its @supabase/supabase-js import)
+// into the client bundle. Only the shape of one audit entry is needed here.
+import type { SendAuditEntry } from "@/lib/send-audit";
 
 interface OutreachRowPanelProps {
   row: OutreachQueueRow;
@@ -129,6 +133,31 @@ function failureMessage(action: string, result: { error?: string }): string {
 }
 
 /**
+ * CMP-12: GET /api/admin/outreach/audit?prospectId= — every send_records row
+ * for this prospect, newest first, read from the immutable record alone. A
+ * network failure or a non-2xx response returns ok:false and routes into the
+ * same actionError banner every other action in this panel uses; it never
+ * fails silently.
+ */
+async function fetchSendAudit(
+  secret: string,
+  prospectId: string
+): Promise<{ ok: boolean; entries?: SendAuditEntry[] }> {
+  try {
+    const res = await fetch(`/api/admin/outreach/audit?prospectId=${encodeURIComponent(prospectId)}`, {
+      headers: { "x-admin-secret": secret },
+    });
+    const data = await res.json().catch(() => ({}));
+    if (res.ok && Array.isArray(data.entries)) {
+      return { ok: true, entries: data.entries as SendAuditEntry[] };
+    }
+    return { ok: false };
+  } catch {
+    return { ok: false };
+  }
+}
+
+/**
  * Held between a successful Prepare and either a successful Mark as sent or
  * the panel losing this state (row change, unmount, or the mark itself).
  * preparedAtClient is a client-side display timestamp only — the value that
@@ -159,6 +188,11 @@ export function OutreachRowPanel({ row, secret, onRefetch }: OutreachRowPanelPro
   const [preparing, setPreparing] = useState(false);
   const [prepared, setPrepared] = useState<PreparedState | null>(null);
   const [marking, setMarking] = useState(false);
+  // CMP-12 audit block state (sent rows only). null distinguishes "not yet
+  // loaded" from "loaded, zero entries" — the latter is the record-missing
+  // warning case, not the loading spinner.
+  const [auditEntries, setAuditEntries] = useState<SendAuditEntry[] | null>(null);
+  const [auditLoading, setAuditLoading] = useState(false);
   // Transient "Copied" confirmation, cleared automatically and on unmount.
   const [copyStatus, setCopyStatus] = useState<{ field: "subject" | "body"; message: string } | null>(null);
   const copyStatusTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -206,6 +240,33 @@ export function OutreachRowPanel({ row, secret, onRefetch }: OutreachRowPanelPro
       if (copyStatusTimeoutRef.current) clearTimeout(copyStatusTimeoutRef.current);
     };
   }, []);
+
+  // CMP-12: fetch the audit trail on expand, but only for a row that has
+  // actually reached sent — no other status can have a send_records row.
+  // `cancelled` guards against a state update landing after the row changes
+  // out from under this instance (row change, unmount, or a fast re-expand).
+  useEffect(() => {
+    if (row.status !== "sent") {
+      setAuditEntries(null);
+      setAuditLoading(false);
+      return;
+    }
+    let cancelled = false;
+    setAuditLoading(true);
+    setAuditEntries(null);
+    fetchSendAudit(secret, row.prospectId).then((result) => {
+      if (cancelled) return;
+      setAuditLoading(false);
+      if (result.ok && result.entries) {
+        setAuditEntries(result.entries);
+      } else {
+        setActionError(failureMessage("load the send audit", {}));
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [row.id, row.status, row.prospectId, secret]);
 
   // Move focus into the confirmation dialog the moment it renders, per the
   // accessibility requirement (focus moved in on open).
@@ -496,6 +557,88 @@ export function OutreachRowPanel({ row, secret, onRefetch }: OutreachRowPanelPro
                 {marking ? "Marking as sent..." : "Mark as sent"}
               </button>
             </div>
+          </div>
+        )}
+
+        {/*
+         * CMP-12: "why were we allowed to email this business?" stated as
+         * the UI bar itself, not left in a document only Joshua remembers to
+         * open. Rendered only for a row that has actually reached sent — no
+         * other status can have a send_records row. Values are rendered as
+         * stored, beside their labels, with no composed sentence and no
+         * interpretation (hard scope fence): the field list is the answer.
+         */}
+        {row.status === "sent" && (
+          <div className="mt-3 border-l-4 border-adashi-gulf bg-blue-50/40 rounded-r-lg p-3">
+            <p className="text-xs font-semibold uppercase tracking-wider text-adashi-gulf">
+              Why were we allowed to email this business?
+            </p>
+
+            {auditLoading && <p className="text-sm text-gray-500 mt-2">Loading send audit...</p>}
+
+            {!auditLoading && auditEntries && auditEntries.length === 0 && (
+              <div role="alert" className="mt-2 rounded-lg bg-amber-50 border border-amber-200 px-3 py-2 text-sm text-amber-800">
+                No send record exists for this prospect, even though this message&apos;s status is sent. The
+                status advanced without a written audit record — investigate before treating this send as
+                compliant.
+              </div>
+            )}
+
+            {!auditLoading && auditEntries && auditEntries.length > 0 && (
+              <div className="mt-2 space-y-4">
+                {auditEntries.map((entry) => (
+                  <dl
+                    key={entry.sendRecordId}
+                    className="text-sm text-gray-700 grid grid-cols-2 gap-x-3 gap-y-1 border-t border-blue-100 pt-3 first:border-t-0 first:pt-0"
+                  >
+                    <dt className="font-semibold text-gray-500">Sent at</dt>
+                    <dd>{entry.sentAt}</dd>
+
+                    <dt className="font-semibold text-gray-500">Resolved address</dt>
+                    <dd>{entry.resolvedEmail}</dd>
+
+                    <dt className="font-semibold text-gray-500">Address classification</dt>
+                    <dd>{entry.resolvedEmailType}</dd>
+
+                    <dt className="font-semibold text-gray-500">First contact</dt>
+                    <dd>{entry.isFirstContact ? "Yes" : "No"}</dd>
+
+                    <dt className="font-semibold text-gray-500">Legal basis</dt>
+                    <dd>{entry.legalBasis}</dd>
+
+                    <dt className="font-semibold text-gray-500">LIA version</dt>
+                    <dd>{entry.liaVersion}</dd>
+
+                    <dt className="font-semibold text-gray-500">Tw exemption claimed</dt>
+                    <dd>{entry.twExemptionClaimed ? "Yes" : "No"}</dd>
+
+                    <dt className="font-semibold text-gray-500">Article 14 notice included</dt>
+                    <dd>{entry.firstContactNoticeIncluded ? "Yes" : "No"}</dd>
+
+                    <dt className="font-semibold text-gray-500">Approved by</dt>
+                    <dd>{entry.approvedBy}</dd>
+
+                    <dt className="font-semibold text-gray-500">Suppression checked at</dt>
+                    <dd>{entry.suppressionCheckedAt}</dd>
+
+                    <dt className="font-semibold text-gray-500">Suppression result</dt>
+                    <dd>{entry.suppressionHit ? "Yes" : "No"}</dd>
+
+                    <dt className="font-semibold text-gray-500 col-span-2 mt-2">
+                      Subject actually recorded
+                    </dt>
+                    <dd className="col-span-2 whitespace-pre-wrap border border-gray-200 rounded p-2 bg-white">
+                      {entry.subjectSent}
+                    </dd>
+
+                    <dt className="font-semibold text-gray-500 col-span-2 mt-2">Body actually recorded</dt>
+                    <dd className="col-span-2 whitespace-pre-wrap border border-gray-200 rounded p-2 bg-white">
+                      {entry.bodySent}
+                    </dd>
+                  </dl>
+                ))}
+              </div>
+            )}
           </div>
         )}
 
