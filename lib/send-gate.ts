@@ -19,6 +19,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { createHash } from "node:crypto";
 import { isSuppressed } from "@/lib/suppression";
 import { ARTICLE_14_NOTICE_EN, ARTICLE_14_NOTICE_NL, localeForCountry, type Locale } from "@/lib/draft-prompt";
+import { renderSendableBody } from "@/lib/opt-out-link";
 
 /**
  * D-04: a Prepare from days ago must not be treated as still valid. Nothing
@@ -228,4 +229,33 @@ export async function evaluateSendGates(sb: SupabaseClient, messageId: string): 
 /** Lowercase hex sha256 over `${subject}\n\n${body}`, used to fingerprint a prepared send. */
 export function computePreparedHash(subject: string, body: string): string {
   return createHash("sha256").update(`${subject}\n\n${body}`).digest("hex");
+}
+
+export type PrepareSendResult =
+  | { ok: true; subject: string; body: string; preparedHash: string; isFirstContact: boolean }
+  | { ok: false; refusal: SendGateRefusal; detail: string };
+
+/**
+ * Runs every gate via evaluateSendGates(), and on success composes the
+ * copyable subject/body, computes a fingerprint hash, and stamps
+ * outreach_messages.prepared_at to now. D-04: there is no cached prepared
+ * state — re-calling this re-runs every gate from scratch and overwrites
+ * prepared_at, so a Prepare from days ago is never treated as still valid.
+ */
+export async function prepareSend(sb: SupabaseClient, messageId: string): Promise<PrepareSendResult> {
+  const result = await evaluateSendGates(sb, messageId);
+  if (!result.ok) return result;
+
+  const { context } = result;
+  const subject = context.subject;
+  const body = renderSendableBody(context.draftBody, context.prospectId, context.locale);
+  const preparedHash = computePreparedHash(subject, body);
+
+  const { error: stampError } = await sb
+    .from("outreach_messages")
+    .update({ prepared_at: new Date().toISOString() })
+    .eq("id", messageId);
+  if (stampError) throw stampError;
+
+  return { ok: true, subject, body, preparedHash, isFirstContact: context.isFirstContact };
 }
