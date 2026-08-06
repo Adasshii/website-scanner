@@ -18,7 +18,12 @@ import { uploadScreenshot } from "./screenshots";
 import type { ScanRequest, PageResult, ScanScores, ScanSummary, Issue, IssueSeverity, ScreenshotInfo } from "../../types/scanner";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { isAtCapacity, CAPACITY_RETRY_AFTER_SECONDS } from "./capacity";
-import { computeVerdict } from "@shared-lib/scoring";
+// Deliberately relative, not the shared-lib path alias. Path aliases are
+// compile-time only: tsc emits this specifier verbatim into dist/, and Node
+// cannot resolve it, which crashed the container on boot and failed
+// Railway's healthcheck. Do not "tidy" this back to the alias form -- the
+// alias is safe only for import type uses, which tsc erases at emit.
+import { computeVerdict } from "../../lib/scoring";
 
 /** Race a promise against a timer; resolve to `fallback` if it times out */
 function withTimeout<T>(promise: Promise<T>, ms: number, fallback: T): Promise<T> {
