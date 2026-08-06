@@ -39,7 +39,7 @@ interface OvertureAddress {
   country?: string | null;
 }
 
-function overturePlacesPath(): string {
+export function overturePlacesPath(): string {
   return `s3://overturemaps-us-west-2/release/${OVERTURE_RELEASE}/theme=places/type=place/*`;
 }
 

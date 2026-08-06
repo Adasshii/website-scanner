@@ -12,6 +12,7 @@
     "lint": "next lint",
     "test": "vitest run",
     "triage": "tsx scripts/triage-prospects.ts",
+    "overture-categories": "tsx scripts/overture-categories.ts",
     "scanner-health": "tsx scripts/check-public-scanner-health.ts"
   },
   "dependencies": {
