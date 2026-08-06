@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   usePipelineRun,
   PipelineRunPanel,
@@ -8,6 +8,12 @@ import {
   type RunOutcome,
 } from "@/components/admin/pipeline-run";
 import { COUNTRY_BBOXES, REGION_BBOXES } from "@/lib/overture-bboxes";
+import { CategoryAutocomplete } from "@/components/admin/category-autocomplete";
+// Type-only: lib/overture-categories.ts is a pure module, but keeping this
+// import type-only means nothing from it can reach the browser bundle
+// regardless (cacheKey() itself runs server-side inside the categories
+// route, never here).
+import type { CategoryCount } from "@/lib/overture-categories";
 
 interface ImportResult {
   totalRows: number;
@@ -84,6 +90,8 @@ export function ImportForm({ secret }: { secret: string }) {
   const [limit, setLimit] = useState("");
   const [campaignTag, setCampaignTag] = useState("");
   const [dryRun, setDryRun] = useState(true);
+  const [categoryOptions, setCategoryOptions] = useState<CategoryCount[]>([]);
+  const [categoriesLoading, setCategoriesLoading] = useState(false);
 
   const { status, outcome, progress, logLines, runStream } = usePipelineRun({ secret });
   const running = status === "running";
@@ -94,6 +102,48 @@ export function ImportForm({ secret }: { secret: string }) {
     setCountry(next);
     setRegion(""); // clear a stale region selection when the country changes
   }
+
+  // Fetches the cached category vocabulary for the selected country+region.
+  // A broken fetch (network error, non-OK response, or simply an unseeded
+  // region) always degrades to an empty list — never blocks the form, since
+  // Category has always been submittable as plain free text (D-06).
+  useEffect(() => {
+    if (!country || !region) {
+      setCategoryOptions([]);
+      setCategoriesLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+    setCategoriesLoading(true);
+
+    fetch(
+      `/api/admin/pipeline/categories?country=${encodeURIComponent(country)}&region=${encodeURIComponent(region)}`,
+      { headers: { "x-admin-secret": secret } }
+    )
+      .then((res) => (res.ok ? res.json() : { categories: [] }))
+      .then((body: { categories?: CategoryCount[] }) => {
+        if (cancelled) return;
+        setCategoryOptions(body.categories ?? []);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setCategoryOptions([]);
+      })
+      .finally(() => {
+        if (cancelled) return;
+        setCategoriesLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [country, region, secret]);
+
+  const categoryHint =
+    !categoriesLoading && country && region && categoryOptions.length === 0
+      ? `No cached list for ${country}:${region} — run npm run overture-categories -- --country ${country} --region ${region}`
+      : undefined;
 
   const canSubmit = country.trim() && region.trim() && category.trim() && !running;
 
@@ -153,10 +203,12 @@ export function ImportForm({ secret }: { secret: string }) {
         </label>
         <label className="text-sm text-gray-600">
           Category
-          <input
-            type="text"
+          <CategoryAutocomplete
             value={category}
-            onChange={(e) => setCategory(e.target.value)}
+            onChange={setCategory}
+            options={categoryOptions}
+            loading={categoriesLoading}
+            hint={categoryHint}
             placeholder="e.g. hair_salon"
             className="mt-1 block w-full px-2 py-1.5 rounded-lg border border-gray-200 text-sm"
           />

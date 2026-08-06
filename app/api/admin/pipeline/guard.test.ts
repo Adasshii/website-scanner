@@ -31,7 +31,7 @@ type Handler = (req: NextRequest) => Promise<Response>;
  */
 interface RouteUnderTest {
   name: string;
-  importRoute: () => Promise<Record<string, Handler | undefined>>;
+  importRoute: () => Promise<Record<string, unknown>>;
   filePath: string;
   method: "POST" | "GET";
 }
@@ -98,7 +98,7 @@ describe("pipeline route production guard", () => {
         vi.stubEnv("NODE_ENV", "production");
         vi.stubEnv("ADMIN_SECRET", CORRECT_SECRET);
         const mod = await route.importRoute();
-        const handler = mod[route.method];
+        const handler = mod[route.method] as Handler | undefined;
         expect(handler).toBeDefined();
         const res = await handler!(makeRequest({ "x-admin-secret": CORRECT_SECRET }, route.method));
         expect(res.status).toBe(404);
@@ -109,7 +109,7 @@ describe("pipeline route production guard", () => {
         vi.stubEnv("NODE_ENV", "production");
         vi.stubEnv("ADMIN_SECRET", CORRECT_SECRET);
         const mod = await route.importRoute();
-        const handler = mod[route.method];
+        const handler = mod[route.method] as Handler | undefined;
         expect(handler).toBeDefined();
         const res = await handler!(makeRequest({ "x-admin-secret": "wrong-secret" }, route.method));
         expect(res.status).toBe(404);
@@ -118,7 +118,7 @@ describe("pipeline route production guard", () => {
       it("Test 3: vitest's default test NODE_ENV -> 404 (proves !== 'development', not === 'production')", async () => {
         // Deliberately no NODE_ENV stub here.
         const mod = await route.importRoute();
-        const handler = mod[route.method];
+        const handler = mod[route.method] as Handler | undefined;
         expect(handler).toBeDefined();
         const res = await handler!(makeRequest({}, route.method));
         expect(res.status).toBe(404);
@@ -133,7 +133,7 @@ describe("pipeline route production guard", () => {
         vi.stubEnv("NODE_ENV", "development");
         vi.stubEnv("ADMIN_SECRET", CORRECT_SECRET);
         const mod = await route.importRoute();
-        const handler = mod[route.method];
+        const handler = mod[route.method] as Handler | undefined;
         expect(handler).toBeDefined();
         const res = await handler!(makeRequest({ "x-admin-secret": "wrong-secret" }, route.method));
         expect(res.status).toBe(401);
