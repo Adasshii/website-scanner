@@ -10,6 +10,7 @@ import { RunBatchButton } from "@/components/admin/run-batch-button";
 import { OutreachTable } from "@/components/admin/outreach-table";
 import { ReportingTab } from "@/components/admin/reporting-tab";
 import { StatCard } from "@/components/admin/stat-card";
+import { PipelineTab } from "@/components/admin/pipeline-tab";
 import type { ShortlistRow } from "@/lib/triage-candidates";
 import { DEFAULT_CUTOFF } from "@/lib/triage-constants";
 import { isReleasable } from "@/lib/triage-eligibility";
@@ -58,7 +59,7 @@ interface LeadRow {
   emailStatuses: Array<{ email_type: string; status: string }>;
 }
 
-type Tab = "scans" | "leads" | "shortlist" | "outreach" | "reporting";
+type Tab = "scans" | "leads" | "shortlist" | "outreach" | "reporting" | "pipeline";
 
 export default function AdminPage() {
   const router = useRouter();
@@ -278,6 +279,9 @@ export default function AdminPage() {
       fetchOutreach();
     } else if (tab === "reporting") {
       fetchReporting();
+    } else if (tab === "pipeline") {
+      // The Pipeline tab has no list to load — it's a set of action
+      // buttons, not a table — so it never falls through to fetchData.
     } else {
       fetchData(tab, page);
     }
@@ -442,6 +446,17 @@ export default function AdminPage() {
           >
             Reporting
           </TabButton>
+          {/* Cosmetic defence only — the real guard is the NODE_ENV 404 in
+              each of the three /api/admin/pipeline/* routes, which holds
+              regardless of whether this button renders. */}
+          {process.env.NODE_ENV === "development" && (
+            <TabButton
+              active={tab === "pipeline"}
+              onClick={() => handleTabChange("pipeline")}
+            >
+              Pipeline
+            </TabButton>
+          )}
         </div>
 
         {/* Table */}
@@ -464,6 +479,8 @@ export default function AdminPage() {
           />
         ) : tab === "reporting" ? (
           <ReportingTab payload={reportingPayload} loading={reportingLoading} error={error} />
+        ) : tab === "pipeline" ? (
+          <PipelineTab secret={secret} />
         ) : (
           <div className="bg-white rounded-2xl shadow-card overflow-hidden">
             {loading ? (
@@ -477,7 +494,11 @@ export default function AdminPage() {
         )}
 
         {/* Pagination */}
-        {tab !== "shortlist" && tab !== "outreach" && tab !== "reporting" && totalPages > 1 && (
+        {tab !== "shortlist" &&
+          tab !== "outreach" &&
+          tab !== "reporting" &&
+          tab !== "pipeline" &&
+          totalPages > 1 && (
           <div className="flex items-center justify-center gap-2 mt-6">
             <button
               onClick={() => setPage((p) => Math.max(1, p - 1))}
