@@ -7,8 +7,8 @@ current_phase_name: Send — GATED
 status: executed_gated
 stopped_at: Phase 8 executed, 3/3 plans. Verification human_needed. Shipping blocked on the legal gate.
 last_updated: "2026-08-03T14:15:34.541Z"
-last_activity: 2026-08-05
-last_activity_desc: Phase 8 executed. Send mechanism built with the gate shut, pending counsel.
+last_activity: 2026-08-06
+last_activity_desc: "Quick task 260806-kbi restored the scanner-service Docker build. Phase 8 unchanged: executed, gated, pending counsel."
 progress:
   total_phases: 8
   completed_phases: 7
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-07-17)
 Phase: 8 — Send — GATED
 Plan: 3/3 executed (08-01, 08-02, 08-03)
 Status: Executed. Verification human_needed. The mechanism is built and the send path is deliberately shut.
-Last activity: 2026-08-05: Phase 8 executed. Prepare, Mark as sent, the immutable audit record, and the isolation guard all ship. Every Prepare on a real draft refuses with `legal-basis-unset`, which is the designed state until counsel supplies `legal_regimes.legal_basis` and `article_14_notice_approved`.
+Last activity: 2026-08-06: Quick task 260806-kbi restored the scanner-service Docker build, which had been failing since `14af0a9`. Phase 8 itself is unchanged from 2026-08-05: executed, 3/3 plans, Prepare/Mark as sent/the immutable audit record/the isolation guard all ship, and every Prepare on a real draft refuses with `legal-basis-unset`, which is the designed state until counsel supplies `legal_regimes.legal_basis` and `article_14_notice_approved`.
 
 Progress: [██████████] 100%
 
@@ -284,6 +284,7 @@ Items acknowledged and carried forward from previous milestone close:
 | 2026-08-02 | reporting-agg-cleanup-leak | `reporting-aggregates.integration.test.ts` `afterEach` swallowed a `scans_prospect_id_fkey` violation (migration 013 is `ON DELETE NO ACTION`), so one blocked row aborted the whole prospects delete and every fixture row survived, cumulatively, across runs. Cleanup now deletes in FK-safe order and throws on any error. |
 | 2026-08-03 | fix-silent-1000-row-postgrest-truncation | `getReportingData()` read `prospects` and `outreach_messages` with unbounded `.select()`; PostgREST caps at 1000 rows and returns 200 with no error, so the Reporting tab's funnel counts (TRK-05) and booked tally (TRK-04) were silently wrong. Outreach was worse than an undercount: `created_at` ASC + newest-wins Map meant truncation dropped the *newest* rows, corrupting resolved status and letting `sentGateOpen` read false while sends existed. Now paginated via a file-local `fetchAllPages()` `.range()` loop with unique-id tiebreakers; `scans` paginated too (deviation — live data showed 1045 rows already past the cap in the 30-day window). Commits `abf2b15`, `7710a57`. |
 | 2026-08-04 | record-manual-send-decision-for-phase-8 | Provider half of the Phase 8 send-path gate CLOSED. There is no third-party dispatch provider: Prospect Radar generates, renders and gates the draft, Joshua sends by hand from his own mailbox at 10-50/week. Driven by a provider AUP sweep (`.planning/research/SEND-CHANNEL.md`, the SND-04 artifact) which found the whole transactional-ESP category closed by contract, not just Resend: Mailgun §1c demands confirmed opt-in, SendGrid and Brevo the same, SES risks the whole AWS account. SND-02 rewritten off RFC 8058 headers (unsettable from a manual client, and never a legal requirement: `LEGAL.md` §2.4 wants opt-out "snel" and "gratis", not a header) onto a body link into the Phase 2 endpoint. Also corrected 5 stale copies of "the channel is deliberately undecided" across ROADMAP, PROJECT.md and the auto-loading `.claude/CLAUDE.md`. Legal half (Tw art. 11.7, LIA, Article 14) still OPEN and still gates the phase. Commits `8204ed7`, `3895617`, `3dcbd14`, `8c7b7a6`. |
+| 2026-08-06 | fix-scanner-service-docker-build-by-copy | The scanner-service Docker build could not succeed on any commit since `14af0a9` (06-01). `scanner-service/src/index.ts:21` imports `@shared-lib/scoring`, which the service tsconfig maps to `../lib/scoring.ts`, but the Dockerfile copied only `types/` and `scanner-service/`, so `npm run build` (plain `tsc`) died with TS2307 and the image never built. Nothing looked broken because Railway keeps serving the last image that built successfully, which therefore predates the 06-01 shared-verdict change (Railway deploy history NOT yet checked, and the live report verdicts have NOT been compared against `lib/scoring.ts` — both are open follow-ups). Fixed with a narrow `COPY lib/scoring.ts` rather than the whole `lib/`, which also holds the outreach, send-gate, suppression, legal-basis and retention modules that must stay out of the scanner container; the image asserts `/app/lib` contains exactly one entry so a future widening breaks the build. Also appended `lib/**` to `railway.toml` `watchPatterns`, since after this fix `lib/scoring.ts` is a real build input and a change to it alone would otherwise not trigger a rebuild, reintroducing the same verdict divergence 06-01 existed to eliminate. Proven both directions with real `docker build` runs, not a synthesized layout: RED exit 1 with TS2307 on unmodified HEAD, GREEN exit 0, re-verified independently by the orchestrator. Commits `3d91e00`, `31fc75f`. |
 
 ## Session Continuity
 
