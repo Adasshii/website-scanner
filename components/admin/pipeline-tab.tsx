@@ -2,6 +2,7 @@
 
 import { DrainButton } from "@/components/admin/drain-button";
 import { TriageForm } from "@/components/admin/triage-form";
+import { ImportForm } from "@/components/admin/import-form";
 
 /**
  * The Pipeline tab body — the sixth admin tab (CONTEXT.md), local-only.
@@ -26,9 +27,9 @@ export function PipelineTab({ secret }: { secret: string }) {
       <div className="bg-white rounded-2xl shadow-card p-6">
         <h2 className="font-display text-lg text-adashi-gulf mb-1">Import prospects</h2>
         <p className="text-sm text-gray-500 mb-4">
-          Pull businesses from Overture for a country/region/category. Coming in the next step.
+          Pull businesses from Overture for a country/region/category.
         </p>
-        <p className="text-xs text-gray-400">Not wired yet.</p>
+        <ImportForm secret={secret} />
       </div>
 
       <div className="bg-white rounded-2xl shadow-card p-6">

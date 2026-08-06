@@ -25,9 +25,12 @@
  *   { t: "error", message }        (then process.exit(1))
  */
 import { parseTriageArgs, runTriage, TriageArgsError, type TriageDeps } from "@/scripts/triage-prospects";
+import { parseImportArgs, runImport, ImportArgsError, type ImportDeps } from "@/scripts/import-prospects";
 import { getTriageCandidates } from "@/lib/triage-candidates";
 import { fetchTriageSignals } from "@/lib/triage-fetch";
 import { computeTriageScore } from "@/lib/triage-scorer";
+import { queryOverturePlaces } from "@/lib/overture-client";
+import { upsertOverturePlace } from "@/lib/prospect-upsert";
 import { createServerClient } from "@/lib/supabase";
 import { validateUrlSafe } from "@/lib/url-validation.server";
 
@@ -88,6 +91,61 @@ async function runTriageMode(argv: string[]): Promise<void> {
   emit({ t: "result", mode: "triage", result });
 }
 
+/**
+ * The only HEAD in this file. ImportDeps requires all five fields and the
+ * script's own defaultFetchReachability is not exported, so this is a
+ * local re-implementation — but it is safe by construction: runImport's
+ * checkReachability() ALWAYS routes the URL through deps.validateUrlSafe
+ * (the real one, passed through untouched below) BEFORE this is ever
+ * called, so the SSRF gate (D-11, Pitfall 3, T-01-06) lives in the script
+ * and is not weakened by this local helper. Do not add validation here and
+ * do not remove the real validateUrlSafe pass-through below.
+ */
+async function fetchReachabilityForRunner(
+  url: string
+): Promise<{ ok: boolean; status: number }> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 5000);
+  try {
+    const res = await fetch(url, { method: "HEAD", signal: controller.signal, redirect: "follow" });
+    return { ok: res.ok, status: res.status };
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
+async function runImportMode(argv: string[]): Promise<void> {
+  const args = parseImportArgs(argv);
+
+  let done = 0;
+  let total = 0;
+
+  const deps: ImportDeps = {
+    queryOverturePlaces: async (params) => {
+      // The S3 query is the long silent stretch in a real run — this
+      // `start` event is the first proof of life the browser sees.
+      const rows = await queryOverturePlaces(params);
+      total = rows.length;
+      emit({ t: "start", total });
+      return rows;
+    },
+    upsertOverturePlace: async (sb, place, campaignTag) => {
+      try {
+        return await upsertOverturePlace(sb, place, campaignTag);
+      } finally {
+        done++;
+        emit({ t: "progress", done, total });
+      }
+    },
+    createServerClient,
+    validateUrlSafe,
+    fetchReachability: fetchReachabilityForRunner,
+  };
+
+  const result = await runImport(args, deps);
+  emit({ t: "result", mode: "import", result });
+}
+
 async function main(): Promise<void> {
   loadLocalEnv();
 
@@ -97,12 +155,14 @@ async function main(): Promise<void> {
   try {
     if (mode === "triage") {
       await runTriageMode(flags);
+    } else if (mode === "import") {
+      await runImportMode(flags);
     } else {
       emit({ t: "error", message: `Unknown pipeline-runner mode: ${mode ?? "(none)"}` });
       process.exit(1);
     }
   } catch (err) {
-    if (err instanceof TriageArgsError) {
+    if (err instanceof TriageArgsError || err instanceof ImportArgsError) {
       emit({ t: "error", message: err.message });
       process.exit(1);
       return;
