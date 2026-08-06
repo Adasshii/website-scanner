@@ -1,6 +1,6 @@
 [build]
 dockerfilePath = "scanner-service/Dockerfile"
-watchPatterns = ["scanner-service/**", "types/**"]
+watchPatterns = ["scanner-service/**", "types/**", "lib/**"]
 
 [deploy]
 healthcheckPath = "/health"
