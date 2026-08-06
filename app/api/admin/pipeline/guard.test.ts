@@ -39,6 +39,11 @@ const ROUTES: RouteUnderTest[] = [
     importRoute: () => import("@/app/api/admin/pipeline/drain/route"),
     filePath: path.join(process.cwd(), "app/api/admin/pipeline/drain/route.ts"),
   },
+  {
+    name: "triage",
+    importRoute: () => import("@/app/api/admin/pipeline/triage/route"),
+    filePath: path.join(process.cwd(), "app/api/admin/pipeline/triage/route.ts"),
+  },
 ];
 
 // Markers checked by Test 6 (structural). A marker absent from a given

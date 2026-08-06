@@ -1,6 +1,7 @@
 "use client";
 
 import { DrainButton } from "@/components/admin/drain-button";
+import { TriageForm } from "@/components/admin/triage-form";
 
 /**
  * The Pipeline tab body — the sixth admin tab (CONTEXT.md), local-only.
@@ -33,9 +34,9 @@ export function PipelineTab({ secret }: { secret: string }) {
       <div className="bg-white rounded-2xl shadow-card p-6">
         <h2 className="font-display text-lg text-adashi-gulf mb-1">Run triage</h2>
         <p className="text-sm text-gray-500 mb-4">
-          Score every untriaged prospect that has a domain. Coming in the next step.
+          Score every untriaged prospect that has a domain.
         </p>
-        <p className="text-xs text-gray-400">Not wired yet.</p>
+        <TriageForm secret={secret} />
       </div>
 
       <div className="bg-white rounded-2xl shadow-card p-6">

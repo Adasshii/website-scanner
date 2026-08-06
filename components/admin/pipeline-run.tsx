@@ -15,11 +15,23 @@ interface UsePipelineRunOptions {
   secret: string;
 }
 
+/** One decoded NDJSON event from scripts/pipeline-runner.ts, forwarded
+ * through streamPipelineRun (lib/pipeline-run.ts). */
+export interface PipelineStreamEvent {
+  t: "start" | "progress" | "result" | "error" | "exit";
+  done?: number;
+  total?: number;
+  mode?: string;
+  result?: unknown;
+  message?: string;
+  code?: number | null;
+}
+
 /**
  * Shared run-state hook for all three Pipeline controls (Import, Triage,
- * Drain). Task 1 ships only the plain-JSON POST path (`runJson`), which is
+ * Drain). Task 1 shipped the plain-JSON POST path (`runJson`), which is
  * all Drain needs — it is short enough that a spinner is fine (CONTEXT.md).
- * Task 2 extends this hook with an NDJSON-streaming path for Import and
+ * Task 2 adds `runStream`, the NDJSON-streaming path for Import and
  * Triage, which both run long enough that a silent request would look
  * identical to a hung one.
  */
@@ -71,7 +83,111 @@ export function usePipelineRun({ secret }: UsePipelineRunOptions) {
     }
   }
 
-  return { status, logLines, progress, outcome, runJson, reset };
+  /**
+   * NDJSON-streaming request path — used by Import and Triage, both of
+   * which run long enough (10-50 sequential fetches for triage, a
+   * multi-minute S3 query for import) that no progress feedback would look
+   * identical to a hung request. Reads the response body incrementally,
+   * splits it on newlines the same way the server-side splitter does,
+   * parses each line as JSON and falls back to treating it as a raw log
+   * line when it isn't (the scripts' own `console.log` output flows
+   * through this path unchanged). `toOutcome` receives the last
+   * "result"/"error" event seen (or null if the stream ended without one —
+   * that "ended with no result event" case is a failure, closing the
+   * silent-hang hole) plus whether an `error` event was ever seen.
+   */
+  async function runStream(
+    path: string,
+    body: Record<string, unknown>,
+    toOutcome: (finalEvent: PipelineStreamEvent | null, sawError: boolean) => RunOutcome
+  ) {
+    setStatus("running");
+    setOutcome(null);
+    setLogLines([]);
+    setProgress(null);
+
+    let finalEvent: PipelineStreamEvent | null = null;
+    let sawError = false;
+
+    function appendLog(line: string) {
+      setLogLines((prev) => [...prev.slice(-199), line]);
+    }
+
+    function handleLine(line: string) {
+      let parsed: PipelineStreamEvent | null = null;
+      try {
+        parsed = JSON.parse(line) as PipelineStreamEvent;
+      } catch {
+        // Not JSON — one of the scripts' own human-readable console.log
+        // lines. Pass it through as a log line for display, unclassified.
+        appendLog(line);
+        return;
+      }
+
+      if (parsed.t === "start" || parsed.t === "progress") {
+        setProgress({ done: parsed.done ?? 0, total: parsed.total ?? 0 });
+      } else if (parsed.t === "result") {
+        finalEvent = parsed;
+      } else if (parsed.t === "error") {
+        sawError = true;
+        finalEvent = parsed;
+        appendLog(`error: ${parsed.message ?? "unknown error"}`);
+      } else if (parsed.t === "exit") {
+        // Only adopt exit as the final event if no result/error arrived
+        // first — result/error carry the real payload, exit is a fallback.
+        if (!finalEvent) finalEvent = parsed;
+      }
+    }
+
+    try {
+      const res = await fetch(path, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-admin-secret": secret },
+        body: JSON.stringify(body),
+      });
+
+      if (!res.ok || !res.body) {
+        const data = await res.json().catch(() => ({} as Record<string, unknown>));
+        const detail =
+          (data as { detail?: string; error?: string }).detail ??
+          (data as { detail?: string; error?: string }).error ??
+          `HTTP ${res.status}`;
+        setOutcome({ tone: "error", headline: "Request failed to start", lines: [detail] });
+        setStatus("failed");
+        return;
+      }
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() ?? "";
+        for (const line of lines) {
+          if (line.length === 0) continue;
+          handleLine(line);
+        }
+      }
+      if (buffer.trim().length > 0) handleLine(buffer);
+
+      const result = toOutcome(finalEvent, sawError);
+      setOutcome(result);
+      setStatus(result.tone === "error" ? "failed" : "done");
+    } catch (e) {
+      setOutcome({
+        tone: "error",
+        headline: "Stream failed",
+        lines: [e instanceof Error ? e.message : String(e)],
+      });
+      setStatus("failed");
+    }
+  }
+
+  return { status, logLines, progress, outcome, runJson, runStream, reset };
 }
 
 /**
