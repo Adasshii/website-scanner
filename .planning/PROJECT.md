@@ -19,6 +19,29 @@ already written, so that outreach costs him minutes instead of hours.
 If everything else fails, this must work: a qualified prospect, a real scan report, and
 a drafted message he is willing to send.
 
+## Current Milestone: v2.0 Renewed Scanner
+
+**Goal:** turn the scanner from a website grader into a sales tool for Dutch installers,
+where every problem in the report leads to an Adashi service.
+
+**Target features:**
+- A six-check engine per business, on sources we are allowed to store: business facts
+  online, social proof, local competitor position, the phone-view website scan, the
+  quote-request check, and an AI visibility probe shown as evidence only.
+- A niche profile (installers) holding trades, cited job values, AI questions, competitor
+  rules and all copy, with country and locale as parameters.
+- One new score and one new report, replacing the existing ones everywhere.
+- Outbound that dispatches on approval: Joshua approves each body, our code checks
+  suppression live, builds the opt-out link, writes the audit record, then a provider
+  carries it. Shut until counsel answers.
+
+**Source plan:** `docs/v2-renewed-scanner-plan.md` (revision 2, adversarially reviewed
+2026-11-11; findings in `docs/v2-renewed-scanner-plan-REVIEW.md`).
+
+**Hard precondition:** counsel closes Tw art. 11.7, the Legitimate Interest Assessment and
+the Article 14 wording before any message reaches a real business. Phase 12 builds the
+mechanism and leaves it refusing, exactly as v1.0's Phase 8 does today.
+
 ## Requirements
 
 ### Validated
@@ -38,38 +61,73 @@ a drafted message he is willing to send.
 - ✓ Quick scan (synchronous) and full scan (async, callback webhook) modes — existing
 - ✓ Cron-driven follow-up email with per-lead guardrails — existing
 
+<!-- Shipped in the v1.0 Prospect Radar milestone, phases 1-7. -->
+
+- ✓ Import businesses from Overture Maps, filtered by country, region and category — Phase 1
+- ✓ Prospect identity that survives re-imports with no duplicates — Phase 1
+- ✓ Suppression list in Supabase as the source of truth, checked at send time — Phase 2
+- ✓ Working unsubscribe endpoint that writes to the suppression list — Phase 2
+- ✓ Automatic suppression on hard bounce and spam complaint — Phase 2
+- ✓ Per-country legal-basis configuration with a paper trail — Phase 2
+- ✓ Cheap triage pass on every prospect, no Lighthouse and no AI — Phase 3
+- ✓ Rank and shortlist by triage signal, so only the worst earn a full scan — Phase 3
+- ✓ Bulk full scans that respect scanner-service browser concurrency — Phase 4
+- ✓ `isReleasable` as the single releasability predicate — Phase 4.1
+- ✓ Contact email extracted from the prospect's own site during scanning — Phase 5
+- ✓ Generic business addresses preferred over named-person addresses — Phase 5
+- ✓ Drafted cold email per prospect, grounded in that prospect's own scan findings — Phase 6
+- ✓ Review queue where Joshua approves, edits or rejects each message — Phase 6
+- ✓ Article 14 GDPR notice folded into the first-contact template — Phase 6
+- ✓ Prospect lifecycle tracking (new → qualified → contacted → booked) — Phase 7
+- ✓ Reply-rate and booked-call reporting attributable to outreach — Phase 7
+- ✓ Prepare / Mark as sent gate with an immutable `send_records` audit trail — Phase 8 (built, refusing by design)
+
 ### Active
 
-<!-- Current scope. Hypotheses until shipped and validated. -->
+<!-- v2.0 scope. Hypotheses until shipped and validated. -->
 
-- [ ] Import businesses from Overture Maps, filtered by country, region, and category
-- [ ] Store prospects with a stable identity that survives re-imports (no duplicates)
-- [ ] Cheap triage pass on every prospect (reachability, HTTPS, mobile viewport, page
-      weight, load time) with no Lighthouse and no AI
-- [ ] Rank and shortlist prospects by triage signal, so only qualified ones get a full scan
-- [ ] Queue and run full scans in bulk without exhausting scanner-service browser concurrency
-- [ ] Extract a contact email from the prospect's own website during scanning
-- [ ] Prefer generic business addresses (`info@`) over named-person addresses
-- [ ] Generate a drafted cold email per prospect, grounded in that prospect's actual scan findings
-- [ ] Review queue where Joshua approves, edits, or rejects each message before it sends
-- [ ] Suppression list in Supabase as the source of truth, checked at send time (not draft time)
-- [ ] Working unsubscribe endpoint that writes to the suppression list
-- [ ] Automatic suppression on hard bounce and spam complaint, wired to the existing Resend webhook
-- [ ] Immutable audit trail of what was sent, to whom, when, and on what legal basis
-- [ ] Article 14 GDPR notice folded into the first-contact message template
-- [ ] Legal basis (Legitimate Interest Assessment) stored as a versioned artifact in the repo
-- [ ] Per-country legal-basis configuration, so expansion is a config decision with a paper trail
+**Engine (storable sources only):**
 
-**Gated, blocked on the legal gate (see Key Decisions):**
+- [ ] Read business facts from the prospect's own site as structured data (address, phone,
+      opening hours, service area, certifications)
+- [ ] Detect on-site social proof: are reviews shown, how many, how recent, are they marked up
+- [ ] Build a local competitor set from Overture (same trade, within X km) and compare on what
+      we may keep: site quality, structured data, on-site social proof
+- [ ] Check whether a customer can actually request a quote (form, tap-to-call, project photos,
+      certifications)
+- [ ] Probe AI visibility: 3 trade questions, 5 runs each at temperature 0 against a pinned
+      model, storing prompt, model id and raw responses, reported as a frequency band
+- [ ] One predicate that decides whether a business is scoreable at all (one place match, own
+      domain, an address or work-area centre); anything else is skipped and never emailed
 
-- [ ] Dispatch approved outreach by hand from Joshua's own mailbox, with a working opt-out
-      link, fast, free, one step, in the body of every message. There is no third-party
-      dispatch provider; that half of the gate closed 2026-08-04. Resend is ruled out for
-      outreach (see below) and was never the provider on the manual-send path. Everything
-      upstream of this is unblocked and gets built first.
-- [ ] Track prospect lifecycle beyond scan result (new → qualified → contacted → replied → booked)
-- [ ] Measure reply rate and booked calls attributable to outreach
-- [ ] Country and locale are parameters throughout — no hardcoded geography
+**Niche profile and score:**
+
+- [ ] An installers profile holding trades, job values with citations, AI questions, competitor
+      rules and all copy, with country and locale as parameters
+- [ ] One new score replacing the existing score everywhere, including the public scanner
+- [ ] A money line that never invents a loss figure and that the owner can adjust
+- [ ] A to-do list of 5 actions where every number is chosen by code, never by the model
+
+**Report:**
+
+- [ ] A new report page replacing the existing one, with `noindex` and a signed expiring link
+- [ ] A live Google band (stars and review count) fetched on open, attributed, stored nowhere
+- [ ] A PDF carrying the stored score only
+
+**Outbound:**
+
+- [ ] Pick prospects before the expensive step, reconciled with what triage already does
+- [ ] Check suppression before a report page about a business is published
+- [ ] Approve-then-dispatch: Joshua approves the body, our code checks suppression live, builds
+      the fresh opt-out link, writes the `send_record`, then the provider carries it. No
+      provider-side sequencing.
+- [ ] A write path from a reply meaning "unsubscribe" to the `suppressions` table
+
+**Carried from v1.0, still blocked on the legal gate (see Key Decisions):**
+
+- [ ] Legal basis (Legitimate Interest Assessment) signed off by counsel; `docs/legal/lia/LIA-v1.md`
+      is still DRAFT, and `legal_regimes.legal_basis` is null in production by design
+- [ ] Any approved message actually reaching a real business
 
 ### Out of Scope
 
@@ -82,17 +140,33 @@ a drafted message he is willing to send.
   internal tool. Building it for a buyer who may never exist is paying for an unvalidated
   hypothesis. Becomes its own milestone if the tool proves itself.
 - Billing and subscriptions — nothing to bill; there are no customers.
-- Google Places as a data source at scale — prior research put Text Search with
-  `websiteUri` in the Enterprise SKU tier at roughly $35/1K, which cannot coexist with
-  the near-zero-cost constraint. Its 30-day caching restrictions also conflict with
-  holding a durable prospect list. Overture is free and global.
+- **Storing anything Google returns** — the cost half of the old Places exclusion was
+  overridden by Joshua on 2026-11-11, but Google Maps Platform Terms §3.2.3 forbid storing,
+  re-hosting and deriving content from ratings, reviews, names and addresses; only `place_id`
+  may be kept. Google data therefore appears only as a live on-screen band on the report,
+  attributed, never in the database, the saved score, the PDF or an email. Prospect discovery
+  stays on Overture, which is free, global and storable.
+- **Scraping Trustpilot, and scraping Werkspot until their terms are read** — Trustpilot's
+  consumer terms forbid text mining, data mining and web scraping outright, AI training
+  included. The authorised route is their Data Solutions API, which permits storage under a
+  24-hour refresh duty and a deletion-sync duty, but access is waitlist-only and Dutch
+  installers are barely on Trustpilot. Werkspot is where their reviews actually live and has
+  no public API; nothing is built against it before its terms are read.
+- **Star ratings and Google review counts in anything we store or send** — follows from the
+  two entries above. Returns only if a licensed, storable source is found.
 - Automated sending without human approval — every message passes a human gate. This is
-  both a quality decision and a risk decision.
-- Fully automated multi-step outreach sequences — at 10–50 prospects per week, manual
-  follow-up is cheaper than building a sequencer.
-- Fixing the scanner's known check gaps (security headers, structured data, Open Graph,
-  broken-link detection) — real, tracked in `docs/scanner-backlog.md`, but a separate
-  concern from prospecting.
+  both a quality decision and a risk decision. Approve-then-dispatch satisfies it; a provider
+  that composes or schedules on its own does not.
+- Provider-side outreach sequences — at 10–50 prospects per week, approving each follow-up is
+  cheaper than building a sequencer, and a send fired days later bypasses the live suppression
+  check and the freshly built opt-out link.
+- **Funnel 2, the public ads page with the live six-part scan** — its own milestone, decided
+  after funnel 1 reports a result. The scanner cannot stream today (one blocking POST,
+  poll-based status), the countdown promise is unkeepable against a 60–90s Lighthouse step, and
+  it is unbounded anonymous spend with no cap.
+- Fixing the scanner's remaining check gaps (security headers, Open Graph, broken-link
+  detection) — real, tracked in `docs/scanner-backlog.md`, but a separate concern. Structured
+  data has left this list: check 1 of the new engine reads it.
 
 ## Context
 
@@ -265,7 +339,15 @@ This document evolves at phase transitions and milestone boundaries.
 
 *Phase 4.1 (Prospect Quality, inserted) complete 2026-07-24 — verifier 9/9. `isReleasable` predicate is the single releasability rule (food-service categories and unreachable prospects can never be released; no-HTTPS stays fast-tracked), GATED pill renamed CRITICAL, BULK_BATCH_SIZE 2→10 for the daily drain. Deployed and live-verified. Open follow-up: post-tick `scanner-health --compare pre-04.1`.*
 
-*Last updated: 2026-07-17 after initialization and the five-dimension research pass
+*Last updated: 2026-11-11, starting milestone v2.0 (Renewed Scanner). The v1.0 Prospect Radar
+phases 1–7 moved to Validated; Phase 8 shipped its mechanism and still refuses by design. Five
+gate decisions from the 2026-11-11 adversarial review are reflected above and logged in the
+repo-root `decisions/log.md`: the Places override and why Google storage is still forbidden,
+Trustpilot storage permitted via Data Solutions, approve-then-dispatch outreach with counsel as
+a hard stop, one score and one report replacing the old ones everywhere, and funnel 2 cut to its
+own milestone.*
+
+*Previously updated: 2026-07-17 after initialization and the five-dimension research pass
 (STACK, FEATURES, ARCHITECTURE, PITFALLS, LEGAL). Research contradicted two locked
 decisions: the Resend send path is dead, and the Tw art. 11.7 B2B exemption does not
 cover scraped generic addresses. Both are reflected above.*

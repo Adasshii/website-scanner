@@ -1,19 +1,16 @@
 ---
-gsd_state_version: 1.0
-milestone: v1.0
-milestone_name: milestone
-current_phase: 8
-current_phase_name: Send — GATED
-status: executed_gated
-stopped_at: Phase 8 executed, 3/3 plans. Verification human_needed. Shipping blocked on the legal gate.
-last_updated: "2026-08-03T14:15:34.541Z"
-last_activity: 2026-08-06
-last_activity_desc: "Local-only Pipeline admin tab (260806-ntm) replaces the three hand-run CLI scripts, guarded to 404 outside development, with a category autocomplete (260806-p6f) so the Import field is discoverable rather than guessable. Scanner-service build AND boot both fixed (260806-kbi, 260806-luk); migration 020 applied to production, Phase 8 deployed and still gated shut."
+gsd_state_version: "1.0"
+milestone: v2.0
+milestone_name: Renewed Scanner
+status: planning
+last_updated: "2026-11-11T22:23:26.758Z"
+last_activity: 2026-11-11
 progress:
-  total_phases: 8
-  completed_phases: 7
-  total_plans: 50
-  completed_plans: 50
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State
@@ -27,65 +24,10 @@ See: .planning/PROJECT.md (updated 2026-07-17)
 
 ## Current Position
 
-Phase: 8 — Send — GATED
-Plan: 3/3 executed (08-01, 08-02, 08-03)
-Status: Executed. Verification human_needed. The mechanism is built and the send path is deliberately shut.
-Last activity: 2026-08-06: Quick task 260806-ntm moved the daily prospecting routine off the terminal and into the browser: a sixth "Pipeline" admin tab with Import, Run triage and Run drain, each backed by a route that returns a bare 404 as the first statement of its handler whenever `NODE_ENV !== "development"`. The three CLI scripts are untouched and still runnable from the terminal. 260806-p6f then closed the footgun that tab shipped with: the Import form's Category field was free text against Overture's English category slugs, so the Dutch `tandarts` returned zero rows three times running. It now filters as you type off a generated, committed vocabulary, showing each category's with-a-website count.
-
-The `D7` / `human_judgment` click-through both quick tasks carried as open is now CLOSED, exercised by Joshua on 2026-08-06 against `next dev`. All three controls confirmed working end to end: Import returned 1446 `furniture_store` rows for NL/zuid-holland (1322 with a domain, 124 without) with the per-row reachability probe reporting `reachable`/`blocked`, and wrote nothing because dry-run is the default. Triage correctly reported `0 of 11, skipped=11, missing website_url` — every prospect currently in the dev database is a leftover test fixture with no `website_url`, so there was genuinely nothing to score. Drain correctly reported nothing queued. No defect found; the empty downstream results are the dry-run default behaving as designed, not a fault.
-
-Earlier the same day: two quick tasks fixed the scanner-service deploy, which had been broken in two separate ways since `14af0a9`: 260806-kbi fixed the Docker BUILD, 260806-luk fixed the container BOOT. Migration 020 was applied to production through the Supabase Dashboard SQL Editor, clearing the deferred DDL step, and `main` was pushed, so Vercel now serves Phase 8 and Railway is running a green scanner-service deployment for the first time since `14af0a9`. Phase 8 itself is unchanged from 2026-08-05: executed, 3/3 plans, Prepare/Mark as sent/the immutable audit record/the isolation guard all ship, and every Prepare on a real draft refuses with `legal-basis-unset`, which is the designed state until counsel supplies `legal_regimes.legal_basis` and `article_14_notice_approved`. Post-deploy compliance check run against PRODUCTION on 2026-08-06, after migration 020 and the Phase 8 deploy: `legal_regimes.legal_basis` is null and `article_14_notice_approved` is false on every row, so the gate is verified shut in production, not merely shut by design in code.
-
-Progress: [██████████] 100%
-
-Phase 8 executed 2026-08-05, 3/3 plans, verification `human_needed` (08-VERIFICATION.md). Four of the
-five success criteria are proven against real mechanism behaviour. The fifth (CMP-09/11/12, the audit
-answer) is wired and fixture-proven but cannot be exercised against real data by design: zero real
-`send_records` rows exist and none can until counsel supplies `legal_regimes.legal_basis` and sets
-`article_14_notice_approved`. Every Prepare on the one real approved draft refuses `legal-basis-unset`.
-
-What shipped: migration 020 (`send_records` + immutability trigger + RLS, the two counsel-supplied
-`legal_regimes` columns, `outreach_messages.prepared_at`), `evaluateSendGates`/`prepareSend`, the
-opt-out body link, `markAsSent` writing the immutable record, the copy-subject/copy-body handoff, the
-fourth `sent` queue filter with prepared-but-unsent resurfacing, the CMP-12 audit block, and
-`lib/outreach-isolation.test.ts` which the verifier broke on purpose to prove it fires.
-
-Migration 020 is applied LOCALLY only. Production DDL is a deferred manual step through the Supabase
-Dashboard SQL Editor. That is the one thing standing between this code and a production deploy.
-
-Phase 07 closed 2026-08-03 at 5/5 must-haves, zero gaps (07-VERIFICATION.md, third pass).
-All 10 plans executed, including gap plans 07-08/09/10 and quick task 260803-lh0.
-
-What closed the last two failing criteria: `getReportingData()` was reading `prospects` and
-`outreach_messages` with unbounded `.select()`. PostgREST caps at 1000 rows and returns 200 with
-no error, so the funnel counts (TRK-05) and booked tally (TRK-04) were silently truncated. The
-outreach case was worse than an undercount, since `created_at` ASC plus a newest-wins Map meant
-truncation dropped the *newest* rows. All three reads now page through `fetchAllPages()` with
-unique-PK tiebreakers. Proven fail-first by the verifier against the pre-fix file, not accepted
-from the summary.
-
-The confounder, worth remembering: the "1006 prospects" that made this visible was almost entirely
-test pollution. `lib/outreach-queue.integration.test.ts` discarded every cleanup error and built an
-unchunked 1000-UUID `.in()`, so it leaked permanently and self-amplified to 1121 leaked prospects
-against 5 real ones. Purged, and the cleanup now releases `latest_scan_id` first, deletes in FK-safe
-order, chunks via `chunkIds()`, and throws (54223a1). Do not cite the old row counts as evidence
-about production volume.
-
-Production is current: dpl_55Fp6dFhbJg9pbKKZXHJdxJdtFAf (2026-08-03 16:34), aliased to
-scan.adashi.io. It supersedes dpl_Hj47paoR7pLYNS2jxgvNjuYtxEzT, which is the deployment the
-closed 07-VERIFICATION.md record names — that record is still accurate for the item it closed;
-this one additionally ships 0b33191, the `fetchAllPages()` empty-page termination fix.
-Full suite 479 passed / 43 files, `tsc` clean, `npm run build` compiles.
-
-Carried forward, not gaps: CMP-13 stays Partial by design pending the Legitimate Interest
-Assessment (blocked on external counsel; `RETENTION_MODE` stays unset, the 12-month window is a
-placeholder). GC-01/02/03 and WINDOWS.md #3 remain deferred with rationale in 07-VERIFICATION.md.
-
-Next: counsel closes the legal half (Tw art. 11.7, the LIA, Article 14 wording). Until then Phase 8
-stays executed-but-unshipped by design. Two follow-ups recorded in 08-VERIFICATION.md: no test now
-proves `sentGateOpen` defaults false in isolation, and `lib/send-audit.integration.test.ts` names its
-permanent fixtures with the real country code `NL` rather than a fake one (harmless, it never touches
-`legal_regimes`, but inconsistent with the `XX`/`ZZ`/`QR` convention the other suites use).
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements
+Last activity: 2026-11-11 — Milestone v2.0 started
 
 ## Performance Metrics
 
