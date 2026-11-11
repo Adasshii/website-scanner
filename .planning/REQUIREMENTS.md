@@ -1,281 +1,115 @@
-# Requirements: Prospect Radar
+# Requirements: Renewed Scanner (v2.0)
 
-**Defined:** 2026-07-17
-**Core Value:** Joshua opens the tool and finds businesses genuinely worth pitching, with the proof already written, so that outreach costs him minutes instead of hours.
+**Defined:** 2026-11-11
+**Core Value:** Joshua opens the tool and finds businesses genuinely worth pitching, with the
+proof already written, so that outreach costs him minutes instead of hours.
+**Source plan:** `docs/v2-renewed-scanner-plan.md` (revision 2, adversarially reviewed)
 
-> "User" throughout means Joshua. This is a single-tenant internal tool; there are no other
-> users by design.
+Phase numbering continues from v1.0, which ended at Phase 8. v2.0 starts at Phase 9.
 
-> Legal requirements below derive from `.planning/research/LEGAL.md`, which is research,
-> not legal advice. Counsel runs in parallel with the build and must land before SEND opens.
+## v2.0 Requirements
 
-## v1 Requirements
+### Engine data
 
-### Import
+- [ ] **ENG-01**: The scan reads business facts from the prospect's own site as structured data: address, phone, opening hours, service area, certifications
+- [ ] **ENG-02**: The scan detects on-site social proof: whether reviews are shown at all, how many, how recent, and whether they are machine-readable
+- [ ] **ENG-03**: The scan builds a local competitor set from Overture: same trade, within a radius set by the niche profile
+- [ ] **ENG-04**: Each competitor's site is scanned on the same storable signals, so the comparison is like for like
+- [ ] **ENG-05**: The scan checks whether a customer can actually request a quote: a form, a tap-to-call phone number, project photos, certifications
+- [ ] **ENG-06**: One predicate decides whether a business is scoreable at all (one place match above a confidence limit, a website on its own domain, an address or a declared work-area centre); a business that fails is skipped and never emailed
+- [ ] **ENG-07**: Nothing Google returns is written to the database, enforced in code rather than intended in prose
 
-- [x] **IMP-01**: Joshua can import businesses from Overture Maps filtered by country, region, and category
-- [x] **IMP-02**: Import runs as a repeatable script with parameters, not manual data entry
-- [x] **IMP-03**: Re-running the importer does not create duplicate prospects (stable identity via Overture GERS ID)
-- [x] **IMP-04**: Prospects are deduplicated by normalised registrable domain, so the same business at two Overture records becomes one prospect
-- [x] **IMP-05**: Re-import never overwrites or resets triage results, lifecycle state, or approval history Joshua has already produced
-- [x] **IMP-06**: Import records which country each prospect belongs to, so downstream legal rules can be applied per country
-- [x] **IMP-07**: Prospects with no website are imported and marked as such, but excluded from the v1 outreach flow
+### AI visibility
 
-### Triage
+- [ ] **AIV-01**: The probe asks the 3 trade questions held in the niche profile
+- [ ] **AIV-02**: Each question runs 5 times at temperature 0 against a pinned model version
+- [ ] **AIV-03**: The prompt, the model id and every raw response are stored, so a disputed result can be audited
+- [ ] **AIV-04**: The result is reported as a frequency band ("named in 1 of 5 runs"), never as a single score
+- [ ] **AIV-05**: AI visibility carries zero weight in the total score until 50 scans show it is stable
 
-- [x] **TRI-01**: Every imported prospect gets a cheap triage pass using plain HTTP fetch, with no Playwright, no Lighthouse, and no AI
-- [x] **TRI-02**: Triage records whether the site is reachable at all
-- [x] **TRI-03**: Triage records HTTPS availability and the full redirect chain
-- [x] **TRI-04**: Triage records presence of a mobile viewport meta tag
-- [x] **TRI-05**: Triage records HTML page weight and response time
-- [x] **TRI-06**: Triage produces a single score used to rank prospects
-- [x] **TRI-07**: Joshua can view a shortlist ranked by triage score, worst first
-- [x] **TRI-08**: A configurable cutoff controls which prospects are eligible for a full scan
-- [x] **TRI-09**: A hard ceiling caps how many full scans triage can release per run, so a permissive cutoff cannot blow the budget
+### Niche profile
 
-### Scan
+- [ ] **NIC-01**: An installers profile holds trades, job values, AI questions, competitor rules, trade-specific website checks and all copy
+- [ ] **NIC-02**: Each default job value carries a citation to the source it came from
+- [ ] **NIC-03**: Country and locale are parameters of the profile, never hardcoded
+- [ ] **NIC-04**: Adding a niche is a new profile plus a landing page, with no change to the engine
 
-- [x] **SCAN-01**: Shortlisted prospects are queued for a full scan without exhausting scanner-service browser concurrency
-- [x] **SCAN-02**: The scanner service rejects scan requests over its capacity rather than accepting them and timing out
-- [x] **SCAN-03**: Each prospect carries a visible scan status (queued, scanning, done, failed)
-- [x] **SCAN-04**: A failed prospect scan is skipped rather than retried indefinitely
-- [x] **SCAN-05**: Bulk scanning respects robots.txt and identifies itself with an honest user-agent
-- [x] **SCAN-06**: Bulk scanning is rate-limited so it cannot get the Railway IP blacklisted and degrade the live public scanner
-- [x] **SCAN-07**: A prospect scan produces the same report artefact the public scanner already produces, reachable at a hosted URL
+### Scoring
 
-### Contact
+- [ ] **SCR-01**: One score computed from the six checks replaces the existing score everywhere, including the public scanner at `/`
+- [ ] **SCR-02**: The verdict-threshold source stays single, so the same number means the same thing in the prospect list, the report and the email (DRA-06 preserved)
+- [ ] **SCR-03**: Draft metric selection is updated to the new score shape in the same change that introduces it
+- [ ] **SCR-04**: Scans already stored under the old score shape still render correctly
+- [ ] **SCR-05**: The public scanner is verified correct before the new score ships, because it earns money today
+- [ ] **SCR-06**: The report states a money line that never invents a loss figure, and the owner can change the job value
+- [ ] **SCR-07**: The report ends in a to-do list of 5 actions where every number is chosen by code, never by the model
 
-- [x] **CON-01**: A contact email is extracted from the prospect's own website during the existing scan, without a second crawl
-- [x] **CON-02**: Extraction handles `mailto:` links and body-text addresses, including Cloudflare `data-cfemail` obfuscation
-- [x] **CON-03**: Every extracted address is classified as `generic` (info@, contact@, sales@, hello@) or `named-person`, and the classification is stored on the prospect
-- [x] **CON-04**: Generic addresses are preferred over named-person addresses when both exist
-- [x] **CON-05**: A prospect whose only address is `named-person` is flagged for manual review and never enters the default outreach flow automatically
-- [x] **CON-06**: The system records whether the source page invited commercial contact at that address, defaulting to "no" when absent
-- [x] **CON-07**: A prospect identified as a sole proprietorship (eenmanszaak) has its generic address treated as personal data
+### Report
 
-### Draft
+- [ ] **REP-01**: A new report page replaces the existing one
+- [ ] **REP-02**: A prospect report carries `noindex`, so it cannot be crawled
+- [ ] **REP-03**: A report link is signed and expires, rather than being a bare UUID
+- [ ] **REP-04**: A live Google band (stars, review count) is fetched when the page opens, carries the Google logo and third-party attribution, is stored nowhere, and the page reads correctly when the call fails
+- [ ] **REP-05**: Competitors are described and never named in anything stored or sent
+- [ ] **REP-06**: A PDF of the report carries the stored score only, never the live Google band
+- [ ] **REP-07**: The report offers "plan a call", and the call list is built from clicks and replies rather than from email opens
 
-- [x] **DRA-01**: Each shortlisted prospect gets a drafted outreach message generated from its own full scan findings
-- [x] **DRA-02**: The draft cites a specific, checkable number from that prospect's scan, not a generic personalisation line
-- [x] **DRA-03**: The draft links to that prospect's hosted scan report as proof rather than restating it
-- [x] **DRA-04**: Draft tone is written to land as helpful rather than as an insult about someone's website
-- [x] **DRA-05**: The first-contact template programmatically includes the Article 14 notice; it is not left to per-send manual drafting
-- [x] **DRA-06**: The verdict shown in the prospect list, the hosted scan report, and the drafted email is the same verdict for the same scan (one verdict-threshold function, exported from `lib/scoring.ts`)
+### Outbound
 
-### Approval Queue
+- [ ] **OUT-01**: Prospects are picked before the expensive scan runs, on cheap signals only
+- [ ] **OUT-02**: The "busy enough to pay" pick axis is reconciled with triage's existing worst-website selection, rather than contradicting it
+- [ ] **OUT-03**: Suppression is checked before a report page about a business is published, not only before a send
+- [ ] **OUT-04**: Joshua approves each message body before anything leaves
+- [ ] **OUT-05**: On approval, our code checks suppression against live rows, builds a fresh opt-out link, writes the immutable `send_record`, and only then hands the finished message to the provider
+- [ ] **OUT-06**: The provider never composes, schedules or sequences a message
+- [ ] **OUT-07**: Each follow-up passes the same approval and the same checks as a first contact
+- [ ] **OUT-08**: A reply that means "unsubscribe" reaches the `suppressions` table
+- [ ] **OUT-09**: The chosen provider's acceptable-use terms are verified in writing, in a successor to the SND-04 artifact, before any send code is written
+- [ ] **OUT-10**: No message reaches a real business until counsel sets `legal_regimes.legal_basis` and `article_14_notice_approved`
 
-- [x] **QUE-01**: Joshua can review every drafted message before anything is sent
-- [x] **QUE-02**: Joshua can edit a draft's text inline before approving it
-- [x] **QUE-03**: Joshua can reject a prospect outright from the queue
-- [x] **QUE-04**: The scan evidence behind a draft is shown next to the draft during review
-- [x] **QUE-05**: There is no bulk-approve action; approval is per-message by design
+## Future Requirements
 
-### Compliance
+Acknowledged, not in this milestone.
 
-- [x] **CMP-01**: A suppression list in Supabase is the source of truth for who must not be contacted
-- [ ] **CMP-02**: Suppression is checked immediately before dispatch, not at draft time, because state can change while a draft waits
-- [x] **CMP-03**: Suppression matches on both email address and domain
-- [x] **CMP-04**: An unsubscribe endpoint writes to the suppression list synchronously before returning success, and is idempotent
-- [x] **CMP-05**: Unsubscribes take effect permanently and by the very next send cycle, with no delay language
-- [x] **CMP-06**: No code path can re-add a suppressed record without an explicit, logged manual override
-- [x] **CMP-07**: Hard bounces and spam complaints automatically suppress, wired to the existing Resend event webhook
-- [x] **CMP-08**: A versioned Legitimate Interest Assessment lives in the repo, and every send references the LIA version that applied to it
-- [ ] **CMP-09**: Every send record stores legal basis, LIA version, and whether a Tw exemption was claimed
-- [ ] **CMP-10**: The send layer refuses a first-touch send unless the Article 14 notice flag is true
-- [ ] **CMP-11**: Every send persists an immutable record: prospect, resolved address and classification, timestamp, the message content actually sent, legal basis, approver, and the suppression-check result
-- [ ] **CMP-12**: Joshua can answer "why were we allowed to email this business?" per prospect in seconds, from the audit trail rather than from logs
-- [x] **CMP-13**: A scheduled retention job expires prospect, scan, and outreach data (placeholder: 12 months from last contact, pending the LIA — not a legal fact). **Partial:** the job is deployed, registered daily in Vercel (`0 3 * * *`), and validated against production — but it ships in its non-writing `dry-run` mode, so it reports what it would expire and expires nothing. Remaining condition: setting `RETENTION_MODE` to a writing value, a deliberate standing decision to defer, not outstanding work. See `07-DEPLOY-EVIDENCE.md`.
-- [x] **CMP-14**: Retention expiry can delete or anonymise by config, not hardcoded
-- [x] **CMP-15**: Suppression records are exempt from retention deletion and retained indefinitely, flagged explicitly in code so nobody silently changes it
-- [x] **CMP-16**: Legal-basis rules live in a per-country config table (`country_code`, `spam_law_regime`, `notes_url`), never hardcoded NL logic
-- [x] **CMP-17**: The scan pipeline does not separately index, profile, or reuse incidental personal data (staff photos, named bios) captured in screenshots
+### Funnel 2, the public live-scan page
 
-### Send — GATED
+- **PUB-01**: A niche landing page with a business-name search
+- **PUB-02**: A live scan in six parts, each result streamed as it resolves
+- **PUB-03**: Role and job-value questions asked during the wait
+- **PUB-04**: A result page showing the total score with the detail behind an email gate
+- **PUB-05**: A spend cap and a rate limit on anonymous scans
 
-> The provider half of this gate closed 2026-08-04. There is no third-party dispatch
-> provider: Prospect Radar generates, renders, and gates the approved draft, and Joshua
-> sends it by hand from his own mailbox, at 10 to 50 sends per week. Resend stays exactly
-> where it already is, on the public scanner's transactional mail only, and never enters
-> the outreach path. The legal half is still open and still gates this phase: the
-> Telecommunicatiewet art. 11.7 question, the Legitimate Interest Assessment, and the
-> Article 14 notice wording are all unresolved. See `.planning/research/SEND-CHANNEL.md`
-> for the evidence trail behind the provider half.
+### Stored review data
 
-- [ ] **SND-01**: Approved messages dispatch via a channel whose own terms permit outreach
-
-  > Satisfied trivially: sending is manual from Joshua's own mailbox, so there is no
-  > third-party dispatch channel whose acceptable-use policy could prohibit outreach.
-
-- [ ] **SND-02**: Every message carries a working opt-out that is fast and free and takes one step
-
-  > RFC 8058 `List-Unsubscribe` and `List-Unsubscribe-Post` headers cannot be set from a
-  > manual mail client, and they were never a legal requirement in the first place.
-  > `LEGAL.md` §2.4 requires the opt-out to be "snel" and "gratis" and present in every
-  > message, and never mentions those headers at all. The RFC 8058 requirement entered this
-  > plan through the Google and Yahoo bulk-sender rules, which start at 5,000 messages per
-  > day to Gmail addresses, roughly 1,000x this project's volume. SND-02 is now met by a
-  > plain opt-out link in the message body, pointing at the unsubscribe endpoint Phase 2
-  > already built and already ships. If an automated channel is ever adopted, the headers
-  > come back cheaply, because that same endpoint already implements the one-click POST path
-  > correctly (see `02-04-SUMMARY.md`).
-
-- [ ] **SND-03**: The outreach channel is isolated from the existing scanner's transactional email, so an outreach problem cannot take down the live product's mail
-- [ ] **SND-04**: The chosen channel's acceptable-use policy is verified in writing before it is built against
-
-  > This is the written verification. Satisfied trivially for the same reason as SND-01:
-  > there is no third-party dispatch channel to verify against, since sending is manual.
-  > `.planning/research/SEND-CHANNEL.md` is the SND-04 artifact, holding the full provider
-  > comparison that produced this outcome.
-
-### Tracking
-
-- [x] **TRK-01**: Every prospect carries a lifecycle state (new, qualified, contacted, replied, booked)
-- [x] **TRK-02**: Lifecycle state advances as real events happen rather than by manual bookkeeping where avoidable
-- [x] **TRK-03**: Joshua can see reply rate across contacted prospects
-- [x] **TRK-04**: Joshua can see booked calls attributable to outreach, reusing the existing Fillout `booked_at` signal
-- [x] **TRK-05**: Joshua can see how many prospects were imported, triaged, scanned, and contacted per run
-
-## v2 Requirements
-
-Deferred. Tracked, not in the current roadmap.
-
-### No-Website Segment
-
-- **NOW-01**: Qualify prospects that have no website at all, using non-scan signals
-- **NOW-02**: Reach no-website prospects through a channel that does not depend on an extracted email
-
-### Refinement
-
-- **REF-01**: A second triage signal, if false positives on the first prove common in real use
-- **REF-02**: Per-draft feedback capture, if Joshua's edit patterns repeat three or more times
-
-### Expansion
-
-- **EXP-01**: Country-specific legal memo and config for each new market beyond NL
-- **EXP-02**: Evaluate UK-first targeting, given PECR's corporate-subscriber exemption ranks it above NL
+- **REV-01**: Star ratings and review counts from a source that licenses storage
+- **REV-02**: A competitor review comparison in an emailed report
 
 ## Out of Scope
 
 | Feature | Reason |
 |---------|--------|
-| Multi-tenancy (users, teams, access control) | Single-tenant internal tool. Building for a buyer who may never exist is paying for an unvalidated hypothesis. |
-| Billing and subscriptions | No customers to bill. |
-| Sending via the existing Resend account | Resend's AUP prohibits "unsolicited messages of any kind, including cold outreach." Verified verbatim, 2026-05-28. Not a gray area. |
-| Google Places as a data source | `websiteUri` sits in the ~$35/1K Enterprise tier and 30-day coordinate caching conflicts with a durable prospect list. Overture is free and global. |
-| Automated sending without human approval | Every message passes a human gate. Quality control and risk control. |
-| Bulk-approve in the queue | Directly undermines the human gate that the compliance posture depends on. |
-| Multi-step automated outreach sequences | At 10–50/week, manual follow-up is cheaper than a sequencer. |
-| Waterfall enrichment / multi-provider contact data | The scanned site is the sole contact source by design. Do not build both. |
-| ICP and firmographic scoring | Qualification is inverted and single-variable: worst-scoring is most qualified. Deliberate. |
-| Intent data | Category table stakes, meaningless at this scale. |
-| Deliverability infrastructure and warm-up tooling | Only relevant at volumes this tool will never reach. |
-| Dialer, CRM sync, kanban boards, A/B testing | All table stakes for some category tool, all wrong here. |
-| Named-person addresses as the default target | Category best practice favours them for reply rate (10–25% vs 1–5%). Deliberately inverted for GDPR reasons. Sets a lower reply-rate expectation; not to be re-litigated. |
-| Fixing the scanner's other check gaps (security headers, structured data, Open Graph) | Real and tracked in `docs/scanner-backlog.md`, but a separate concern from prospecting. |
-| Resolving the per-page vs aggregate scoring split | Intentional design, not a bug. Only the verdict-threshold divergence gets fixed, because a draft is about to quote a verdict externally. |
+| Storing anything Google returns | Maps Platform Terms §3.2.3 forbid storing, re-hosting and deriving from ratings, reviews, names and addresses. Only `place_id` may be kept. Live on-screen display only. |
+| Scraping Trustpilot | Their consumer terms forbid text mining, data mining and web scraping outright, AI training included. The Data Solutions API is the only route, and it is waitlist-only. |
+| Werkspot, until its terms are read | Where Dutch installer reviews actually live, but no public API, so using it probably means scraping. Nothing is built against it before its terms are read. |
+| Star ratings in anything stored or sent | Follows from the three entries above. Returns only with a licensed, storable source. |
+| Provider-side outreach sequences | A send fired days later bypasses the live suppression check and the freshly built opt-out link. At 10-50 a week, approving each follow-up is cheaper than building a sequencer. |
+| Automated sending without human approval | Every message passes a human gate. A quality decision and a risk decision. |
+| Funnel 2 in this milestone | The scanner cannot stream today, the countdown promise is unkeepable against a 60-90s Lighthouse step, and it is unbounded anonymous spend with no cap. Its own milestone, after funnel 1 reports a result. |
+| Raising outreach volume above 10-50 per week | The whole legal risk assessment was argued at the low number, and bulk scanning gets two concurrent slots with a once-daily drain. Raising it redoes both. |
+| Open tracking and per-section read tracking | Tracking an identified business on a page it did not request touches Telecommunicatiewet art. 11.7a. Goes to counsel with the Article 14 question, or does not happen. |
 
 ## Traceability
 
-Populated during roadmap creation. See `.planning/ROADMAP.md` for phase detail.
+Filled during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| IMP-01 | Phase 1 | Complete |
-| IMP-02 | Phase 1 | Complete |
-| IMP-03 | Phase 1 | Complete |
-| IMP-04 | Phase 1 | Complete |
-| IMP-05 | Phase 1 | Complete |
-| IMP-06 | Phase 1 | Complete |
-| IMP-07 | Phase 1 | Complete |
-| TRI-01 | Phase 3 | Complete |
-| TRI-02 | Phase 3 | Complete |
-| TRI-03 | Phase 3 | Complete |
-| TRI-04 | Phase 3 | Complete |
-| TRI-05 | Phase 3 | Complete |
-| TRI-06 | Phase 3 | Complete |
-| TRI-07 | Phase 3 | Complete |
-| TRI-08 | Phase 3 | Complete |
-| TRI-09 | Phase 3 | Complete |
-| SCAN-01 | Phase 4 | Complete |
-| SCAN-02 | Phase 4 | Complete |
-| SCAN-03 | Phase 4 | Complete |
-| SCAN-04 | Phase 4 | Complete |
-| SCAN-05 | Phase 4 | Complete |
-| SCAN-06 | Phase 4 | Complete |
-| SCAN-07 | Phase 4 | Complete |
-| CON-01 | Phase 5 | Complete |
-| CON-02 | Phase 5 | Complete |
-| CON-03 | Phase 5 | Complete |
-| CON-04 | Phase 5 | Complete |
-| CON-05 | Phase 5 | Complete |
-| CON-06 | Phase 5 | Complete |
-| CON-07 | Phase 5 | Complete |
-| DRA-01 | Phase 6 | Complete |
-| DRA-02 | Phase 6 | Complete |
-| DRA-03 | Phase 6 | Complete |
-| DRA-04 | Phase 6 | Complete |
-| DRA-05 | Phase 6 | Complete |
-| DRA-06 | Phase 6 | Complete |
-| QUE-01 | Phase 6 | Complete |
-| QUE-02 | Phase 6 | Complete |
-| QUE-03 | Phase 6 | Complete |
-| QUE-04 | Phase 6 | Complete |
-| QUE-05 | Phase 6 | Complete |
-| CMP-01 | Phase 2 | Complete |
-| CMP-02 | Phase 8 | Pending (gated) |
-| CMP-03 | Phase 2 | Complete |
-| CMP-04 | Phase 2 | Complete |
-| CMP-05 | Phase 2 | Complete |
-| CMP-06 | Phase 2 | Complete |
-| CMP-07 | Phase 2 | Complete |
-| CMP-08 | Phase 2 | Complete |
-| CMP-09 | Phase 8 | Pending (gated) |
-| CMP-10 | Phase 8 | Pending (gated) |
-| CMP-11 | Phase 8 | Pending (gated) |
-| CMP-12 | Phase 8 | Pending (gated) |
-| CMP-13 | Phase 7 | Partial — schedule live and validated in production, `RETENTION_MODE` deliberately unset (see `07-DEPLOY-EVIDENCE.md`) |
-| CMP-14 | Phase 7 | Complete |
-| CMP-15 | Phase 7 | Complete |
-| CMP-16 | Phase 2 | Complete |
-| CMP-17 | Phase 4 | Complete |
-| SND-01 | Phase 8 | Pending (gated) |
-| SND-02 | Phase 8 | Pending (gated) |
-| SND-03 | Phase 8 | Pending (gated) |
-| SND-04 | Phase 8 | Pending (gated) |
-| TRK-01 | Phase 7 | Complete |
-| TRK-02 | Phase 7 | Complete |
-| TRK-03 | Phase 7 | Complete |
-| TRK-04 | Phase 7 | Complete |
-| TRK-05 | Phase 7 | Complete |
+| (pending roadmap) | — | Pending |
 
 **Coverage:**
-
-- v1 requirements: 67 total (IMP 7, TRI 9, SCAN 7, CON 7, DRA 6, QUE 5, CMP 17, SND 4, TRK 5)
-- Mapped to phases: 67 ✓
-- Unmapped: 0 ✓
-- Duplicated across phases: 0 ✓
-
-"Pending (gated)" marks the 9 requirements in Phase 8, blocked on the send-path decision
-running as a parallel track. The other 57 are unblocked and build immediately.
-
-### Note on DRA-06 (added 2026-07-17, after roadmap approval)
-
-The **scoring verdict-threshold divergence** was surfaced by architecture research as phase
-work with no requirement ID. It is now numbered as **DRA-06** and scheduled as Phase 6's
-first plan.
-
-`lib/scoring.ts` and `scanner-service/src/index.ts` each carry their own verdict-threshold
-function with different cutoffs (95/85/70/50 vs 90/70/50). Today that is a cosmetic
-admin-panel mismatch. The moment a draft quotes a verdict to a stranger, the same number
-must mean the same thing in the prospect list, in the report the prospect clicks through
-to, and in the email — otherwise the pitch contradicts itself in front of the person being
-pitched. Fix: consolidate into one function exported from `lib/scoring.ts`.
-
-Scope guard: this is **distinct** from the per-page (`scorePage()`) vs aggregate
-(`aggregateScores()`) split, which is intentional layering and stays (see Out of Scope).
-Triage's score is a third independent function and is untouched. Only the verdict threshold
-is consolidated. This is not a scoring refactor.
+- v2.0 requirements: 40 total
+- Mapped to phases: 0
+- Unmapped: 40 ⚠️
 
 ---
-*Requirements defined: 2026-07-17*
-*Last updated: 2026-07-17 after roadmap approval — DRA-06 added and mapped, 67/67 mapped*
+*Requirements defined: 2026-11-11*
