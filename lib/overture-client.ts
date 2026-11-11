@@ -11,13 +11,73 @@ import { resolveBbox, slugifyRegion } from "./overture-bboxes";
 export { COUNTRY_BBOXES, REGION_BBOXES, resolveBbox, type Bbox } from "./overture-bboxes";
 
 /**
- * Overture cuts a new monthly release; the S3 path segment is pinned here as
- * a documented constant Joshua bumps by hand when a new release is needed —
- * NOT auto-discovered (RESEARCH.md Open Question #3: simplest thing that
- * works; add release auto-discovery only if manually bumping this proves to
- * be a recurring friction point).
+ * Overture cuts a new release every month and deletes old ones from S3 after
+ * a few months. The old hand-bumped pin ("2026-06-17.0") broke every import
+ * on 2026-11-11 once that release was removed, so the release is now looked
+ * up at run time from the public S3 listing and the newest one wins.
+ *
+ * Set the OVERTURE_RELEASE env var to pin a release by hand (for example to
+ * hold a known-good one while a new release has a schema change).
  */
-export const OVERTURE_RELEASE = "2026-06-17.0";
+const OVERTURE_BUCKET_URL = "https://overturemaps-us-west-2.s3.amazonaws.com";
+const OVERTURE_RELEASE_LISTING_URL = `${OVERTURE_BUCKET_URL}/?list-type=2&prefix=release/&delimiter=/`;
+const RELEASE_PATTERN = /^(\d{4}-\d{2}-\d{2})\.(\d+)$/;
+
+/** Reads the release names (e.g. "2026-10-21.0") out of an S3 ListObjectsV2 XML body. */
+export function parseOvertureReleases(xml: string): string[] {
+  const prefixes = xml.match(/<Prefix>release\/[^/<]+\/<\/Prefix>/g) ?? [];
+  return prefixes
+    .map((p) => p.slice("<Prefix>release/".length, -"/</Prefix>".length))
+    .filter((name) => RELEASE_PATTERN.test(name));
+}
+
+/** Newest date first, then the highest patch number ("2026-09-23.10" > "2026-09-23.2"). */
+export function pickLatestRelease(releases: string[]): string {
+  if (releases.length === 0) {
+    throw new Error("No Overture release found in the S3 listing.");
+  }
+  return [...releases].sort((a, b) => {
+    const [, dateA, patchA] = a.match(RELEASE_PATTERN) ?? [];
+    const [, dateB, patchB] = b.match(RELEASE_PATTERN) ?? [];
+    if (dateA !== dateB) return dateA < dateB ? 1 : -1;
+    return Number(patchB) - Number(patchA);
+  })[0];
+}
+
+let cachedRelease: Promise<string> | null = null;
+
+/**
+ * Returns the Overture release to query: the OVERTURE_RELEASE env var when
+ * set, otherwise the newest release in the S3 listing. The lookup runs once
+ * per process; a failed lookup is not cached, so the next call retries.
+ */
+export function resolveOvertureRelease(
+  fetchImpl: typeof fetch = fetch
+): Promise<string> {
+  const pinned = process.env.OVERTURE_RELEASE?.trim();
+  if (pinned) return Promise.resolve(pinned);
+
+  if (!cachedRelease) {
+    cachedRelease = (async () => {
+      const res = await fetchImpl(OVERTURE_RELEASE_LISTING_URL);
+      if (!res.ok) {
+        throw new Error(
+          `Overture release listing failed: HTTP ${res.status} from ${OVERTURE_RELEASE_LISTING_URL}`
+        );
+      }
+      return pickLatestRelease(parseOvertureReleases(await res.text()));
+    })();
+    cachedRelease.catch(() => {
+      cachedRelease = null;
+    });
+  }
+  return cachedRelease;
+}
+
+/** Test hook: forget the cached release. */
+export function resetOvertureReleaseCache(): void {
+  cachedRelease = null;
+}
 
 export interface OvertureQueryParams {
   /** ISO 3166-1 alpha-2, e.g. "NL" */
@@ -39,12 +99,12 @@ interface OvertureAddress {
   country?: string | null;
 }
 
-export function overturePlacesPath(): string {
-  return `s3://overturemaps-us-west-2/release/${OVERTURE_RELEASE}/theme=places/type=place/*`;
+export function overturePlacesPath(release: string): string {
+  return `s3://overturemaps-us-west-2/release/${release}/theme=places/type=place/*`;
 }
 
-function overtureDivisionsPath(): string {
-  return `s3://overturemaps-us-west-2/release/${OVERTURE_RELEASE}/theme=divisions/type=division_area/*`;
+export function overtureDivisionsPath(release: string): string {
+  return `s3://overturemaps-us-west-2/release/${release}/theme=divisions/type=division_area/*`;
 }
 
 function escapeSqlString(value: string): string {
@@ -77,7 +137,7 @@ export async function detectCategoryColumn(
   if (columns.includes("basic_category")) return "basic_category";
 
   throw new Error(
-    `Overture release ${OVERTURE_RELEASE} exposes neither categories nor ` +
+    `Overture places at ${path} expose neither categories nor ` +
       `taxonomy/basic_category — cannot filter by category. Columns seen: ${columns.join(", ")}`
   );
 }
@@ -146,12 +206,13 @@ export function pickProvinceDivisionId(
 export async function resolveProvinceDivisionId(
   conn: DuckDBConnection,
   country: string,
-  region: string
+  region: string,
+  divisionsPath: string
 ): Promise<string> {
   const iso2 = country.toUpperCase();
   const reader = await conn.runAndReadAll(`
     SELECT id, names.primary AS name
-    FROM read_parquet('${overtureDivisionsPath()}', hive_partitioning=1)
+    FROM read_parquet('${divisionsPath}', hive_partitioning=1)
     WHERE subtype = 'region'
       AND class = 'land'
       AND country = '${escapeSqlString(iso2)}'
@@ -260,19 +321,26 @@ export async function queryOverturePlaces(
     await conn.run("LOAD httpfs");
     await conn.run("SET s3_region='us-west-2'");
 
-    const path = overturePlacesPath();
+    const release = await resolveOvertureRelease();
+    const path = overturePlacesPath(release);
+    const divisionsPath = overtureDivisionsPath(release);
     const categoryColumn = await detectCategoryColumn(conn, path);
 
     let divisionId: string | null = null;
     if (params.region) {
-      divisionId = await resolveProvinceDivisionId(conn, params.country, params.region);
+      divisionId = await resolveProvinceDivisionId(
+        conn,
+        params.country,
+        params.region,
+        divisionsPath
+      );
     }
 
     const sql = buildPlacesSql(
       path,
       categoryColumn,
       params,
-      params.region ? overtureDivisionsPath() : null,
+      params.region ? divisionsPath : null,
       divisionId
     );
 

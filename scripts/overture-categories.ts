@@ -20,7 +20,11 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { DuckDBInstance } from "@duckdb/node-api";
 import { resolveBbox } from "@/lib/overture-bboxes";
-import { detectCategoryColumn, overturePlacesPath } from "@/lib/overture-client";
+import {
+  detectCategoryColumn,
+  overturePlacesPath,
+  resolveOvertureRelease,
+} from "@/lib/overture-client";
 import {
   CATEGORY_CACHE_FILE,
   cacheKey,
@@ -92,7 +96,9 @@ async function main(): Promise<void> {
     await conn.run("LOAD httpfs");
     await conn.run("SET s3_region='us-west-2'");
 
-    const placesPath = overturePlacesPath();
+    const release = await resolveOvertureRelease();
+    console.log(`[overture-categories] Overture release ${release}`);
+    const placesPath = overturePlacesPath(release);
     const categoryColumn = await detectCategoryColumn(conn, placesPath);
 
     const sql = `
