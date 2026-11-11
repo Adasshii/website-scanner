@@ -1,463 +1,226 @@
 # Roadmap: Prospect Radar
 
+## v2.0 — Renewed Scanner
+
+**Goal:** turn the scanner from a website grader into a sales tool for Dutch installers, where every problem in the report leads to an Adashi service.
+
+**Source plan:** `docs/v2-renewed-scanner-plan.md` (revision 2, adversarially reviewed 2026-11-11; findings in `docs/v2-renewed-scanner-plan-REVIEW.md`). The v1.0 roadmap is archived at `.planning/milestones/v1.0-ROADMAP.md`, its phase folders at `.planning/milestones/v1.0-phases/`.
+
 ## Overview
 
-Prospect Radar is built as a pipeline, one working stage at a time, bolted onto a scanner that already works and already earns. Prospects come in from Overture, get triaged cheaply, and only the worst ones earn a full scan. That scan produces both the proof (a hosted report) and the contact (an email off the prospect's own site). From there a draft is written from real findings, Joshua approves it by hand, and — once the send path clears — it goes out with a full record of why it was allowed to.
+v1.0 built a funnel: find a business, triage it cheaply, scan the worst, extract a contact, draft a message, gate the send. v2.0 changes what the scan *says*. Six checks per business instead of one website grade, on sources we are allowed to store, scored once and rendered once, so an installer reading the report sees where they lose customers rather than a page of Lighthouse numbers.
 
-The compliance spine is not the last phase. Suppression and unsubscribe ship in parallel with the importer, before anything can be sent, because the ability to say "stop" has to exist before the first cold email, not after. The send phase is the only gated one: Resend is ruled out by its own AUP, the channel is decided as manual send from Joshua's own mailbox with no third-party provider, and legal counsel runs alongside the build rather than in front of it. Every phase below Phase 8 ships without that decision landing.
+The build order follows the dependency chain, not the runtime chain. The niche profile comes first because the competitor radius, the AI questions, the per-trade website checks and the job values all live in it, and three of the six checks read from it. Then the outside evidence, which needs the per-site extractors to already exist so the comparison is like for like. Then one score, which is the dangerous phase: it replaces the score on the public scanner at `/`, and that scanner earns money today. Then the report. Then outbound last, because the message carries a link to a report that must exist first.
+
+Two things are deliberately held flat. **AI visibility ships as displayed evidence at zero weight**, so no scoring decision depends on a probe we have not yet seen 50 scans of. And **nothing Google returns is ever written to the database**: Google appears only as a live on-screen band on the report, fetched on open, attributed, stored nowhere. That rule is enforced by a test in Phase 9, before Phase 12 writes the first Google call.
+
+The legal gate is unchanged from v1.0. Phase 13 builds the mechanism and leaves it refusing.
 
 ## Phases
 
 **Phase Numbering:**
 
-- Integer phases (1, 2, 3): Planned milestone work
-- Decimal phases (2.1, 2.2): Urgent insertions (marked with INSERTED)
+- Numbering continues from v1.0, which ended at Phase 8. v2.0 starts at Phase 9.
+- Integer phases (9, 10, 11): planned milestone work
+- Decimal phases (10.1, 10.2): urgent insertions (marked INSERTED)
 
-Decimal phases appear between their surrounding integers in numeric order.
+- [ ] **Phase 9: Niche Profile & Own-Site Engine Data** - One profile holds the niche, and a scoreable installer's own site yields storable facts, social proof and quote-request evidence
+- [ ] **Phase 10: Competitor Position & AI Visibility** - The same signals measured on nearby same-trade competitors, plus an auditable probe of whether an AI assistant names the business at all
+- [ ] **Phase 11: One Score, Everywhere** - A single score computed from the six checks replaces the old one, including on the public scanner that earns money today
+- [ ] **Phase 12: The New Report** - One page per business that an owner can read, act on, and not find by accident
+- [ ] **Phase 13: Outbound — Pick, Approve, Dispatch (GATED)** - Prospects picked before the expensive scan, and an approved body that dispatches under our own gate, shut until counsel answers
 
-- [x] **Phase 1: Prospect Data Foundation & Import** - Overture businesses become a durable prospect list that survives re-import (completed 2026-07-18)
-- [x] **Phase 2: Compliance Spine** - Suppression, unsubscribe, and versioned legal basis exist before anything can be sent (completed 2026-07-19)
-- [x] **Phase 3: Triage & Shortlist** - Every prospect gets a cheap verdict; only the worst earn a full scan (completed 2026-07-20)
-- [x] **Phase 4: Bulk Scan Queue** - Shortlisted prospects get real scan reports without harming the live public scanner (completed 2026-07-23)
-- [x] **Phase 5: Contact Extraction & Classification** - Each scanned prospect carries a contact address whose legal status is known (completed 2026-07-27)
-- [x] **Phase 6: Draft Generation & Approval Queue** - A drafted message Joshua is willing to send, backed by evidence he can check (completed 2026-07-30)
-- [x] **Phase 7: Lifecycle, Reporting & Retention** - The funnel reports what it did, and old data expires on its own (completed 2026-08-03)
-- [ ] **Phase 8: Send — GATED** - An approved message reaches a business by hand from Joshua's own mailbox, with proof of why it was allowed to reach them
+## Parallel Track: started now, alongside the build
 
-## Parallel Track: Send-Path & Legal Decision (NOT a phase, NOT a blocker)
-
-This track runs alongside Phases 1–7 from day one. It gates **Phase 8 only**. No other phase waits on it, and no other phase may be re-sequenced behind it.
+These are not phases and they do not block Phases 9 to 12. They exist here because their lead time is real and their cost is not.
 
 | Item | Owner | Gates | Status |
 |------|-------|-------|--------|
-| Engage counsel on legitimate-interest basis, Article 14 wording, and the Tw art. 11.7 exemption question | Joshua + lawyer | Phase 8 | OPEN |
-| Choose the outreach channel/provider and verify its AUP in writing (SND-04 is the deliverable) | Joshua | Phase 8 | CLOSED 2026-08-04 (manual send, no provider) |
-| Stand up a separate outreach domain with SPF/DKIM/DMARC, warmed before target volume (Pitfall 1) | Joshua | Phase 8 | Moot for manual send from an existing mailbox. Returns if an automated channel is ever adopted. |
-
-**Why this is not Phase 0:** research proposed a blocking gate ahead of everything. That was overridden deliberately. The legal and provider risk concentrates entirely in the send step; import, triage, scan, extract, and draft are low-risk and hold the value. Building them now avoids a send pipeline that may have to be thrown away.
-
-**What ships without it:** Phases 1–7. That is a working prospect funnel producing scans, contacts, drafts, and an approval queue — everything except dispatch.
+| Counsel closes Tw art. 11.7, the Legitimate Interest Assessment and the Article 14 wording | Joshua + lawyer | Phase 13 shipping (not planning, not building) | OPEN, carried from v1.0 |
+| Separate outreach domain, Google Workspace mailbox, SPF/DKIM/DMARC, warm-up on our own traffic only | Joshua | Phase 13 shipping | Not started. Two to three weeks of lead time, about €10/year plus a few euros a month |
+| Search for a review source whose terms permit storage (Trustpilot Data Solutions waitlist, Werkspot terms read) | Joshua | Nothing in v2.0. Unlocks the deferred REV-01/REV-02 | Not started |
+| Three vendor overrides written down before the vendor is built against: OpenAI (Phase 10), Google Places live-only (Phase 12), the send provider (Phase 13) | Joshua | The phase that introduces each vendor | Not started. Each one is an exception to the "Vercel, Railway, Supabase, Resend, Gemini, Playwright only" constraint and needs recording as such |
 
 ## Phase Details
 
-### Phase 1: Prospect Data Foundation & Import
+### Phase 9: Niche Profile & Own-Site Engine Data
 
-**Goal**: Joshua pulls a country/region/category slice of businesses from Overture into a durable prospect list that survives re-import
-**Depends on**: Nothing (first phase)
-**Requirements**: IMP-01, IMP-02, IMP-03, IMP-04, IMP-05, IMP-06, IMP-07
+**Goal**: One settings file defines the niche, and for any business that is scoreable at all, the engine stores what that business's own site says about itself
+**Depends on**: Nothing new. Builds on the v1.0 prospect list (Phase 1), the scan pipeline (Phase 4) and the contact extractor (Phase 5)
+**Requirements**: NIC-01, NIC-02, NIC-03, NIC-04, ENG-01, ENG-02, ENG-05, ENG-06, ENG-07
 **Success Criteria** (what must be TRUE):
 
-  1. Joshua runs the importer with a country, region, and category and new prospects appear in the list (IMP-01, IMP-02)
-  2. Re-running the same import creates no duplicates, and two Overture records sharing a domain appear as one prospect (IMP-03, IMP-04)
-  3. Re-running the import leaves triage results, lifecycle state, and approval history already on a prospect untouched (IMP-05)
-  4. Every prospect shows which country it belongs to (IMP-06)
-  5. Prospects with no website appear marked as such and never enter the outreach flow (IMP-07)
+  1. A business that fails the scoreable rule is dropped before any scan cost is spent, and can never be scored or emailed: it needs exactly one Overture match above a confidence limit, a website on its own domain (not a Facebook page, not an aggregator listing), and an address or a declared work-area centre (ENG-06)
+  2. For a scoreable installer, Joshua can read back from Supabase what the site publishes as machine-readable data (address, phone, opening hours, service area, certifications) and what its own site shows of its reviews (shown at all, how many, how recent, marked up), including the fields that are missing (ENG-01, ENG-02)
+  3. The same stored result says whether a customer can actually request a quote: a form, a tap-to-call number, project photos, certifications, using the checks the installers profile names for that trade (ENG-05, NIC-01)
+  4. Changing country, locale, trade, competitor radius or copy is a change to the profile file and nothing else, and every default job value in it carries a citation to the source it came from (NIC-02, NIC-03, NIC-04)
+  5. A test fails if any field Google returns is written to a Supabase table (ENG-07)
 
-**Plans**: 4/4 plans complete
-**Wave 1**
-
-- [x] 01-01-PLAN.md — Migrations 010–013 (prospects, prospect_sources, outreach_messages, scans.prospect_id) + [BLOCKING] live-prod schema push (wave 1)
-- [x] 01-02-PLAN.md — Test infra (vitest) + package-legitimacy checkpoint & installs (@duckdb/node-api, tldts, tsx) + shared types & Overture fixtures (wave 1)
-
-**Wave 2** *(blocked on Wave 1 completion)*
-
-- [x] 01-03-PLAN.md — Dedupe engine: normalizeDomain (tldts) + upsertOverturePlace (GERS-then-domain branching, freeze-by-omission) + integration suite (wave 2)
-
-**Wave 3** *(blocked on Wave 2 completion)*
-
-- [x] 01-04-PLAN.md — Importer CLI: overture-client (DuckDB, runtime category detection) + import-prospects.ts (--dry-run/--limit, SSRF-safe reachability) + D-11 sample-audit gate (wave 3)
-
-Phase work not yet a numbered requirement:
-
-- Migrations: `prospects`, `outreach_messages`, `scans.prospect_id` (nullable). Deliberately NOT merged into `leads` — `leads` implies opt-in, and that distinction is the legal crux of the milestone.
+**Plans**: TBD
 
 Notes:
 
-- The importer is a one-off script (`scripts/import-prospects.ts`) run locally or on demand, NOT a Vercel route. Overture GeoParquet scans are the wrong shape for a 300s function.
-- Overture data quality is a proven risk on this project, not a theoretical one — prior research produced a 98% false-positive read before correction. Dedupe-by-domain belongs here, not in triage, and a manual sample audit runs before the pipeline is trusted at scale (Pitfall 3).
+- **ENG-06 gates everything downstream and belongs in the first plan.** It decides whether a business can be scored at all. It copies the shape of `isReleasable` (`lib/triage-eligibility.ts`), which already works and is already the single releasability rule from Phase 4.1. One predicate closes the "no profile / chain / service-area / wrong match" edge cases instead of five scattered checks.
+- **ENG-07 is an enforcement requirement, not a note.** It needs a test that fails first, in the style of `lib/outreach-isolation.test.ts` (which already fails if a dispatch provider enters the outreach path). The guard ships in Phase 9 so that Phase 12's live Google band inherits a rule that is already enforced, rather than being trusted to respect prose. Only `place_id` may be kept; Maps Platform Terms §3.2.3 forbid storing, re-hosting and deriving from ratings, reviews, names and addresses.
+- The profile holds copy and design, which the source plan names as the real cost of a new niche, not code. NIC-04 is therefore an architectural claim about the engine reading its parameters from the profile, provable here and re-provable every phase after.
+- Country and locale are dimensions of the profile, never hardcoded (`PROJECT.md` Geography constraint). NL is the first target, not the only one.
 
-### Phase 2: Compliance Spine
+**Open question for `/gsd-discuss-phase`:**
 
-**Goal**: A business that says "stop" is unreachable from that moment on, and the basis for contacting anyone is recorded and versioned
-**Depends on**: Nothing (runs in parallel with Phase 1 — its tables are independent)
-**Requirements**: CMP-01, CMP-03, CMP-04, CMP-05, CMP-06, CMP-07, CMP-08, CMP-16
+- **The per-trade job values await Joshua's check** (plan §13 item 7). Heat pump about €12,000 is a placeholder with a citation, not a verified number. Wrong by 2x in front of someone who installs heat pumps loses the report in one sentence. The defaults and their citations are Joshua's to confirm before the profile locks.
+
+### Phase 10: Competitor Position & AI Visibility
+
+**Goal**: The business can be placed against nearby same-trade competitors on signals we may keep, and we know whether an AI assistant names it at all
+**Depends on**: Phase 9 (the profile's competitor rules and trade questions; the per-site extractors, so competitors are measured on the same signals)
+**Requirements**: ENG-03, ENG-04, AIV-01, AIV-02, AIV-03, AIV-04
 **Success Criteria** (what must be TRUE):
 
-  1. Clicking unsubscribe returns success only after the suppression is written, and clicking it twice succeeds both times (CMP-04)
-  2. A suppressed record blocks that address and every other address on the same domain, permanently and from the next send cycle onward (CMP-01, CMP-03, CMP-05)
-  3. A hard bounce or spam complaint on the existing Resend event webhook lands in the suppression list without anyone touching it (CMP-07)
-  4. Re-adding a suppressed record is impossible without an explicit override that leaves a log entry (CMP-06)
-  5. Joshua can look up which LIA version and which country's legal regime applies to a given prospect (CMP-08, CMP-16)
+  1. For a scoreable installer, a competitor set of same-trade businesses within the profile's radius exists, drawn from Overture (ENG-03)
+  2. Every competitor in that set has been scanned on the same storable signals as the subject (site quality, structured data, on-site social proof), so no comparison is drawn on a signal only one side was measured on (ENG-04)
+  3. For each of the 3 trade questions in the profile, 5 runs at temperature 0 against a pinned model version are stored with the prompt, the model id and every raw response, so a disputed result can be re-read months later (AIV-01, AIV-02, AIV-03)
+  4. The AI visibility result reads as a frequency band ("named in 1 of 5 runs"), never as a single score (AIV-04)
 
-**Plans**: 6/7 plans executed
-
-**Wave 1** *(independent foundations — parallel)*
-
-- [x] 02-01-PLAN.md — suppressions table (migration 014) + lib/suppression.ts (isSuppressed/writeSuppression/liftSuppression) + unit & integration suites (wave 1)
-- [x] 02-02-PLAN.md — legal-basis schema (migration 015: lia_versions + legal_regimes + immutability trigger + NL seed) + docs/legal/lia/LIA-v1.md + immutability test (wave 1)
-- [x] 02-03-PLAN.md — lib/unsubscribe-token.ts (HMAC sign/verify, stdlib crypto, no PII, no expiry) + unit tests (wave 1)
-
-**Wave 2** *(consumers — blocked on Wave 1)*
-
-- [x] 02-04-PLAN.md — app/api/unsubscribe/[token]/route.ts (GET verify→write→confirm, RFC 8058 one-click POST) + integration test (wave 2)
-- [x] 02-05-PLAN.md — Resend webhook auto-suppression (extend in place) + scripts/backfill-suppressions.ts (D-06) + tests (wave 2)
-- [x] 02-06-PLAN.md — scripts/suppression-override.ts (logged lift) + scripts/legal-basis.ts (country→regime→LIA lookup) + tests (wave 2)
-- [x] 02-07-PLAN.md — [BLOCKING] apply migrations 014 + 015 to the live Supabase project (wave 2, human gate)
+**Plans**: TBD
 
 Notes:
 
-- ARCHITECTURE.md is explicit: this is a **co-requisite of the data-model migration, not step 9**. Compliance ships in v1. It is placed second, not last, on purpose.
-- This phase owns its own migrations (`suppressions`, per-country legal-basis config). It does not depend on Phase 1's tables.
-- The suppression table is the source of truth. Resend's Suppressions API is a backstop only — and this account never sends outreach regardless.
-- The LIA **artifact and versioning mechanism** ship here. Its **content** is reviewed by counsel on the parallel track. The mechanism does not wait for the review.
-- CMP-07 wires to the existing Resend webhook, which already exists. This is the one place the existing transactional integration is touched, and it is read-only with respect to sending.
+- One run is noise, not a measurement. The 5-runs-at-temperature-0 rule and the stored raw responses come from review finding S6 and are the only reason the probe is reportable at all.
+- **This phase introduces OpenAI, a genuinely new vendor.** The codebase uses Gemini only (`scanner-service/src/ai.ts`). It needs a key, a spend cap, and a written override against the tech-stack constraint before it is built against. Cost shape: 15 calls per business (3 questions x 5 runs).
+- Anything a prospect reads says "an AI assistant", never "ChatGPT".
+- Competitor scans run against the existing two-concurrent-slot bulk limit (`scanner-service/src/capacity.ts`) and the once-daily drain (`vercel.json`). A competitor set multiplies scan volume per subject; the phase has to size itself against that, not assume headroom.
+- AIV-05 (zero weight) is deliberately not in this phase. It is only observable against a total score, which Phase 11 creates. This phase ships the probe as stored, displayable evidence that feeds no score.
 
-### Phase 3: Triage & Shortlist
+### Phase 11: One Score, Everywhere
 
-**Goal**: Joshua opens a ranked shortlist of the worst sites, produced without spending a cent on Playwright, Lighthouse, or AI
-**Depends on**: Phase 1
-**Requirements**: TRI-01, TRI-02, TRI-03, TRI-04, TRI-05, TRI-06, TRI-07, TRI-08, TRI-09
+**Goal**: One score computed from the six checks is the only score the system has, and the public scanner that earns money today is provably unharmed
+**Depends on**: Phase 9 and Phase 10 (all six checks must produce stored data before one score can combine them)
+**Requirements**: SCR-01, SCR-02, SCR-03, SCR-04, SCR-05, AIV-05
 **Success Criteria** (what must be TRUE):
 
-  1. Every imported prospect gets a triage result with no browser, no Lighthouse, and no AI anywhere in the path (TRI-01)
-  2. Each triaged prospect shows reachability, HTTPS plus the full redirect chain, mobile viewport presence, page weight, and response time (TRI-02, TRI-03, TRI-04, TRI-05)
-  3. Joshua opens a shortlist ranked worst-first by a single triage score (TRI-06, TRI-07)
-  4. Changing the cutoff changes which prospects are eligible for a full scan (TRI-08)
-  5. With the cutoff opened wide, no run releases more full scans than the hard ceiling allows (TRI-09)
+  1. The public scanner at `/` is verified correct before the new score ships: a real scan still completes, still scores, still renders and still emails, measured rather than assumed, because that surface earns money today (SCR-05)
+  2. One score computed from the six checks is what the prospect list, the report and the email all read, and a single `computeVerdict()` source still decides the verdict, so the same number means the same thing in all three places (SCR-01, SCR-02)
+  3. Draft generation still picks a citable hook metric from a real scan, because `lib/draft-metric-selector.ts` moved to the new score shape in the same change that introduced it (SCR-03)
+  4. A scan already stored under the old score shape still opens and reads correctly (SCR-04)
+  5. AI visibility moves the total score by exactly zero points, and is labelled evidence rather than scored (AIV-05)
 
-**Plans**: 6/6 plans complete
+**Plans**: TBD
+
+Notes:
+
+- **This is the highest-blast-radius phase in the milestone.** SCR-01 replaces the score on a live, revenue-earning product. SCR-05 is the gate: the public scanner is verified correct *before* the new score ships, not after.
+- SCR-03 and SCR-04 are in this phase and not a later one by design. `lib/draft-metric-selector.ts` picks every draft's hook metric from the old `scores` shape, so if it moves later, draft generation breaks quietly in between. Scan rows already in the database carry the old shape, so if the render path moves later, historic reports break in between. Either a backfill or a version field plus a dual renderer; that choice belongs to the plan.
+- Both scoring modules change: `lib/scoring.ts` and `scanner-service/src/scoring.ts`. They have already diverged once (`.planning/codebase/CONCERNS.md`), and Phase 6 of v1.0 consolidated `computeVerdict()` into one source (DRA-06) precisely to stop that. DRA-06 must stay single. Note the Docker and runtime traps that the v1.0 quick tasks `260806-kbi` and `260806-luk` found around `lib/scoring.ts` crossing into the scanner container: a change here can break the Railway build or its boot without anything looking broken.
+- **No new UI.** This phase changes numbers, not surfaces. The existing report and the existing public scanner must keep rendering; Phase 12 replaces the page.
+
+**Open question for `/gsd-discuss-phase`:**
+
+- **The score weights await Joshua's check** (plan §6, §13 item 6). The proposal is: website on a phone 35%, quote request 25%, business facts 20%, on-site social proof 10%, local competitor position 10%, AI visibility 0%. These were re-derived after Google review and rating data went out of scope, so they are untested. Weight tuning also has no target to fit against: 50 scans produce no conversions, so "adjust after 50 scans" can only mean "adjust by judgement". Decide which it is before planning.
+
+### Phase 12: The New Report
+
+**Goal**: One page per business that an owner can read in plain words, act on, and that nobody uninvited can find
+**Depends on**: Phase 11 (the page renders the new score, the sub-scores and "X points to win")
+**Requirements**: REP-01, REP-02, REP-03, REP-04, REP-05, REP-06, REP-07, SCR-06, SCR-07
+**Success Criteria** (what must be TRUE):
+
+  1. An owner opens one link and reads a page about their own business: name, address, total score, sub-scores, "X points to win", the six checks each in plain words with "Adashi fixes this", and the ask to plan a free 15-minute call (REP-01, REP-07)
+  2. A prospect report cannot be reached by anyone who was not sent the link: it carries `noindex`, and its link is signed and expires rather than being a bare UUID (REP-02, REP-03)
+  3. The page states a money line built from the profile's cited job value, which the owner can change, and never states a loss figure nobody measured; it ends in 5 actions where every number was chosen by code and the model only wrote the words around it (SCR-06, SCR-07)
+  4. The live Google band shows stars and review count with the Google logo and third-party attribution when the call succeeds, and the page reads correctly with the band simply absent when the call fails; the band appears in no table, no PDF and no email, while the PDF carries the stored score only (REP-04, REP-06)
+  5. Competitors are described and positioned but never named in the page, the PDF or anything sent, and the call list is built from clicks on "plan a call" and from replies, never from an email open (REP-05, REP-07)
+
+**Plans**: TBD
 **UI hint**: yes
 
-Plans:
-**Wave 1**
-
-- [x] 03-01-PLAN.md — Foundations: migration 016 (scan_released_at) + local apply, types/triage.ts, tunable constants block, Wave 0 fixtures (wave 1)
-
-**Wave 2** *(blocked on Wave 1 completion)*
-
-- [x] 03-02-PLAN.md — Compute: lib/triage-fetch.ts (redirect-chain GET, per-hop SSRF guard, robots.txt, viewport/weight/TTFB) + lib/triage-scorer.ts (gate-then-weighted) (wave 2)
-- [x] 03-03-PLAN.md — Release: lib/triage-release.ts (worst-N + hard ceiling) + app/api/admin/release-prospects route (wave 2)
-
-**Wave 3** *(blocked on Wave 2 completion)*
-
-- [x] 03-04-PLAN.md — CLI: lib/triage-candidates.ts + scripts/triage-prospects.ts (`npm run triage`, bounded concurrency) (wave 3)
-
-**Wave 4** *(blocked on Wave 3 completion)*
-
-- [x] 03-05-PLAN.md — Shortlist UI: SignalChips/CutoffSlider/ShortlistTable/ReleaseButton + shortlist GET route + admin tab (wave 4)
-
-**Wave 5** *(blocked on Wave 4 completion)*
-
-- [x] 03-06-PLAN.md — [BLOCKING] apply migration 016 to live Supabase (human gate) (wave 5)
-
 Notes:
 
-- **This phase must ship before or with Phase 4. It is the load-bearing sequencing decision of the whole project.** Queueing every imported prospect straight into the scan queue reintroduces the exact concurrency and budget failure CONCERNS.md warns about.
-- Triage is native `fetch()` + regex on raw HTML. DOM libraries (jsdom, Cheerio) are rejected on sight — they are the exact cost triage exists to avoid.
-- TRI-09's ceiling is enforced independently of TRI-08's cutoff. A permissive cutoff is a tuning mistake; a missing ceiling is a budget blowout (Pitfall 4). Set an explicit pass-rate target here.
+- **REP-02, REP-03 and REP-05 are release gates.** No prospect report goes out without `noindex`, a signed expiring link, and competitors unnamed. Today there is no robots rule anywhere in `app/`, and `app/report/[id]/page.tsx` publishes full `openGraph` metadata carrying the domain and the score, with a UUID as the only secret. That is the gap this phase closes.
+- **REP-04's live Google band must degrade to nothing.** It renders on each open and is the one part of the report we are not allowed to keep, so the page has to read correctly when the call fails. It also needs a hard spend cap: one Place Details (Enterprise + Atmosphere) call per report open, free to 1,000/month on that SKU, then $25 per 1,000.
+- Competitors are described, never named, because naming a competitor in commercial material touches Dutch comparative advertising rules (BW 6:194a). A review comparison may appear in the live on-screen band only, never in an email or the PDF, which would need stored Google review counts.
+- **The PDF is its own build.** Nothing in the repo generates a PDF today.
+- **Open tracking and per-section read tracking are deferred, not forgotten.** Tracking an identified business on a page it did not request touches Telecommunicatiewet art. 11.7a, so it goes to counsel with the Article 14 question or it does not happen. Pixel opens are also systematically wrong after Apple Mail Privacy Protection. That is why REP-07 builds the call list from clicks and replies.
+- **The share button is a decision, not a default** (plan §13 item 12). It is an instruction to leak a page about a business that never asked. Decide it in planning.
 
-### Phase 4: Bulk Scan Queue
+**Open question for `/gsd-discuss-phase`:**
 
-**Goal**: Shortlisted prospects get real scan reports at bulk without putting the live public scanner at risk
-**Depends on**: Phase 3
-**Requirements**: SCAN-01, SCAN-02, SCAN-03, SCAN-04, SCAN-05, SCAN-06, SCAN-07, CMP-17
+- **The Places session-hold rule** (plan §13 item 5): confirm how long a live Places response may be held before building the live band. This decides whether the band is fetched once per page render or may be reused within a request or a session, and it is a terms question, not a performance preference.
+
+### Phase 13: Outbound — Pick, Approve, Dispatch (GATED)
+
+**Goal**: Prospects are picked before the expensive scan, and an approved message dispatches through our own gate with the provider as transport only, with the mechanism shut until counsel answers
+**Depends on**: Phase 12 (the message carries a link to a report that must exist), Phase 11, and the v1.0 compliance spine (Phase 2), draft queue (Phase 6) and send gate (Phase 8). Shipping also depends on the Parallel Track legal item, which is external
+**Requirements**: OUT-01, OUT-02, OUT-03, OUT-04, OUT-05, OUT-06, OUT-07, OUT-08, OUT-09, OUT-10
 **Success Criteria** (what must be TRUE):
 
-  1. Joshua queues a batch of shortlisted prospects and each one ends showing queued, scanning, done, or failed (SCAN-01, SCAN-03)
-  2. The scanner service refuses requests over its capacity instead of accepting them and timing out (SCAN-02)
-  3. The live public scanner holds its normal success rate throughout a bulk run (SCAN-06)
-  4. A prospect whose scan fails is skipped rather than retried indefinitely, and bulk scanning identifies itself honestly, respects robots.txt, and is rate-limited (SCAN-04, SCAN-05)
-  5. Each scanned prospect has a report at a hosted URL identical in form to the public scanner's, and personal data caught incidentally in screenshots is not separately indexed, profiled, or reused (SCAN-07, CMP-17)
+  1. Before a line of send code exists, a written artifact names the chosen provider and quotes its acceptable-use terms verbatim with a read date, and `lib/outreach-isolation.test.ts` is updated deliberately against that artifact rather than loosened to let it pass (OUT-09)
+  2. Prospects are picked before the expensive scan runs, on cheap signals only, under one reconciled rule rather than two rules that pull in opposite directions (OUT-01, OUT-02)
+  3. A business that unsubscribed has no report page published about it: suppression is checked before publication, not only before a send (OUT-03)
+  4. Joshua approves a body, and only then does our code check suppression against live rows, build a fresh opt-out link, write the immutable `send_record`, and hand the finished message to the provider for immediate dispatch; the provider never composes, never schedules and never sequences, and every follow-up repeats all of it (OUT-04, OUT-05, OUT-06, OUT-07)
+  5. A reply that means "unsubscribe" reaches the `suppressions` table, and no message reaches a real business while `legal_regimes.legal_basis` or `article_14_notice_approved` is unset: the mechanism refuses by its own gate, not by a note in a file (OUT-08, OUT-10)
 
-**Plans**: 6/6 plans complete
-
-Plans:
-**Wave 1**
-
-- [x] 04-01-PLAN.md — Foundations: migration 017 (scan_status/attempts/reason + `claim_next_scan_batch` SKIP LOCKED RPC) + `lib/bulk-scan-constants.ts` + `scanner-service/src/capacity.ts` + p-limit declared (wave 1)
-
-**Wave 2** *(blocked on Wave 1)*
-
-- [x] 04-02-PLAN.md — Scanner service: `full-async` 503 capacity refusal, bulk user-agent passthrough, CMP-17 no-profiling prompt + LIA record (wave 2)
-
-**Wave 3** *(blocked on Wave 2)*
-
-- [x] 04-03-PLAN.md — Libraries: `lib/scan-queue.ts` (arm/claim/fail/requeue/reconcile) + `lib/bulk-scan-dispatch.ts` (robots pre-flight, SSRF, paced p-limit dispatch) + SKIP LOCKED overlap integration test (wave 3)
-
-**Wave 4** *(blocked on Wave 3)*
-
-- [x] 04-04-PLAN.md — Routes: `/api/cron/drain-scan-queue` + vercel.json schedule, `/api/admin/run-batch`, `/api/admin/requeue-scan` (wave 4)
-
-**Wave 5** *(blocked on Wave 4)*
-
-- [x] 04-05-PLAN.md — Admin UI: Shortlist status column, report link, re-queue action, RunBatchButton (wave 5, human checkpoint)
-
-**Wave 6** *(blocked on Wave 5)*
-
-- [x] 04-06-PLAN.md — SCAN-06 health measurement script + [BLOCKING] apply migration 017 to live Supabase + end-to-end batch verification (wave 6, human gate)
+**Plans**: TBD
 
 Notes:
 
-- Postgres `SELECT ... FOR UPDATE SKIP LOCKED` + Vercel Cron + `p-limit`. STACK.md and ARCHITECTURE.md converged on this design independently — treat as high confidence. No job-queue library. No new infrastructure.
-- The concurrency gate extends the scanner-service's existing `activeFullScans` map. It already tracks exactly what is needed. This is an addition, not a rewrite.
-- Blast radius: bulk-scanning strangers' sites from the same Railway IP that serves the live scanner risks WAF fingerprinting that would degrade the production product (Pitfall 2). Verification watches the public scanner's success rate alongside the bulk run — no shared degradation is a pass condition, not a nice-to-have.
-- Dispatch reuses `lib/scanner-client.ts` and the existing `full-async` endpoint. No new scanner-service endpoint.
-
-### Phase 04.1: Prospect Quality — category exclusion, gate split, batch size (INSERTED)
-
-**Goal:** The shortlist feeds the pipeline the right businesses before Phase 5: food-service categories and unreachable sites are never releasable, no-HTTPS sites stay top priority, and one daily drain tick scans up to 10 prospects.
-**Requirements**: 3 captured todos (no numbered IDs) — exclude-food-service-categories, split-triage-gate-unreachable-vs-no-https, raise-bulk-batch-size-for-daily-cron
-**Depends on:** Phase 4
-**Plans:** 2/2 plans complete
-
-Plans:
-
-- [x] 04.1-01-PLAN.md — Releasability engine: isReleasable predicate + EXCLUDED_CATEGORIES, wired into selectWorstN/getShortlist, BULK_BATCH_SIZE 2→10 (wave 1)
-- [x] 04.1-02-PLAN.md — Shortlist UI: rename GATED→CRITICAL, unreachable visible-not-releasable, counts via isReleasable; ship to prod + verify (wave 2)
-
-### Phase 5: Contact Extraction & Classification
-
-**Goal**: Each scanned prospect carries a contact address whose legal status is known and recorded
-**Depends on**: Phase 4
-**Requirements**: CON-01, CON-02, CON-03, CON-04, CON-05, CON-06, CON-07
-**Success Criteria** (what must be TRUE):
-
-  1. A prospect's contact email appears after its scan, with no second fetch of the site (CON-01)
-  2. Addresses behind `mailto:` links, in body text, and behind Cloudflare `data-cfemail` obfuscation are all found (CON-02)
-  3. Every address is stored as `generic` or `named-person`, and where both exist the generic one is chosen (CON-03, CON-04)
-  4. A prospect whose only address is a named person is flagged for manual review and stays out of the default outreach flow (CON-05)
-  5. Each prospect records whether its source page invited commercial contact (defaulting to no) and whether it is a sole proprietorship whose generic address is therefore personal data (CON-06, CON-07)
-
-**Plans**: 4/4 plans complete
-
-Plans:
-**Wave 1**
-
-- [x] 05-01-PLAN.md — Foundation: migration 018 (contact_email_type CHECK + commercial_contact_invited + sole_proprietorship) + local apply + shared types (ContactExtraction, PageData.contactExtraction, ProspectRow columns) (wave 1)
-
-**Wave 2** *(blocked on Wave 1)*
-
-- [x] 05-02-PLAN.md — Pure `lib/contact-extraction.ts` (decode/parse/classify/detect/aggregate) + unit tests + extractor harvest of raw contact material (mailto/cfemail/text) (wave 2)
-
-**Wave 3** *(blocked on Wave 2)*
-
-- [x] 05-03-PLAN.md — Wire aggregateContacts into `reconcileInFlightScans` on the done transition (fill-only-when-null) + local-Supabase integration cases (wave 3)
-
-**Wave 4** *(blocked on Wave 3)*
-
-- [x] 05-04-PLAN.md — Shortlist NAMED-PERSON pill + [BLOCKING] live migration 018 + Railway + Vercel deploys + real-batch verification (wave 4, human gate)
-
-Notes:
-
-- The extractor rides the scan Playwright already runs (`scanner-service/src/extractor.ts`). It adds no crawl and no second fetch — re-fetching the page is an explicit anti-pattern in ARCHITECTURE.md.
-- CON-06 is the only field that could ever trigger the narrow Tw art. 11.7(2)(a) exemption. It defaults to "no" and the pipeline proceeds on legitimate-interest plus notice regardless. Preferring `info@` is a GDPR-minimisation choice, **not** a Telecommunicatiewet safe harbour. Do not re-litigate this.
-- CON-07 (eenmanszaak) is the sole-proprietorship edge case SUMMARY.md flagged as an open design gap. It lands here.
-
-### Phase 6: Draft Generation & Approval Queue
-
-**Goal**: Joshua opens a queue of drafted messages he is willing to send, each backed by evidence he can check
-**Depends on**: Phase 5
-**Requirements**: DRA-01, DRA-02, DRA-03, DRA-04, DRA-05, DRA-06, QUE-01, QUE-02, QUE-03, QUE-04, QUE-05
-**Success Criteria** (what must be TRUE):
-
-  1. The verdict in the ranked prospect list, the hosted scan report, and the drafted email are the same verdict for the same scan (DRA-06)
-  2. Each shortlisted prospect has a draft citing a specific checkable number from its own scan and linking to its own hosted report rather than restating it (DRA-01, DRA-02, DRA-03)
-  3. Drafts land as helpful rather than as an insult about someone's website (DRA-04)
-  4. The first-contact template carries the Article 14 notice without anyone adding it by hand (DRA-05)
-  5. Joshua reads every draft with its scan evidence beside it, edits inline, approves one at a time, or rejects the prospect outright — and finds no bulk-approve action anywhere (QUE-01, QUE-02, QUE-03, QUE-04, QUE-05)
-
-**Plans**: 8/8 plans executed
-
-Plans:
-**Wave 1**
-
-- [x] 06-01-PLAN.md — DRA-06 verdict consolidation: one `computeVerdict()` in `lib/scoring.ts`, imported by the scanner service (wave 1)
-- [x] 06-02-PLAN.md — Blocking manual prerequisites: `GEMINI_API_KEY` for the Next.js runtime, live `lifecycle_state = 'rejected'` constraint check (wave 1, non-autonomous)
-
-**Wave 2** *(blocked on Wave 1 completion)*
-
-- [x] 06-03-PLAN.md — Versioned prompt file (tone brief, Article 14 notice EN+NL, locale map, subject template) and the citable-metric selector (wave 2)
-
-**Wave 3** *(blocked on Wave 2 completion)*
-
-- [x] 06-04-PLAN.md — `generateDraft()`: Gemini call from Next.js, verbatim-metric guard, report link, notice append (wave 3)
-
-**Wave 4** *(blocked on Wave 3 completion)*
-
-- [x] 06-05-PLAN.md — Scan-complete prospect branch and eligibility gate, placed before the email guard (wave 4)
-- [x] 06-06-PLAN.md — Outreach queue library and admin API: list, edit, approve, reject, regenerate, manual generate (wave 4)
-
-**Wave 5** *(blocked on Wave 4 completion)*
-
-- [x] 06-07-PLAN.md — Outreach admin tab: single-open expandable review panel with evidence pane (wave 5, non-autonomous)
-- [x] 06-08-PLAN.md — Shortlist "Generate draft" affordance for named-person and failed-generation prospects (wave 5)
-
-**UI hint**: yes
-
-**Schema note (added at plan time, 2026-07-28):** this phase authors NO migration file. `outreach_messages`
-(migration 012) already carries the full status enum plus `approved_by`/`approved_at`, and
-`prospects.lifecycle_state` (migration 010) already carries the unused `'rejected'` value D-6-15 needs.
-06-02 verifies the live constraint by hand in the Supabase dashboard SQL Editor rather than applying
-new DDL. Phase 7 (TRK-01/02) owns the lifecycle state machine and must not reintroduce a parallel
-reject flag or overwrite this value in a generic status-advance sweep.
-
-**DRA-06 — scoring verdict-threshold fix (first plan of this phase):**
-
-- `lib/scoring.ts` and `scanner-service/src/index.ts` each carry their own verdict-threshold function with different cutoffs (95/85/70/50 vs 90/70/50). Today that is a cosmetic admin-panel mismatch. The moment a draft quotes a verdict in an email to a stranger, the same number has to mean the same thing in the prospect list, the report the prospect clicks through to, and the email — or the pitch contradicts itself in front of the person being pitched. Consolidate into one function exported from `lib/scoring.ts`, imported by `scanner-service/src/index.ts` and the draft generator. **This is a one-function prerequisite scheduled as the first plan of this phase — it does not gate Phases 1-5.** Numbered as DRA-06 on 2026-07-17 at Joshua's direction, after the roadmapper correctly flagged that unnumbered work goes untracked.
-
-Notes:
-
-- The **intentional** per-page (`scorePage()`) vs aggregate (`aggregateScores()`) split stays. It is documented layering, not a bug, and triage's score is a third independent function that touches neither. Only the verdict-threshold divergence gets fixed. Do not turn this into a scoring refactor.
-- The draft generator needs **full scan output**, not triage output. Triage is too thin to write a credible evidence-based line.
-- Suppression is NOT checked here. It gates send only (Phase 8) — state changes while a draft waits in the queue.
-- Distinct cold-outreach tone brief in the Gemini prompt; the first N drafts get read by Joshua before the pattern is trusted (Pitfall 5). Draft generation calls Gemini from Next.js — no browser needed.
-- No bulk-approve, by design. It directly undermines the human gate the compliance posture depends on.
-
-### Phase 7: Lifecycle, Reporting & Retention
-
-**Goal**: Joshua sees what the funnel actually did, and data that has outlived its basis expires without him thinking about it
-**Depends on**: Phase 4
-**Requirements**: TRK-01, TRK-02, TRK-03, TRK-04, TRK-05, CMP-13, CMP-14, CMP-15
-**Success Criteria** (what must be TRUE):
-
-  1. Every prospect shows a lifecycle state of new, qualified, contacted, replied, or booked, advancing off real events rather than manual bookkeeping (TRK-01, TRK-02)
-  2. Joshua sees how many prospects were imported, triaged, scanned, and contacted per run (TRK-05)
-  3. Joshua sees reply rate across contacted prospects and booked calls attributable to outreach, from the existing Fillout `booked_at` signal (TRK-03, TRK-04)
-  4. Prospect, scan, and outreach data past the retention window expires on a schedule, deleting or anonymising by config rather than by hardcoding (CMP-13, CMP-14)
-  5. Suppression records survive the retention job and are flagged in code as permanently exempt (CMP-15)
-
-**Plans**: 10/10 plans executed
-**UI hint**: yes
-
-Plans:
-**Wave 1**
-
-- [x] 07-01-PLAN.md — Component-test infrastructure and migration 019 (`prospects.booked_at`)
-- [x] 07-02-PLAN.md — `deriveLifecycleState()`, the reporting route and the Reporting tab
-
-**Wave 2** *(blocked on Wave 1 completion)*
-
-- [x] 07-03-PLAN.md — Per-day aggregates, reply-rate formatting and the sent-gate copy
-
-**Wave 3** *(blocked on Wave 2 completion)*
-
-- [x] 07-04-PLAN.md — Stage column on the Shortlist tab
-
-**Wave 4** *(blocked on Wave 3 completion)*
-
-- [x] 07-05-PLAN.md — Booking attribution in the Fillout webhook
-
-**Wave 5** *(blocked on Wave 4 completion)*
-
-- [x] 07-06-PLAN.md — Retention config, expiry clock and the cron route, dry-run only
-
-**Wave 6** *(blocked on Wave 5 completion)*
-
-- [x] 07-07-PLAN.md — Anonymise and delete modes, the monthly schedule, and the flip decision
-
-**Wave 7** *(gap closure — blocked on Wave 6 completion)*
-
-- [x] 07-08-PLAN.md — `prospect_sources` anonymisation: the decision, the code path, and the test that pins it (closes FA-CMP-13-SOURCES / WR-03)
-
-**Wave 8** *(gap closure — blocked on Wave 7 completion)*
-
-- [x] 07-09-PLAN.md — Candidate-set correctness: chunked `getShortlist()` lookup and uncapped booking attribution (closes WR-02, WR-01)
-
-**Wave 9** *(gap closure — blocked on Wave 8 completion)*
-
-- [x] 07-10-PLAN.md — Deploy the retention cron and gather its four evidence steps; close both broken windows and correct CMP-13/14 status
-
-Notes:
-
-- **Placed before the gated send phase on purpose.** ARCHITECTURE.md's build order put reporting last, but that ordering assumed send was not gated. Reporting is presentation, not new plumbing — it ships and reads honest zeros until Phase 8 lands.
-- Honest dependency: the `contacted` transition and the channel-specific reply signal are fired by Phase 8. This phase builds the state machine, the transitions that already have events (new, qualified from triage, booked from the existing Fillout webhook), and the counters. Phase 8 calls the hooks it defines. Reply rate and booked-call figures read empty until then.
-- CMP-13's 12-month window is a **placeholder pending the LIA, not a legal fact**. It is config (CMP-14), so counsel's answer changes a value, not the code.
-- CMP-15 is the trap: deleting a suppression record to satisfy a generic retention job recreates the exact problem retention exists to prevent. It gets an explicit code comment, not just a config default someone can quietly flip.
-
-### Phase 8: Send — GATED
-
-**Goal**: An approved message reaches a real business through a channel that permits it, with the proof of why it was allowed to
-**Depends on**: Phase 2, Phase 6, **and the Parallel Track send-path decision**
-**Requirements**: SND-01, SND-02, SND-03, SND-04, CMP-02, CMP-09, CMP-10, CMP-11, CMP-12
-**Success Criteria** (what must be TRUE):
-
-  1. Joshua approves a message, Prospect Radar prepares it for sending, and Joshua sends it by hand from his own mailbox. No third-party dispatch provider sits in the path, so no channel acceptable-use policy applies (SND-01, SND-04)
-  2. Every message carries a working opt-out that is fast and free and takes one step, delivered as a link in the message body pointing at the Phase 2 unsubscribe endpoint (SND-02)
-  3. An outreach failure leaves the existing public scanner's transactional email untouched and working (SND-03)
-  4. A send is refused when the address is suppressed at that moment, and a first-touch send is refused when the Article 14 notice flag is not true (CMP-02, CMP-10)
-  5. Joshua answers "why were we allowed to email this business?" in seconds from an immutable per-send record holding the resolved address and classification, the content actually sent, legal basis, LIA version, Tw exemption claimed, approver, and the suppression-check result (CMP-09, CMP-11, CMP-12)
-
-**Plans**: 3/3 plans executed
-
-Plans:
-- [x] 08-01-PLAN.md — Send gate spine: migration 020 (send_records, the two counsel-supplied legal_regimes columns, prepared_at), gate evaluation, the opt-out link, and the Prepare action (CMP-02, CMP-10, SND-02)
-- [x] 08-02-PLAN.md — Mark as sent: the immutable per-send audit record, the copy handoff, and prepared-but-unsent resurfacing (CMP-02, CMP-09, CMP-11)
-- [x] 08-03-PLAN.md — The audit answer and the isolation guard: why-were-we-allowed per prospect, plus tests that fail if a dispatch provider enters the outreach path (CMP-12, SND-01, SND-03, SND-04)
-
-> ⚠️ **BLOCKED on the legal gate, for shipping. Not for planning.** The provider half of the Parallel Track closed 2026-08-04 (manual send, no provider). The legal half is still open: the Telecommunicatiewet art. 11.7 question, the Legitimate Interest Assessment, and the Article 14 notice wording.
->
-> **Narrowed 2026-08-04, on Joshua's explicit instruction.** This directive previously read "do not plan or build this phase until counsel closes the legal half." That block existed to stop a send pipeline being built and then thrown away, and that risk lived entirely in the provider decision, which is now closed. Manual send carries no provider-specific code, and counsel's output lands in fields the mechanism already has (`legal_basis`, `lia_version`, `tw_exemption_claimed` on the CMP-09 record). Planning and building the mechanism is therefore authorized now.
->
-> **What stays blocked:** no real message may be sent to a real business until counsel closes the legal half. The plan must not invent Article 14 wording, must not author or version an LIA, and must not default `tw_exemption_claimed` to true. Those are counsel's outputs, and until they exist the send path stays shut by its own gates rather than by a note in this file. Build the gate, do not open it.
-
-Notes:
-
-- **Resend is ruled out.** Its AUP prohibits "unsolicited messages of any kind, including cold outreach, purchased lists, or scraped contact data" (verified verbatim, current 2026-05-28). No low-volume carve-out. The channel question is closed: see the manual-send decision below.
-- Resend stays exactly where it is: transactional email for the existing public scanner, untouched and uncontaminated. SND-03 is what enforces that separation.
-- Changing provider fixes the AUP problem. It does **not** fix the legal-basis problem — Telecommunicatiewet is indifferent to whether Resend, Gmail, or a human hand sent the message. These are two separate problems and this conflation has already come up twice.
-- CMP-02 checks suppression **immediately before dispatch**, not at draft time. A draft can sit in the queue for days while state changes underneath it.
-- The Phase 2 suppression spine carries over unchanged. The opt-out moves from a header to a body link.
-- **Manual send, decided 2026-08-04.** There is no third-party dispatch provider. Prospect Radar generates, renders, and gates the approved draft, and Joshua sends it by hand from his own mailbox, at 10 to 50 sends per week. This closed the provider half of the Phase 8 gate.
-- CMP-02's phrase "immediately before dispatch" now means "at the moment the draft is prepared for copying." A residual window remains between copying the draft and actually sending it, but that window is smaller than the status quo it replaces, where a draft could sit in the approval queue for days while suppression state changed underneath it. The CMP-02 requirement text and its ID are unchanged.
-- CMP-09, CMP-11, and CMP-12's audit record is now written on an explicit mark-as-sent action rather than on a provider message ID. Delivery proof is lost. Legal-basis proof is not, and success criterion 5 only ever asked for legal-basis proof.
-- What is lost outright: automated bounce handling, reply detection, and delivery confirmation. All three are manageable by hand at 10 to 50 sends per week.
+- **OUT-09 is the first plan of this phase, not a task at the end.** Joshua's own standing rule is that a provider's acceptable-use terms are verified in writing *before* anything is built against them. v1.0 produced that artifact as SND-04 (`.planning/research/SEND-CHANNEL.md`); this phase produces its successor for the chosen provider. Apollo's Terms of Service (read 2026-11-11) forbid use that "violates applicable marketing laws such as CAN-SPAM, CASL, or the TCPA" and do not forbid cold email as such; no page titled "Acceptable Use Policy" exists on apollo.io, so that clause is the binding text. The artifact records it plus the approve-then-dispatch design.
+- **OUT-10 is external and cannot be closed by us.** Counsel sets `legal_regimes.legal_basis` and `article_14_notice_approved`. This phase ships its mechanism refusing, exactly as v1.0's Phase 8 does today, and that is a correct outcome rather than a failed phase. Do not read an unshippable phase as a broken one: plan it, build it, verify it refuses, and leave it shut. `docs/legal/lia/LIA-v1.md` is still DRAFT and production `legal_basis` is null by design.
+- **Why the provider must never sequence.** A sequenced follow-up fires days later against draft-time state: if someone unsubscribes in between, the provider does not know, and `lib/send-gate.ts`'s live suppression check is bypassed. The opt-out link has the same problem, since it is deliberately never persisted into `draft_body`, so a provider-rendered follow-up would lose it. At 10 to 50 prospects a week, approving each follow-up costs minutes.
+- We never use the provider's contact data. Prospects come from Overture and our own extraction. Using a provider's contact data to power an external product needs a separate agreement; keeping prospects on our own sources keeps that question closed.
+- Volume stays at 10 to 50 prospects a week. The whole legal risk assessment was argued at that number, and raising it redoes both the risk assessment and the scanner concurrency.
+- OUT-03 widens where suppression is checked. Today it is checked at Prepare only (`lib/send-gate.ts`), which was right when Prepare was the only outward act. Publishing a report page about a business is now an outward act too.
+- Unchanged from v1.0: `info@bedrijf.nl` is not a Telecommunicatiewet safe harbour, and changing provider does not fix the legal basis. Two separate problems; this conflation has already come up twice.
+
+**Open questions for `/gsd-discuss-phase`:**
+
+- **Which send provider, and a plain send API versus Apollo** (plan §13 item 2). We need transport, not a sequencer, so a plain send API may fit better than Apollo. Undecided, and it decides what OUT-09's artifact is about.
+- **Pick versus triage** (plan §9 step 4, §13 item 9). Triage selects for the worst website (`lib/triage-constants.ts`, `DEFAULT_CUTOFF = 60`, "only the worst earn a full scan"). The new pick wants "busy enough to pay", which is a second, orthogonal axis the triage scorer has no input for. These must be reconciled: one rule, or the new axis added to triage. Not two selectors that contradict.
+- **The light check cannot read phone or email pre-scan today** (plan §9 step 2, §13 item 8). `prospects` has no phone column (`supabase/migrations/010_create_prospects.sql`), the importer never captures one, and `contact_email` is only populated during the full scan (`scanner-service/src/extractor.ts`). Either add an import-side phone field plus a pre-scan contact-discovery step, or drop those two criteria from the light check. Undecided.
 
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8
 
-Phase 2 has no dependencies and may run in parallel with Phase 1 (`parallelization: true`).
-Phase 8 does not begin until the Parallel Track closes, regardless of numeric order.
+Phases execute in numeric order: 9 → 10 → 11 → 12 → 13
+
+The dependency chain is real at every step: Phase 10 needs Phase 9's extractors to compare like for like, Phase 11 needs all six checks to produce data before one score can combine them, Phase 12 renders that score, and Phase 13's message carries a link to Phase 12's report. There is no parallel pair here.
+
+Phase 13 may be planned and built at any time. It may not ship until the Parallel Track legal item closes.
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Prospect Data Foundation & Import | 4/4 | Complete    | 2026-07-18 |
-| 2. Compliance Spine | 7/7 | Complete    | 2026-07-19 |
-| 3. Triage & Shortlist | 6/6 | Complete    | 2026-07-20 |
-| 4. Bulk Scan Queue | 6/6 | Complete    | 2026-07-23 |
-| 5. Contact Extraction & Classification | 4/4 | Complete    | 2026-07-27 |
-| 6. Draft Generation & Approval Queue | 8/8 | Complete    | 2026-07-30 |
-| 7. Lifecycle, Reporting & Retention | 10/10 | Complete    | 2026-08-03 |
-| 8. Send — GATED | 3/3 | Executed. Mechanism built and gate shut. Blocked on the legal gate for shipping | - |
+| 9. Niche Profile & Own-Site Engine Data | 0/? | Not started | - |
+| 10. Competitor Position & AI Visibility | 0/? | Not started | - |
+| 11. One Score, Everywhere | 0/? | Not started | - |
+| 12. The New Report | 0/? | Not started | - |
+| 13. Outbound — Pick, Approve, Dispatch (GATED) | 0/? | Not started | - |
+
+**Honest limit on what Phases 9 to 12 prove.** They are tested on 10 real installers before one email goes out, and that proves the data flows. It does not prove the money line, the to-do list or the pitch, because only a business can judge those. Every success metric in the source plan §14 is post-send: at least 1 call per 25 emails, and a first paid project within the first 100 emails.
 
 ## Coverage
 
-All 67 v1 requirements map to exactly one phase. No orphans, no duplicates.
+All 40 v2.0 requirements map to exactly one phase. No orphans, no duplicates.
 
 | Category | Count | Phase(s) |
 |----------|-------|----------|
-| IMP-01..07 | 7 | Phase 1 |
-| TRI-01..09 | 9 | Phase 3 |
-| SCAN-01..07 | 7 | Phase 4 |
-| CON-01..07 | 7 | Phase 5 |
-| DRA-01..06 | 6 | Phase 6 |
-| QUE-01..05 | 5 | Phase 6 |
-| CMP-01..17 | 17 | Phase 2 (8), Phase 4 (1), Phase 7 (3), Phase 8 (5) |
-| SND-01..04 | 4 | Phase 8 |
-| TRK-01..05 | 5 | Phase 7 |
-| **Total** | **67** | **8 phases** |
+| ENG-01..07 | 7 | Phase 9 (5: ENG-01, 02, 05, 06, 07), Phase 10 (2: ENG-03, 04) |
+| AIV-01..05 | 5 | Phase 10 (4: AIV-01..04), Phase 11 (1: AIV-05) |
+| NIC-01..04 | 4 | Phase 9 |
+| SCR-01..07 | 7 | Phase 11 (5: SCR-01..05), Phase 12 (2: SCR-06, 07) |
+| REP-01..07 | 7 | Phase 12 |
+| OUT-01..10 | 10 | Phase 13 |
+| **Total** | **40** | **5 phases** |
 
-**Compliance distribution (CMP-01..17)** — deliberately spread, not deferred:
+**Why three categories split across phases:**
 
 | Requirement | Phase | Why there |
 |-------------|-------|-----------|
-| CMP-01, 03, 04, 05, 06, 07, 08, 16 | Phase 2 | Suppression + unsubscribe infrastructure is a co-requisite of the data model, not step 9 |
-| CMP-17 | Phase 4 | Scan-pipeline data minimisation — belongs with the scan pipeline |
-| CMP-13, 14, 15 | Phase 7 | Retention is a later slice; the window is a placeholder pending the LIA |
-| CMP-02, 09, 10, 11, 12 | Phase 8 | Send-time enforcement and the per-send audit record |
+| ENG-03, ENG-04 | Phase 10 | The competitor set must be measured on the same signals as the subject, so ENG-01/02/05 have to exist first. Like-for-like is the requirement, not an aspiration |
+| AIV-05 | Phase 11 | "Zero weight in the total score" is only observable against a total score, and Phase 11 is where the weight table is created. Phase 10 ships the probe as evidence that feeds no score |
+| SCR-06, SCR-07 | Phase 12 | The money line and the 5-action to-do list are report content, and the owner adjusting the job value is an interaction on the report page. Keeping them out of Phase 11 keeps the live-score swap's blast radius as small as it can be |
 
 ---
-*Roadmap created: 2026-07-17*
-*Granularity: standard (8 phases)*
-*Structure: pipeline stages — each phase delivers one working stage of the funnel*
+*Roadmap created: 2026-11-11*
+*Granularity: standard (5 phases)*
+*Structure: dependency chain — profile and own-site data, outside evidence, one score, one report, outbound last*
+*Phase numbering continues from v1.0, which ended at Phase 8*

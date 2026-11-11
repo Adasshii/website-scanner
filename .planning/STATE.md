@@ -2,11 +2,15 @@
 gsd_state_version: "1.0"
 milestone: v2.0
 milestone_name: Renewed Scanner
+current_phase: 9
+current_phase_name: Niche Profile & Own-Site Engine Data
 status: planning
-last_updated: "2026-11-11T22:23:26.758Z"
+stopped_at: v2.0 roadmap created (Phases 9 to 13, 40/40 requirements mapped). Awaiting `/gsd-discuss-phase 9`
+last_updated: "2026-11-11T22:36:56.703Z"
 last_activity: 2026-11-11
+state_head: 3d772b2231918ff687663e6ae2e260b19d8fa0c3
 progress:
-  total_phases: 0
+  total_phases: 5
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -17,17 +21,34 @@ progress:
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-07-17)
+See: .planning/PROJECT.md (updated 2026-11-11)
 
 **Core value:** Joshua opens the tool and finds businesses genuinely worth pitching, with the proof already written, so that outreach costs him minutes instead of hours.
-**Current focus:** Phase 8 — Send (GATED)
+**Current focus:** Phase 9: Niche Profile & Own-Site Engine Data (first phase of milestone v2.0 Renewed Scanner)
 
 ## Current Position
 
-Phase: Not started (defining requirements)
-Plan: —
-Status: Defining requirements
-Last activity: 2026-11-11 — Milestone v2.0 started
+Phase: 9 of 13 (Niche Profile & Own-Site Engine Data)
+Plan: — (no plans yet)
+Status: Ready to plan
+Last activity: 2026-11-11 — v2.0 roadmap created, 5 phases (9 to 13), 40/40 requirements mapped
+
+Progress: [░░░░░░░░░░] 0% of milestone v2.0
+
+Next: `/gsd-discuss-phase 9`
+
+**Milestone v2.0 phases:**
+
+| Phase | Name | Requirements |
+|-------|------|--------------|
+| 9 | Niche Profile & Own-Site Engine Data | NIC-01..04, ENG-01, ENG-02, ENG-05, ENG-06, ENG-07 |
+| 10 | Competitor Position & AI Visibility | ENG-03, ENG-04, AIV-01..04 |
+| 11 | One Score, Everywhere | SCR-01..05, AIV-05 |
+| 12 | The New Report | REP-01..07, SCR-06, SCR-07 |
+| 13 | Outbound: Pick, Approve, Dispatch (GATED) | OUT-01..10 |
+
+v1.0's phases 1 to 8 are archived at `.planning/milestones/v1.0-phases/`, its roadmap at
+`.planning/milestones/v1.0-ROADMAP.md`.
 
 ## Performance Metrics
 
@@ -204,7 +225,11 @@ The three prospect-quality todos were resolved by Phase 4.1 (moved to `.planning
 
 ### Blockers/Concerns
 
-- **Phase 8 blocked** on the Parallel Track: send channel chosen + AUP verified in writing, counsel on LIA/Art. 14 wording, separate warmed outreach domain. Phases 1-7 proceed regardless.
+- **Phase 13 (v2.0 Outbound) blocked for shipping, not for planning**, on the same legal gate that still holds v1.0's Phase 8: counsel must close Tw art. 11.7, the LIA and the Article 14 wording, and set `legal_regimes.legal_basis` and `article_14_notice_approved`. Phases 9 to 12 proceed regardless. The phase ships its mechanism refusing, which is the correct outcome, not a failure.
+- **SCR-01 replaces the score on a revenue-earning product.** The public scanner at `/` earns money today. SCR-05 is Phase 11's gate: verify the public scanner correct before the new score ships. SCR-03 (draft metric selection) and SCR-04 (old scans still render) land in the same phase, or draft generation and historic reports break in the gap.
+- **Three new vendors enter the stack in v2.0**: OpenAI (Phase 10, AI visibility probe), Google Places live-only (Phase 12, the on-screen band), and a send provider (Phase 13). Each is an exception to the "Vercel, Railway, Supabase, Resend, Gemini, Playwright only" constraint and needs a written override before it is built against. Each needs a spend cap.
+- **Nothing Google returns may be written to the database** (Maps Platform Terms §3.2.3). Only `place_id` may be kept. ENG-07 makes this a failing test in Phase 9, before Phase 12 writes the first Google call.
+- **Phase 8 (v1.0) stays blocked** on the legal half of its Parallel Track. Its mechanism is built and shut.
 - **Scoring verdict-threshold divergence** (`lib/scoring.ts` vs `scanner-service/src/index.ts`, 95/85/70/50 vs 90/70/50) is scheduled as the first plan of Phase 6 but is not a numbered v1 requirement. REQUIREMENTS.md may need an addition — see ROADMAP Coverage Notes.
 - **Blast radius:** nothing in this milestone may risk the existing scanner's email or scanning. It works and it earns. Phase 4 verification watches the public scanner's success rate during bulk runs.
 - **Overture data quality** is a proven risk here, not theoretical — prior research produced a 98% false-positive read before correction. Manual sample audit required in Phase 1.
@@ -214,6 +239,8 @@ The three prospect-quality todos were resolved by Phase 4.1 (moved to `.planning
 ### Roadmap Evolution
 
 - Phase 4.1 inserted after Phase 4: Prospect Quality — category exclusion, gate split, batch size (URGENT)
+- 2026-11-11: milestone v2.0 (Renewed Scanner) roadmap created. Phases 9 to 13, numbering continued from v1.0's Phase 8. The source plan proposed four phases (engine data, niche profile and score, report, outbound); the roadmap splits into five because the dependency chain demanded it. The niche profile moved forward into Phase 9 (the competitor radius, AI questions, per-trade checks and job values all live in it, and three of the six checks read from it), and the outside evidence (competitor set, AI visibility) became its own phase because like-for-like comparison needs the own-site extractors to exist first. The v1.0 roadmap is archived at `.planning/milestones/v1.0-ROADMAP.md`.
+- Open questions deliberately left unanswered and attached to the phase that needs them, for `/gsd-discuss-phase` to resolve: the per-trade job values (Phase 9), the score weights (Phase 11), the Places session-hold rule and the share-button decision (Phase 12), the send provider choice, pick-versus-triage reconciliation and the pre-scan phone/email light check (Phase 13).
 
 ## Deferred Items
 
@@ -237,6 +264,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-08-03T13:53:38.730Z
-Stopped at: Completed quick task 260803-lh0 (fix silent 1000-row PostgREST truncation)
+Last session: 2026-11-11T22:36:32.000Z
+Stopped at: v2.0 roadmap created (Phases 9 to 13, 40/40 requirements mapped). Awaiting `/gsd-discuss-phase 9`
 Resume file: None

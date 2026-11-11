@@ -100,16 +100,72 @@ Acknowledged, not in this milestone.
 
 ## Traceability
 
-Filled during roadmap creation.
+Filled during roadmap creation, 2026-11-11. Phase numbering continues from v1.0, which ended at
+Phase 8.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| (pending roadmap) | — | Pending |
+| ENG-01 | Phase 9 | Pending |
+| ENG-02 | Phase 9 | Pending |
+| ENG-03 | Phase 10 | Pending |
+| ENG-04 | Phase 10 | Pending |
+| ENG-05 | Phase 9 | Pending |
+| ENG-06 | Phase 9 | Pending |
+| ENG-07 | Phase 9 | Pending |
+| AIV-01 | Phase 10 | Pending |
+| AIV-02 | Phase 10 | Pending |
+| AIV-03 | Phase 10 | Pending |
+| AIV-04 | Phase 10 | Pending |
+| AIV-05 | Phase 11 | Pending |
+| NIC-01 | Phase 9 | Pending |
+| NIC-02 | Phase 9 | Pending |
+| NIC-03 | Phase 9 | Pending |
+| NIC-04 | Phase 9 | Pending |
+| SCR-01 | Phase 11 | Pending |
+| SCR-02 | Phase 11 | Pending |
+| SCR-03 | Phase 11 | Pending |
+| SCR-04 | Phase 11 | Pending |
+| SCR-05 | Phase 11 | Pending |
+| SCR-06 | Phase 12 | Pending |
+| SCR-07 | Phase 12 | Pending |
+| REP-01 | Phase 12 | Pending |
+| REP-02 | Phase 12 | Pending |
+| REP-03 | Phase 12 | Pending |
+| REP-04 | Phase 12 | Pending |
+| REP-05 | Phase 12 | Pending |
+| REP-06 | Phase 12 | Pending |
+| REP-07 | Phase 12 | Pending |
+| OUT-01 | Phase 13 | Pending |
+| OUT-02 | Phase 13 | Pending |
+| OUT-03 | Phase 13 | Pending |
+| OUT-04 | Phase 13 | Pending |
+| OUT-05 | Phase 13 | Pending |
+| OUT-06 | Phase 13 | Pending |
+| OUT-07 | Phase 13 | Pending |
+| OUT-08 | Phase 13 | Pending |
+| OUT-09 | Phase 13 | Pending |
+| OUT-10 | Phase 13 | Pending |
 
 **Coverage:**
 - v2.0 requirements: 40 total
-- Mapped to phases: 0
-- Unmapped: 40 ⚠️
+- Mapped to phases: 40
+- Unmapped: 0
+
+**Per phase:**
+
+| Phase | Name | Requirements | Count |
+|-------|------|--------------|-------|
+| 9 | Niche Profile & Own-Site Engine Data | NIC-01..04, ENG-01, ENG-02, ENG-05, ENG-06, ENG-07 | 9 |
+| 10 | Competitor Position & AI Visibility | ENG-03, ENG-04, AIV-01..04 | 6 |
+| 11 | One Score, Everywhere | SCR-01..05, AIV-05 | 6 |
+| 12 | The New Report | REP-01..07, SCR-06, SCR-07 | 9 |
+| 13 | Outbound: Pick, Approve, Dispatch (GATED) | OUT-01..10 | 10 |
+
+Three categories split across two phases each. The reasoning is recorded in the ROADMAP Coverage
+section: competitor comparison needs the own-site extractors to exist first (ENG-03, ENG-04),
+"zero weight in the total score" is only observable once a total score exists (AIV-05), and the
+money line and to-do list are report content rather than scoring logic (SCR-06, SCR-07).
 
 ---
 *Requirements defined: 2026-11-11*
+*Traceability filled: 2026-11-11 (5 phases, 9 to 13)*
