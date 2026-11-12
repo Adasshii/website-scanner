@@ -66,6 +66,29 @@ outbound change (Phase 13).
   renders every other section and a total score. The profile does not refuse to load, and the
   engine never substitutes a figure.
   — **Reversibility:** reversible — one optional field and one render branch.
+- **D-9-18: All six values are researched and approved. They live in `09-JOB-VALUES.md`, which is
+  the source the profile copies from.** Approved by Joshua on 2026-11-12: heat pump € 12.000,
+  solar panels € 3.200, bathroom € 7.500, kitchen € 11.000, roofing € 5.700, central heating
+  € 2.100. Each carries its source, its URL, the page's own last-updated date and the read date.
+  Two primary-source figures (heat pump, central heating) and one dated primary figure (solar) come
+  from Milieu Centraal; bathroom, kitchen and roofing come from dated Homedeal averages, because
+  Milieu Centraal does not cover those trades. Nothing comes from a single installer's own price
+  page.
+- **D-9-19: The job value is the pre-subsidy invoice total.** The heat pump figure is € 12.000, not
+  € 8.975. The installer invoices the full amount and the homeowner claims the € 3.025 ISDE
+  subsidy back from RVO separately. This follows D-9-02.
+- **D-9-20: Three copy obligations travel with three of the values, and Phase 12 must honour them.**
+  The solar copy names its basis ("a set of 8 panels"), because € 3.200 is Milieu Centraal's
+  8-panel example and a typical 2026 job is larger. The kitchen citation states that € 11.000 is
+  the midpoint of the € 7.000 to € 15.000 range the source gives, because no source publishes
+  € 11.000 outright. Central heating prints no money line (D-9-21).
+- **D-9-21: Central heating carries a value and still shows no money line.** At € 2.100 a boiler
+  swap does not cover one Adashi project at € 2.500 or more, so the plan's sentence "a website pays
+  for itself with one extra job" would be false for that trade. Joshua chose to print nothing
+  rather than rewrite it as a two-job line. **Consequence for the profile type:** the per-trade
+  money-line switch is separate from "has a value", because this trade has a value and shows no
+  line. A planner that models the switch as `value === undefined` gets this wrong.
+  — **Reversibility:** reversible — one extra boolean on the trade type and one render branch.
 
 ### Trade assignment
 
@@ -210,6 +233,13 @@ Joshua chose to leave these to Claude rather than discuss them. Research and pla
   S6 is why the AI probe runs five times; S8 and S9 are why the report needs `noindex` and a
   signed link. Both land in later phases, not this one.
 
+### This phase's own artifacts
+
+- `.planning/phases/09-niche-profile-own-site-engine-data/09-JOB-VALUES.md` — **the approved job
+  values and their citations. The profile's values are copied from this file, not re-researched.**
+  It also records what counts as an acceptable source for this niche, the cross-checks, and the
+  three copy obligations D-9-20 names.
+
 ### Milestone planning
 
 - `.planning/ROADMAP.md` — Phase 9 details, success criteria and notes. Also the Parallel Track
@@ -313,10 +343,13 @@ Joshua chose to leave these to Claude rather than discuss them. Research and pla
 <specifics>
 ## Specific Ideas
 
-- **The heat pump number at about 12,000 euros is a placeholder, not a verified figure.** It came
-  from the source plan with a citation attached and has never been checked. Joshua's words on why
-  it matters, recorded in the plan and the roadmap: wrong by 2x in front of someone who installs
-  heat pumps loses the report in one sentence.
+- **The heat pump number at about 12,000 euros was a placeholder and is now verified.** Researched
+  2026-11-12 and approved the same day: Milieu Centraal gives € 12.000 for an 8 kW all-electric
+  air-to-water heat pump, label A+++, including VAT and installation, before the € 3.025 ISDE
+  subsidy. The placeholder was right. Joshua's words on why it mattered, recorded in the plan and
+  the roadmap: wrong by 2x in front of someone who installs heat pumps loses the report in one
+  sentence. The roadmap's "Open question for `/gsd-discuss-phase`" on job values is closed by
+  D-9-18 and `09-JOB-VALUES.md`; the roadmap prose itself still shows it open.
 - **Joshua asked which profile form suited this job rather than choosing one.** D-9-09 is Claude's
   recommendation with its reasons written out, so it can be reversed on an argument rather than on
   a feeling.
