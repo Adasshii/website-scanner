@@ -56,7 +56,19 @@ These are not phases and they do not block Phases 9 to 12. They exist here becau
   4. Changing country, locale, trade, competitor radius or copy is a change to the profile file and nothing else, and every default job value in it carries a citation to the source it came from (NIC-02, NIC-03, NIC-04)
   5. A test fails if any field Google returns is written to a Supabase table (ENG-07)
 
-**Plans**: TBD
+**Plans**: 9 plans in 5 waves
+
+Plans:
+
+- [ ] 09-01-PLAN.md — Toolchain baseline and the ENG-07 Google-content guard (wave 1)
+- [ ] 09-02-PLAN.md — The installers niche profile: trades, values, citations, checks, copy, categories (wave 2)
+- [ ] 09-03-PLAN.md — Migration 021: Overture coordinates, operating status, the not-scoreable marker, prospect retention (wave 2)
+- [ ] 09-04-PLAN.md — ENG-06: the scoreable predicate folded into `isReleasable`, and the release and shortlist read paths (wave 3)
+- [ ] 09-05-PLAN.md — The own-site harvester and structured business facts (ENG-01) (wave 3)
+- [ ] 09-06-PLAN.md — Marker refresh, the never-drafted gates, and random import modes (wave 4)
+- [ ] 09-07-PLAN.md — On-site social proof and quote-request readiness (ENG-02, ENG-05) (wave 4)
+- [ ] 09-08-PLAN.md — Dutch trade detection, no model involved (wave 4)
+- [ ] 09-09-PLAN.md — The scan request contract, aggregation, migration 022 (wave 5)
 
 Notes:
 
@@ -65,9 +77,10 @@ Notes:
 - The profile holds copy and design, which the source plan names as the real cost of a new niche, not code. NIC-04 is therefore an architectural claim about the engine reading its parameters from the profile, provable here and re-provable every phase after.
 - Country and locale are dimensions of the profile, never hardcoded (`PROJECT.md` Geography constraint). NL is the first target, not the only one.
 
-**Open question for `/gsd-discuss-phase`:**
+**Open question for `/gsd-discuss-phase`: CLOSED 2026-11-12.**
 
-- **The per-trade job values await Joshua's check** (plan §13 item 7). Heat pump about €12,000 is a placeholder with a citation, not a verified number. Wrong by 2x in front of someone who installs heat pumps loses the report in one sentence. The defaults and their citations are Joshua's to confirm before the profile locks.
+- **The per-trade job values awaited Joshua's check** (plan §13 item 7). Closed by D-9-18: all six values were researched from Dutch public sources and approved individually on 2026-11-12, each with its source, URL, the page's own last-updated date and the read date, recorded in `09-JOB-VALUES.md`. Heat pump €12,000 (Milieu Centraal, pre-subsidy invoice total per D-9-19), solar €3,200, bathroom €7,500, kitchen €11,000 (midpoint of the source range, per D-9-20), roofing €5,700, central heating €2,100 with no money line (D-9-21). The profile copies from that file; it never re-derives a number.
+- **Added after research, D-9-22:** success criterion 1 now carries a fourth condition. Overture marks 3.7% of sampled installer rows permanently closed and the importer ignores that field, so a business marked permanently closed also fails the scoreable rule.
 
 ### Phase 10: Competitor Position & AI Visibility
 
