@@ -174,6 +174,39 @@ to depend on it.
   straight back.
   — **Reversibility:** costly — needs an additive migration for the marker.
 
+### Decided after research, 2026-11-12
+
+Research surfaced three questions the discussion could not have asked, because they depend on real
+Overture data and on what Phase 10 needs. Joshua answered all three on 2026-11-12.
+
+- **D-9-22: A business marked permanently closed fails the scoreable rule.** This is a FOURTH
+  condition on top of the three in D-9-14 to D-9-17, added deliberately. Evidence: Overture marks
+  3.7% of sampled installer rows `operating_status = permanently_closed`, and the importer ignores
+  that field today. You never pitch a dead business, and letting one through spends a full scan and
+  a draft on nothing.
+  — **Reversibility:** reversible — one more clause in the predicate and one more stored reason.
+- **D-9-23: The profile's competitor radius is 25 km.** It covers a city and its neighbours, which
+  matches how a Dutch installer actually travels for a job, so "installers near you" reads as true.
+  The value is a tunable default in the profile, which is exactly what success criterion 4 requires.
+  Phase 10 consumes it; Phase 9 only has to hold it.
+- **D-9-24: The AI questions field exists in Phase 9 and stays empty.** NIC-01 is satisfied by the
+  typed field existing and being read from the profile. Phase 10 writes the Dutch wording, with
+  Joshua approving it then. Nothing in Phase 9 fires a question, so empty is honest rather than a
+  stub pretending to work.
+
+### Required by correctness, not a choice
+
+- **D-9-25: Every new personal-data column joins the retention list in the same plan that creates
+  it.** Research found a gap the roadmap did not name. `prospects.latitude` and
+  `prospects.longitude` (D-9-16) and the stored site facts (which hold a phone number and a postal
+  address) are personal data. `lib/retention-constants.ts` lists the fields
+  `lib/retention.ts` clears when a prospect is anonymised. If the new columns are not added there,
+  an anonymised prospect keeps personal data, which breaks the CMP-13 and CMP-15 guarantee Phase 7
+  already shipped (see D-7-17 and D-7-19). This is finishing the change, not widening the phase. It
+  needs a test, in the shape of D-7-19's suppression-survives test.
+  — **Reversibility:** reversible — a list entry and a test, but shipping without it is a
+  compliance regression, not a missing nice-to-have.
+
 ### Claude's Discretion
 
 Joshua chose to leave these to Claude rather than discuss them. Research and planning decide them.
@@ -239,6 +272,13 @@ Joshua chose to leave these to Claude rather than discuss them. Research and pla
   values and their citations. The profile's values are copied from this file, not re-researched.**
   It also records what counts as an acceptable source for this niche, the cross-checks, and the
   three copy obligations D-9-20 names.
+- `.planning/phases/09-niche-profile-own-site-engine-data/09-RESEARCH.md` — the technical research,
+  including the real Overture confidence distribution, the 53-site JSON-LD sample, the Dutch trade
+  keyword pitfalls, and the `## Validation Architecture` section.
+- `.planning/phases/09-niche-profile-own-site-engine-data/09-PATTERNS.md` — 24 files mapped to
+  their closest existing analog, with code excerpts.
+- `.planning/phases/09-niche-profile-own-site-engine-data/09-VALIDATION.md` — the validation
+  strategy, seeded as a draft and filled by `/gsd-validate-phase`.
 
 ### Milestone planning
 
