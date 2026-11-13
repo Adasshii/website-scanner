@@ -205,7 +205,7 @@ shape of the ENG-07 guard, and whether on-site `AggregateRating` counts are read
 Two items named in the roadmap belong to later phases and are not touched here: the score weights
 (Phase 11's open question) and the Places session-hold rule (Phase 12's open question).
 
-(Folded todo, in scope per CONTEXT.md: "Add random import mode, TARGET_CATEGORIES and TARGET_REGIONS sampling." Scope folded in: the positive category list moves into the profile (D-9-11), and `scripts/import-prospects.ts` accepts `--category=random` sampling from it. `TARGET_REGIONS` and `--region=random` come with it. Explicit `--category=<value>` and `--region=<value>` keep working unchanged. Joshua's confirmation of the seed lists is still owed.)
+(Folded todo, in scope per CONTEXT.md: "Add random import mode, TARGET_CATEGORIES and TARGET_REGIONS sampling." Scope folded in: the positive category list moves into the profile (D-9-11), and `scripts/import-prospects.ts` accepts `--category=random` sampling from it. `TARGET_REGIONS` and `--region=random` come with it. Explicit `--category=<value>` and `--region=<value>` keep working unchanged. Joshua confirmed the seed lists on 2026-11-13: all eight categories stay, and TARGET_REGIONS holds all twelve Dutch provinces (excluding the `fryslan` alias), not the four cached ones. See 09-CONTEXT.md "Folded Todos" and 09-02-PLAN.md Task 2.)
 </user_constraints>
 
 <phase_requirements>
@@ -585,7 +585,7 @@ export function isReleasable(
 | 0.5 | 5,164 (85.5%) | 821 (13.6%) | 53 |
 | 0.7 | 1,477 (24.5%) | 4,544 (75.3%) | 17 |
 
-By 0.1 band: 0.0: 13, 0.1: 169, 0.2: 229, 0.3: 213, 0.4: 175, **0.5: 3,605**, 0.6: 237, 0.7: 327, 0.8: 259, 0.9: 803, 1.0: 537 [VERIFIED: live DuckDB query against s3://overturemaps-us-west-2/release/2026-10-21.0, scratch]. The mass at 0.5 is Overture's default, not a measurement. **Recommended seed: `MIN_MATCH_CONFIDENCE = 0.5` with `>=`**: it keeps the default-confidence rows and excludes only rows Overture itself scored below its default (about 12% of rows). Anything above 0.5 is a mistake. This is the sample, not Joshua's database: before locking, run the histogram on the real `prospect_sources` (query in Open Question 1). Duplicate hosts (2+ rows) are about 2% of hosts and often the same business listed under two categories at the same point (observed: `contractor` and `roofing` rows at one address, both 0.5).
+By 0.1 band: 0.0: 13, 0.1: 169, 0.2: 229, 0.3: 213, 0.4: 175, **0.5: 3,605**, 0.6: 237, 0.7: 327, 0.8: 259, 0.9: 803, 1.0: 537 [VERIFIED: live DuckDB query against s3://overturemaps-us-west-2/release/2026-10-21.0, scratch]. The mass at 0.5 is Overture's default, not a measurement. **Recommended seed: `MIN_MATCH_CONFIDENCE = 0.5` with `>=`**: it keeps the default-confidence rows and excludes only rows Overture itself scored below its default (about 12% of rows). Anything above 0.5 is a mistake. This is the sample, not Joshua's database. DONE 2026-11-13: the histogram was run on the real `prospect_sources` and returned a different shape (4 of 70 rows below 0.5, 44 at 0.9-1.0, no 0.5 spike); 0.5 with `>=` is confirmed and locked (Open Question 1). Duplicate hosts (2+ rows) are about 2% of hosts and often the same business listed under two categories at the same point (observed: `contractor` and `roofing` rows at one address, both 0.5).
 
 **Condition 3 is almost vacuous with Overture data.** In 9,567 sampled NL rows every geometry was a `POINT`, every row had an `addresses` entry, and only 23 (0.24%) had a null or empty `freeform` line [VERIFIED: live DuckDB probes, scratch]. The Overture places schema has no service-area or radius column; the columns are `id, geometry, confidence, websites, emails, socials, phones, brand, addresses, names, sources, operating_status, basic_category, taxonomy, version, bbox, theme, type` [VERIFIED: live `DESCRIBE` of the 2026-10-21.0 places parquet]. "A declared work-area centre" therefore cannot come from Overture and cannot come from the site (ENG-06 runs before the scan). Practical meaning: the stored Overture point. Define the condition as address text or a stored point (written above), tell the planner it will rarely fail, and note that conditions 1 and 2 do the real filtering. Because address text satisfies the rule, rows are not blocked while waiting for the re-import backfill.
 
@@ -621,7 +621,7 @@ By 0.1 band: 0.0: 13, 0.1: 169, 0.2: 229, 0.3: 213, 0.4: 175, **0.5: 3,605**, 0.
 - **Backfill behaviour.** The existing-source branch matches on `overture_gers_id` and currently updates only `prospect_sources` fields and calls the two `maybe*` helpers, so a plain re-import fills coordinates once the helper is added. Re-import is per country, region and category and respects `--limit`, so a prospect gets coordinates only if its slice is re-run. Provide a one-line count query for the plan's checkpoint: prospects where `latitude is null`. Phase 10 depends on full coverage, ENG-06 does not (address text satisfies condition 3).
 - **Open risk, unmeasured:** the existing-source branch never sets `overture_release`, so that column is null everywhere [VERIFIED: lib/prospect-upsert.ts inserts and updates carry no `overture_release`]. If an Overture GERS id changes between releases, a re-import would insert a second `prospect_sources` row for the same business through the domain-collapse branch, turning one match into two and failing condition 1 falsely. [ASSUMED: id churn between releases; not measured]. Log the count of `no_unique_match` rows at refresh time so a jump is visible.
 
-**Random mode (folded todo).** `--category=random` and `--region=random` resolve a concrete value from `profile.overtureCategories` and `profile.regions` before `parseImportArgs` returns, via an injectable RNG for tests; explicit values behave exactly as today, and `--category`/`--region` stay required (D-10) [VERIFIED: scripts/import-prospects.ts parseImportArgs]. Regions must be keys known to `REGION_BBOXES`; test that every profile region resolves through `resolveBbox`. Seed category proposal from measured NL counts (count, with website): `roofing` 2,538/1,908; `hvac_service` 1,018/953; `plumbing` 3,218/2,094; `electrician` 2,551/1,997; `energy_company` 3,425/3,345; `building_contractor` 1,464/1,118; `building_or_construction_service` 7,474/5,638; `contractor` 21,871/10,491 [VERIFIED: data/overture-categories.json aggregated across its four provinces, and the live Overture query confirmed these `taxonomy.primary` strings return rows]. Joshua's confirmation of the seed lists is still owed (CONTEXT.md folded todo).
+**Random mode (folded todo).** `--category=random` and `--region=random` resolve a concrete value from `profile.overtureCategories` and `profile.regions` before `parseImportArgs` returns, via an injectable RNG for tests; explicit values behave exactly as today, and `--category`/`--region` stay required (D-10) [VERIFIED: scripts/import-prospects.ts parseImportArgs]. Regions must be keys known to `REGION_BBOXES`; test that every profile region resolves through `resolveBbox`. Seed category proposal from measured NL counts (count, with website): `roofing` 2,538/1,908; `hvac_service` 1,018/953; `plumbing` 3,218/2,094; `electrician` 2,551/1,997; `energy_company` 3,425/3,345; `building_contractor` 1,464/1,118; `building_or_construction_service` 7,474/5,638; `contractor` 21,871/10,491 [VERIFIED: data/overture-categories.json aggregated across its four provinces, and the live Overture query confirmed these `taxonomy.primary` strings return rows]. Joshua confirmed the seed lists on 2026-11-13: all eight categories stay, and TARGET_REGIONS holds all twelve Dutch provinces, excluding the `fryslan` alias (CONTEXT.md folded todo, closed).
 
 ### Pattern 10: The scan request contract (D-9-12, D-9-13)
 
@@ -692,7 +692,7 @@ Not a rename or migration phase, but it adds stored personal data, so the equiva
 ### Pitfall 1: A confidence limit above 0.5 silently empties the list
 **What goes wrong:** at 0.7, 75% of hosts have zero rows above the limit and all become not scoreable.
 **Why it happens:** Overture's default confidence is 0.5 and 55% of rows sit exactly there.
-**How to avoid:** seed 0.5 with `>=`; run the histogram on the real `prospect_sources`; log counts per reason at refresh.
+**How to avoid:** seed 0.5 with `>=`; run the histogram on the real `prospect_sources` (DONE 2026-11-13, 0.5 confirmed); log counts per reason at refresh.
 **Warning signs:** the admin eligible count collapses after the refresh run.
 
 ### Pitfall 2: Migration not applied before the scanner deploy
@@ -803,7 +803,7 @@ function deref(v: unknown, byId: Map<string, Node>, hops = 0): unknown {
 
 | # | Claim | Section | Risk if Wrong |
 |---|-------|---------|---------------|
-| A1 | The Overture confidence distribution measured on the Noord-Holland slice (55% at 0.5) matches Joshua's imported `prospect_sources` | Pattern 7 | The seeded limit 0.5 drops more or fewer prospects than measured; mitigated by the histogram query before locking |
+| A1 | RESOLVED 2026-11-13: the Overture sample (55% at 0.5) does NOT match the real `prospect_sources`; production skews high (4 of 70 rows below 0.5, 44 at 0.9-1.0) | Pattern 7 | Resolved by running the histogram on production. The seeded limit 0.5 drops 4 source rows, confirming the seed. See Open Question 1 and 09-04-PLAN.md Task 3 |
 | A2 | `ST_X`/`ST_Y` behave the same under `@duckdb/node-api` 1.5.x as under Python duckdb 1.4.5 | Pattern 9 | Importer fails or returns nulls; caught by a live `--dry-run` before merge |
 | A3 | Zone weights (5/5/3/3/2/1), `MIN_TRADE_SCORE` 8 and `DOMINANCE_RATIO` 1.5 are right for 7-page scans | Pattern 6 | Too many or too few trades read; tunable constants, fixtures guard regressions |
 | A4 | All keyword and certification seed terms except those marked VERIFIED are correct and sufficient | Patterns 5 and 6 | Missed trades (money line quiet) or false trades; confirm on the real list |
@@ -818,10 +818,11 @@ function deref(v: unknown, byId: Map<string, Node>, hops = 0): unknown {
 
 ## Open Questions
 
-1. **What is the real `raw_confidence` histogram?**
-   - What we know: the Overture sample shows a 0.5 spike and the tail below it is about 12% of rows.
-   - What's unclear: whether Joshua's imported rows look the same.
-   - Recommendation: before locking the constant run `select round(raw_confidence::numeric, 1) as band, count(*) from prospect_sources group by 1 order by 1;` in the Supabase SQL Editor, then set `MIN_MATCH_CONFIDENCE` (default recommendation 0.5).
+1. **What is the real `raw_confidence` histogram?** — **ANSWERED 2026-11-13. Closed.**
+   - What we knew: the Overture sample shows a 0.5 spike and the tail below it is about 12% of rows.
+   - What was unclear: whether Joshua's imported rows look the same. They do not.
+   - Measured on production, 2026-11-13, band → count: 0.3 → 3, 0.4 → 1, 0.5 → 3, 0.6 → 4, 0.7 → 6, 0.8 → 9, 0.9 → 12, 1.0 → 32. Total 70 rows. 4 rows (5.7%) below 0.5; 44 rows at 0.9 or 1.0. The sample's 0.5 spike is absent; the real rows skew hard to the top. `select count(*) from prospects where domain is not null and triage_score is not null;` returned 54, the before-count for the eligible comparison.
+   - Outcome: `MIN_MATCH_CONFIDENCE = 0.5` with `>=` is confirmed and locked. Full record in 09-04-PLAN.md Task 3 human-check.
 
 2. **Should `operating_status = 'permanently_closed'` disqualify a business?**
    - What we know: 3.7% of sampled rows are permanently closed, the importer ignores the field, and D-9-14 names exactly three conditions.

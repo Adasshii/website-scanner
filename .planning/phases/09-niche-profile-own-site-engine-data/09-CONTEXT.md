@@ -247,7 +247,11 @@ Joshua chose to leave these to Claude rather than discuss them. Research and pla
   `--region=random` come with it, since region resolution itself is untouched and the existing
   bbox plus `ST_Within` check simply receives a sampled name. Explicit `--category=<value>` and
   `--region=<value>` keep working unchanged. The todo asks Joshua to confirm the seed lists before
-  locking; that confirmation is still owed.
+  locking. **Confirmed by Joshua on 2026-11-13:** all eight Overture categories stay, including the
+  three broad builder types (`contractor`, `building_or_construction_service`,
+  `building_contractor`); `TARGET_REGIONS` holds all twelve Dutch provinces, not the four cached
+  ones, and excludes the `fryslan` alias because `REGION_BBOXES` carries it as a duplicate of
+  `friesland`. Plan 09-02 Task 2 carries both lists. This item is closed.
 
 </decisions>
 
