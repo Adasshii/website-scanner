@@ -4,10 +4,12 @@
  * shape for a request/response function).
  *
  * Usage:
- *   npx tsx scripts/import-prospects.ts --country=NL --region=<region> --category=<category> [--dry-run] [--limit=N] [--campaign-tag=<tag>]
+ *   npx tsx scripts/import-prospects.ts --country=NL --region=<region|random> --category=<category|random> [--dry-run] [--limit=N] [--campaign-tag=<tag>]
  *
  * --country, --region, --category are all REQUIRED (D-10) and are validated
- * BEFORE any Overture query or DB write. --dry-run performs zero writes and
+ * BEFORE any Overture query or DB write. `random` is accepted as the value of
+ * --region and --category and resolves to an entry of the niche profile's own
+ * list (lib/niche-profile) before validation returns. --dry-run performs zero writes and
  * prints a random 20-30 row sample with a reachability signal that is always
  * routed through validateUrlSafe() (D-11, SSRF-safe — Pitfall 3 / T-01-06).
  * --limit caps the number of rows processed/written on a real run.
@@ -18,6 +20,7 @@
 import { parseArgs } from "node:util";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { queryOverturePlaces, type OvertureQueryParams } from "@/lib/overture-client";
+import { INSTALLERS_PROFILE } from "@/lib/niche-profile";
 import { upsertOverturePlace } from "@/lib/prospect-upsert";
 import { refreshScoreability, type ScoreabilityRefreshResult } from "@/lib/scoreability-refresh";
 import { createServerClient } from "@/lib/supabase";
@@ -26,8 +29,12 @@ import { isAggregatorDomain, normalizeDomain } from "@/lib/domain-normalize";
 import type { OverturePlaceRow } from "@/types/scanner";
 
 const USAGE =
-  "Usage: npx tsx scripts/import-prospects.ts --country=<ISO2> --region=<region> " +
-  "--category=<category> [--dry-run] [--limit=N] [--campaign-tag=<tag>]";
+  "Usage: npx tsx scripts/import-prospects.ts --country=<ISO2> --region=<region|random> " +
+  "--category=<category|random> [--dry-run] [--limit=N] [--campaign-tag=<tag>]\n" +
+  "  random picks one entry from the niche profile's own list (lib/niche-profile).";
+
+/** The one flag value that means "sample from the profile" instead of naming a value. */
+const RANDOM_VALUE = "random";
 
 export class ImportArgsError extends Error {}
 
@@ -41,11 +48,27 @@ export interface ImportArgs {
 }
 
 /**
+ * Picks one entry. `random()` is expected in [0, 1); a source that returns
+ * exactly 1 is clamped to the last entry rather than indexing past the end.
+ */
+function pickFrom(list: readonly string[], random: () => number): string {
+  return list[Math.min(list.length - 1, Math.floor(random() * list.length))];
+}
+
+/**
  * Parses and validates CLI args. All three filters are REQUIRED (D-10) and
  * checked here, synchronously, before anything else runs — a missing filter
  * throws with zero side effects (no Overture query, no Supabase client).
+ *
+ * `random` is a VALUE for --region and --category, never a way to omit them: it
+ * is resolved to a concrete entry from the installers profile's own lists
+ * BEFORE this function returns (D-9-11, NIC-04), so runImport, the Overture
+ * query, resolveBbox and the province containment check all see an ordinary
+ * explicit value. The region is drawn first, then the category. `random` is the
+ * injectable source, so a test can assert an exact result. Explicit values never
+ * draw from it.
  */
-export function parseImportArgs(argv: string[]): ImportArgs {
+export function parseImportArgs(argv: string[], random: () => number = Math.random): ImportArgs {
   try {
     const { values } = parseArgs({
       args: argv,
@@ -81,10 +104,26 @@ export function parseImportArgs(argv: string[]): ImportArgs {
       limit = Math.floor(parsedLimit);
     }
 
+    const country = values.country as string;
+    let region = values.region as string;
+    let category = values.category as string;
+
+    if (region === RANDOM_VALUE || category === RANDOM_VALUE) {
+      // The profile's lists describe its own country only. A random region for
+      // another country would fail later in resolveBbox, so refuse here.
+      if (region === RANDOM_VALUE && country.toUpperCase() !== INSTALLERS_PROFILE.country) {
+        throw new ImportArgsError(
+          `${USAGE}\n\n--region=random samples ${INSTALLERS_PROFILE.country} regions only, got --country=${country}`
+        );
+      }
+      if (region === RANDOM_VALUE) region = pickFrom(INSTALLERS_PROFILE.regions, random);
+      if (category === RANDOM_VALUE) category = pickFrom(INSTALLERS_PROFILE.overtureCategories, random);
+    }
+
     return {
-      country: values.country as string,
-      region: values.region as string,
-      category: values.category as string,
+      country,
+      region,
+      category,
       dryRun: Boolean(values["dry-run"]),
       limit,
       campaignTag: (values["campaign-tag"] as string | undefined) ?? null,
@@ -109,6 +148,8 @@ export interface ImportDeps {
   fetchReachability: (url: string) => Promise<{ ok: boolean; status: number }>;
   /** End-of-run marker refresh (ENG-06, D-9-17). Never called on a dry run. */
   refreshScoreability: (sb: SupabaseClient) => Promise<ScoreabilityRefreshResult>;
+  /** Random source for --region=random and --category=random. Defaults to Math.random. */
+  random?: () => number;
 }
 
 /**
@@ -140,6 +181,7 @@ const defaultDeps: ImportDeps = {
   validateUrlSafe,
   fetchReachability: defaultFetchReachability,
   refreshScoreability,
+  random: Math.random,
 };
 
 // ── Dry-run reachability + sample reporting ────────────────────────────────
@@ -299,7 +341,7 @@ export async function runCli(
   argv: string[],
   deps: ImportDeps = defaultDeps
 ): Promise<ImportResult> {
-  const args = parseImportArgs(argv);
+  const args = parseImportArgs(argv, deps.random);
   return runImport(args, deps);
 }
 

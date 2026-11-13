@@ -10,6 +10,8 @@ import { describe, expect, it, vi } from "vitest";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { makeOverturePlace } from "@/tests/fixtures/overture";
 import type { ScoreabilityRefreshResult } from "@/lib/scoreability-refresh";
+import { INSTALLERS_PROFILE } from "@/lib/niche-profile";
+import { resolveBbox } from "@/lib/overture-bboxes";
 import { validateUrlSafe } from "@/lib/url-validation.server";
 import {
   ImportArgsError,
@@ -90,6 +92,126 @@ describe("parseImportArgs", () => {
     expect(() =>
       parseImportArgs(["--country=NL", "--region=NH", "--category=cafe", "--limit=abc"])
     ).toThrow(ImportArgsError);
+  });
+});
+
+/** A random source that returns the given values in order, then throws if asked for another. */
+function sequence(...values: number[]): () => number {
+  let i = 0;
+  return () => {
+    if (i >= values.length) throw new Error("random source drawn more times than expected");
+    return values[i++];
+  };
+}
+
+const PROFILE_REGIONS = INSTALLERS_PROFILE.regions;
+const PROFILE_CATEGORIES = INSTALLERS_PROFILE.overtureCategories;
+
+describe("parseImportArgs — random category and region (D-9-11, NIC-04)", () => {
+  it("--category=random resolves to an exact member of the profile's category list", () => {
+    const first = parseImportArgs(["--country=NL", "--region=NH", "--category=random"], sequence(0));
+    const last = parseImportArgs(["--country=NL", "--region=NH", "--category=random"], sequence(0.999999));
+
+    expect(first.category).toBe(PROFILE_CATEGORIES[0]);
+    expect(last.category).toBe(PROFILE_CATEGORIES[PROFILE_CATEGORIES.length - 1]);
+  });
+
+  it("--region=random resolves to an exact member of the profile's region list", () => {
+    const first = parseImportArgs(["--country=NL", "--region=random", "--category=cafe"], sequence(0));
+    const last = parseImportArgs(["--country=NL", "--region=random", "--category=cafe"], sequence(0.999999));
+
+    expect(first.region).toBe(PROFILE_REGIONS[0]);
+    expect(last.region).toBe(PROFILE_REGIONS[PROFILE_REGIONS.length - 1]);
+  });
+
+  it("both flags random at once draws the region first, then the category, and returns concrete values", () => {
+    const args = parseImportArgs(
+      ["--country=NL", "--region=random", "--category=random"],
+      sequence(0, 0.999999)
+    );
+
+    expect(args.region).toBe(PROFILE_REGIONS[0]);
+    expect(args.category).toBe(PROFILE_CATEGORIES[PROFILE_CATEGORIES.length - 1]);
+    expect(args.region).not.toBe("random");
+    expect(args.category).not.toBe("random");
+  });
+
+  it("explicit values pass through byte-identical and never draw from the random source", () => {
+    const never = () => {
+      throw new Error("random source must not be drawn for explicit values");
+    };
+
+    const args = parseImportArgs(
+      ["--country=NL", "--region=Noord-Holland", "--category=roofing", "--limit=3"],
+      never
+    );
+
+    expect(args).toEqual({
+      country: "NL",
+      region: "Noord-Holland",
+      category: "roofing",
+      dryRun: false,
+      limit: 3,
+      campaignTag: null,
+    });
+  });
+
+  it("random is a value, not a way to omit a flag: each missing flag still raises with random on the other", () => {
+    expect(() => parseImportArgs(["--country=NL", "--region=random"], sequence(0))).toThrow(
+      ImportArgsError
+    );
+    expect(() => parseImportArgs(["--country=NL", "--category=random"], sequence(0))).toThrow(
+      ImportArgsError
+    );
+    expect(() => parseImportArgs(["--region=random", "--category=random"], sequence(0, 0))).toThrow(
+      ImportArgsError
+    );
+  });
+
+  it("a random source that returns exactly 1 still resolves to a list member, never undefined", () => {
+    const args = parseImportArgs(["--country=NL", "--region=random", "--category=random"], sequence(1, 1));
+
+    expect(PROFILE_REGIONS).toContain(args.region);
+    expect(PROFILE_CATEGORIES).toContain(args.category);
+  });
+
+  it("refuses a random region for a country other than the profile's, instead of crashing later in resolveBbox", () => {
+    expect(() =>
+      parseImportArgs(["--country=BE", "--region=random", "--category=roofing"], sequence(0))
+    ).toThrow(ImportArgsError);
+  });
+
+  it("every region in the profile's list resolves through resolveBbox without throwing", () => {
+    expect(PROFILE_REGIONS.length).toBeGreaterThan(0);
+    for (const region of PROFILE_REGIONS) {
+      expect(() => resolveBbox(INSTALLERS_PROFILE.country, region), region).not.toThrow();
+    }
+  });
+
+  it("the usage text names random as an accepted value for both flags", () => {
+    let message = "";
+    try {
+      parseImportArgs([]);
+    } catch (err) {
+      message = (err as Error).message;
+    }
+    expect(message).toMatch(/--region=<region\|random>/);
+    expect(message).toMatch(/--category=<category\|random>/);
+  });
+
+  it("runCli hands the injected random source to the parser and queries Overture with the sampled values", async () => {
+    const queryOverturePlaces = vi.fn(async () => []);
+    const deps = makeDeps({ queryOverturePlaces, random: sequence(0, 0) });
+
+    await runCli(["--country=NL", "--region=random", "--category=random", "--dry-run"], deps);
+
+    expect(queryOverturePlaces).toHaveBeenCalledWith(
+      expect.objectContaining({
+        country: "NL",
+        region: PROFILE_REGIONS[0],
+        category: PROFILE_CATEGORIES[0],
+      })
+    );
   });
 });
 
