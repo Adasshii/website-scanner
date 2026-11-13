@@ -35,6 +35,24 @@ export const DEFAULT_CUTOFF = 60; // tunable default — score <= cutoff is elig
 export const RELEASE_CEILING = 20; // tunable default — hard per-release-invocation cap (D-06)
 export const TARGET_PASS_RATE = 0.3; // tunable default — ~30% target, informs cutoff tuning, not enforced in code
 
+// ── Scoreable rule: Overture match confidence (ENG-06, D-9-15, D-9-R2) ──
+// A prospect_sources row counts as a qualifying match when its raw_confidence
+// is at or above this limit (inclusive, `>=`). The rule needs exactly one
+// qualifying match; see lib/triage-eligibility.ts scoreableVerdict.
+//
+// Why 0.5 is the only defensible seed: 0.5 is Overture's own default
+// confidence, not a measurement, and 55% of installer-category rows with a
+// website sit at exactly that value in the research sample. At 0.5 inclusive
+// about 86% of hosts have exactly one qualifying match and about 14% drop; at
+// 0.7 about 75% of hosts drop entirely. Production check, 2026-11-13: 70
+// prospect_sources rows, 4 (5.7%) below 0.5, 44 at 0.9 or 1.0, so the limit
+// holds on this database too.
+//
+// Raising this value needs a marker refresh run (plan 09-06): the stored
+// prospects.not_scoreable_reason is computed from it and does not recompute
+// on its own.
+export const MIN_MATCH_CONFIDENCE = 0.5; // tunable default
+
 // ── Weighted-score bands (Claude's discretion, D-03) ───────────────
 // Score direction: starts at 100, deductions only apply when gated===false
 // (a gated prospect's score is irrelevant to ranking — sorted purely by

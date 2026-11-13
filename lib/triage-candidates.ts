@@ -13,6 +13,7 @@ import type { TriageScore } from "@/types/triage";
 import { chunkIds } from "@/lib/chunk-ids";
 import { deriveLifecycleState, type FineLifecycleState, type LifecycleInputs } from "@/lib/lifecycle";
 import { SHORTLIST_ID_CHUNK_SIZE } from "@/lib/triage-constants";
+import type { ScoreableRow, ScoreableSource } from "@/lib/triage-eligibility";
 
 export interface TriageCandidate {
   id: string;
@@ -20,7 +21,7 @@ export interface TriageCandidate {
   website_url: string | null;
 }
 
-export interface ShortlistRow {
+export interface ShortlistRow extends ScoreableRow {
   id: string;
   domain: string;
   category: string | null;
@@ -42,6 +43,15 @@ export interface ShortlistRow {
   /** Resolved server-side via deriveLifecycleState() (D-7-14, UI-SPEC E4) —
    * the admin client never computes a stage, it only renders one. */
   stage: FineLifecycleState;
+  /** The stored scoreable marker (migration 022, D-9-17): a reason code when
+   * the business failed the scoreable rule at the last refresh, else null. The
+   * row stays visible and this is what the NOT SCOREABLE pill shows. Display
+   * only: eligibility is recomputed by isReleasable, never read from here. */
+  not_scoreable_reason: string | null;
+  // Also required by ScoreableRow, selected so the admin client can call
+  // isReleasable() directly: website_url, address, latitude, longitude, and
+  // `sources`, the prospect_sources embed mapped to confidence numbers and
+  // status strings only (T-9-08), so no raw source row reaches the browser.
 }
 
 /**
@@ -82,15 +92,16 @@ export async function getShortlist(sb: SupabaseClient): Promise<ShortlistRow[]> 
   const { data, error } = await sb
     .from("prospects")
     .select(
-      "id, domain, category, triage_score, scan_released_at, scan_status, scan_attempts, scan_status_reason, latest_scan_id, contact_email_type, contact_email, lifecycle_state, triage_checked_at, booked_at"
+      "id, domain, category, triage_score, scan_released_at, scan_status, scan_attempts, scan_status_reason, latest_scan_id, contact_email_type, contact_email, lifecycle_state, triage_checked_at, booked_at, website_url, address, latitude, longitude, not_scoreable_reason, prospect_sources(raw_confidence, raw_operating_status)"
     )
     .not("triage_score", "is", null);
   if (error) throw error;
-  const rawRows = (data ?? []) as (ShortlistRow & {
+  const rawRows = (data ?? []) as unknown as (Omit<ShortlistRow, "sources" | "has_contact_email" | "has_outreach_draft" | "stage"> & {
     contact_email: string | null;
     lifecycle_state: string;
     triage_checked_at: string | null;
     booked_at: string | null;
+    prospect_sources: ScoreableSource[] | null;
   })[];
 
   if (rawRows.length === 0) return [];
@@ -138,9 +149,15 @@ export async function getShortlist(sb: SupabaseClient): Promise<ShortlistRow[]> 
   }
 
   return rawRows.map((row) => {
-    const { contact_email, lifecycle_state, triage_checked_at, booked_at, ...rest } = row;
+    const { contact_email, lifecycle_state, triage_checked_at, booked_at, prospect_sources, ...rest } = row;
     return {
       ...rest,
+      // Only the numbers and the status string cross to the client (T-9-08);
+      // a missing embed is an empty list, which fails the rule closed.
+      sources: (prospect_sources ?? []).map((s) => ({
+        raw_confidence: s.raw_confidence,
+        raw_operating_status: s.raw_operating_status,
+      })),
       has_contact_email: !!contact_email && contact_email.trim().length > 0,
       has_outreach_draft: draftedIds.has(row.id),
       stage: deriveLifecycleState({

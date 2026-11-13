@@ -11,26 +11,40 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { TriageScore } from "@/types/triage";
 import { DEFAULT_CUTOFF, RELEASE_CEILING } from "@/lib/triage-constants";
-import { isReleasable } from "@/lib/triage-eligibility";
+import { isReleasable, type ScoreableRow, type ScoreableSource } from "@/lib/triage-eligibility";
 
 export interface ReleaseOptions {
   cutoff?: number;
   ceiling?: number;
 }
 
-export interface ReleaseCandidate {
+export interface ReleaseCandidate extends ScoreableRow {
   id: string;
   triage_score: TriageScore;
   category: string | null;
+  /** The stored scoreable marker (migration 022). Informational: isReleasable
+   * recomputes from the fields above and never trusts this column, so a stale
+   * marker cannot release or block anyone. */
+  not_scoreable_reason: string | null;
 }
+
+// Everything isReleasable reads, in one place. The prospect_sources embed works
+// because prospect_sources.prospect_id references prospects(id) (migration 011).
+const RELEASE_SELECT =
+  "id, triage_score, category, domain, website_url, address, latitude, longitude, not_scoreable_reason, prospect_sources(raw_confidence, raw_operating_status)";
+
+type ReleaseRow = Omit<ReleaseCandidate, "sources"> & {
+  prospect_sources: ScoreableSource[] | null;
+};
 
 /**
  * Selects the worst-N eligible, un-released prospects, worst-first
  * (gated DESC, then score ASC), sliced to `ceiling`.
  *
  * Eligible = isReleasable(row, cutoff) — the single releasability rule
- * (D-4.1-01/03/04): unreachable and excluded-category rows are never
- * eligible, no-HTTPS reachable rows are always eligible (gated fast-track).
+ * (D-4.1-01/03/04, ENG-06): unreachable, excluded-category and not-scoreable
+ * rows are never eligible, no-HTTPS reachable scoreable rows are always
+ * eligible (gated fast-track).
  * Also requires domain is not null, triage_score is not null, and
  * scan_released_at is null (D-06 — already-released prospects are never
  * re-selected).
@@ -41,13 +55,17 @@ export async function selectWorstN(
 ): Promise<ReleaseCandidate[]> {
   const { data, error } = await sb
     .from("prospects")
-    .select("id, triage_score, category")
+    .select(RELEASE_SELECT)
     .not("domain", "is", null)
     .not("triage_score", "is", null)
     .is("scan_released_at", null);
   if (error) throw error;
 
-  const candidates = (data ?? []) as ReleaseCandidate[];
+  // Map the embed to the `sources` field the predicate expects. A missing
+  // embed becomes an empty list, which is not one match: it fails closed.
+  const candidates: ReleaseCandidate[] = ((data ?? []) as unknown as ReleaseRow[]).map(
+    ({ prospect_sources, ...row }) => ({ ...row, sources: prospect_sources ?? [] })
+  );
 
   const eligible = candidates.filter((p) => isReleasable(p, cutoff));
 

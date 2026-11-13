@@ -50,6 +50,13 @@ function makeRow(overrides?: Partial<ShortlistRow>): ShortlistRow {
     has_contact_email: false,
     has_outreach_draft: false,
     stage: "new",
+    // Scoreable by default (ENG-06): own domain, a street address, one match.
+    website_url: "https://example.test",
+    address: "Kerkstraat 1, Utrecht",
+    latitude: null,
+    longitude: null,
+    not_scoreable_reason: null,
+    sources: [{ raw_confidence: 0.9, raw_operating_status: null }],
     ...overrides,
   };
 }
