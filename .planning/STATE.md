@@ -5,16 +5,16 @@ milestone_name: Renewed Scanner
 current_phase: 09
 current_phase_name: Niche Profile & Own-Site Engine Data
 status: executing
-stopped_at: Completed 09-04-PLAN.md
-last_updated: "2026-11-13T16:09:50.297Z"
+stopped_at: Completed 09-05-PLAN.md
+last_updated: "2026-11-13T18:57:00.639Z"
 last_activity: 2026-11-13
 last_activity_desc: Phase 09 execution started
-state_head: 95ea7246bf36b5498c9705b0993f34871044b909
+state_head: 904033efbd849fa54c6a5e0b707af275912220c5
 progress:
   total_phases: 5
   completed_phases: 0
   total_plans: 9
-  completed_plans: 4
+  completed_plans: 5
   percent: 0
 ---
 
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-11-11)
 ## Current Position
 
 Phase: 09 (Niche Profile & Own-Site Engine Data) — EXECUTING
-Plan: 5 of 9
+Plan: 6 of 9
 Status: Ready to execute
 Last activity: 2026-11-13 — Phase 09 execution started
 
@@ -125,6 +125,7 @@ v1.0's phases 1 to 8 are archived at `.planning/milestones/v1.0-phases/`, its ro
 | Phase 09 P02 | 7 min | 3 tasks | 9 files |
 | Phase 09 P03 | 22 min | 4 tasks | 10 files |
 | Phase 09 P04 | 9 min | 3 tasks | 10 files |
+| Phase 09 P05 | 2h 40m | 3 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -224,6 +225,9 @@ Recent decisions affecting current work:
 - [Phase 09]: 09-03: Task 1 one-way door resolved proceed-as-recorded (2026-11-13); coordinates stored on prospects at import (D-9-16). Migration 022 applied in production by hand; prospects columns confirmed (4 rows), raw_operating_status and the null-coordinate baseline not re-captured
 - [Phase 09]: 09-04: scoreable rule lives inside isReleasable; MIN_MATCH_CONFIDENCE = 0.5 inclusive confirmed against production histogram
 - [Phase 09]: 09-04: row field is 'sources' (confidence plus operating status), absence fails closed via positive-evidence checks; a not-scoreable row is never hidden by the Shortlist empty state
+- [Phase 09]: 09-05: a field not found while any JSON-LD block failed to parse, or a harvest cap cut the read short, is unreadable, not missing
+- [Phase 09]: 09-05: JSON-LD nodes enter the pool before microdata, so JSON-LD wins a tie and each found field records its source
+- [Phase 09]: 09-05: extractOwnSiteFacts takes OwnSiteHarvest or null; plan 09-09 maps harvestOwnSite's unreadable outcome to null
 
 ### Pending Todos
 
@@ -276,6 +280,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-11-13T16:09:50.262Z
-Stopped at: Completed 09-04-PLAN.md
+Last session: 2026-11-13T18:57:00.614Z
+Stopped at: Completed 09-05-PLAN.md
 Resume file: None
