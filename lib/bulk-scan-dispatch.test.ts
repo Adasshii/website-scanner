@@ -7,7 +7,7 @@
  */
 import { describe, expect, it, vi } from "vitest";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { dispatchClaimedProspects, type DispatchProspect } from "./bulk-scan-dispatch";
+import { dispatchClaimedProspects } from "./bulk-scan-dispatch";
 import { BULK_USER_AGENT, BULK_DISPATCH_CONCURRENCY, BULK_SCAN_IP_HASH } from "./bulk-scan-constants";
 import type { ClaimedProspect } from "./scan-queue";
 import type { TriageResponseLike } from "./triage-fetch";
@@ -17,16 +17,47 @@ type Call = { table: string; op: string; payload?: unknown };
 /** Chainable + thenable mock query builder, one per `.from()` call. Records
  * every insert/update/delete payload into a shared `calls` array so
  * assertions can inspect exactly what was written, to which table. */
+/** What dispatch's fresh scoreable read returns for a prospect: scoreable by default. */
+type ScoreableRead = {
+  domain: string | null;
+  website_url: string | null;
+  address: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  prospect_sources: { raw_confidence: number | null; raw_operating_status: string | null }[] | null;
+};
+
+const SCOREABLE_READ: ScoreableRead = {
+  domain: "shop.test",
+  website_url: "https://shop.test",
+  address: "Kerkstraat 1, Utrecht",
+  latitude: null,
+  longitude: null,
+  prospect_sources: [{ raw_confidence: 0.9, raw_operating_status: null }],
+};
+
 function makeSupabaseMock(config: {
   scansInsertError?: unknown;
   scansDeleteError?: unknown;
   prospectsUpdateError?: unknown;
+  /** The row the fresh `prospects` select returns (ENG-06 re-check at dispatch). */
+  scoreableRead?: Partial<ScoreableRead>;
+  scoreableReadError?: unknown;
 } = {}) {
   const calls: Call[] = [];
 
   function makeBuilder(table: string) {
     let op = "";
     const builder: Record<string, unknown> = {
+      select: vi.fn(() => {
+        op = "select";
+        return builder;
+      }),
+      single: vi.fn(async () =>
+        config.scoreableReadError
+          ? { data: null, error: config.scoreableReadError }
+          : { data: { ...SCOREABLE_READ, ...config.scoreableRead }, error: null }
+      ),
       insert: vi.fn((payload: unknown) => {
         op = "insert";
         calls.push({ table, op, payload });
@@ -206,16 +237,26 @@ describe("dispatchClaimedProspects", () => {
     });
   });
 
-  it("T-9-12: a prospect marked not scoreable is skipped and the scanner client is never called", async () => {
-    const { sb, calls } = makeSupabaseMock();
+  // ENG-06, T-9-12: dispatch computes the verdict fresh from the prospect's own
+  // columns and prospect_sources. A claimed prospect carries NO stored marker
+  // here (a prospect released before migration 022 never had one), so these
+  // cases prove the refusal does not depend on one.
+  it.each<[string, Partial<ScoreableRead>]>([
+    ["no_own_domain", { website_url: "https://www.tripadvisor.com/Hotel_Review-x" }],
+    ["no_unique_match", { prospect_sources: [] }],
+    ["no_location", { address: null }],
+    ["permanently_closed", { prospect_sources: [{ raw_confidence: 0.9, raw_operating_status: "permanently_closed" }] }],
+  ])("T-9-12: a released prospect with no stored marker that fails the rule (%s) is refused and the scanner client is never called", async (_reason, scoreableRead) => {
+    const { sb, calls } = makeSupabaseMock({ scoreableRead });
     const client = { fullScanBulk: vi.fn(async () => ({ accepted: true })) };
     const fetchImpl = makeFetchImpl();
 
-    const outcomes = await dispatchClaimedProspects(
-      sb,
-      [makeProspect({ not_scoreable_reason: "no_unique_match" } as Partial<DispatchProspect>)],
-      { client, fetchImpl, sleep: async () => {}, validateUrlSafe: passthroughValidate }
-    );
+    const outcomes = await dispatchClaimedProspects(sb, [makeProspect()], {
+      client,
+      fetchImpl,
+      sleep: async () => {},
+      validateUrlSafe: passthroughValidate,
+    });
 
     expect(outcomes).toEqual([{ id: "p1", dispatched: false, reason: "not_scoreable" }]);
     expect(client.fullScanBulk).toHaveBeenCalledTimes(0);
@@ -230,19 +271,57 @@ describe("dispatchClaimedProspects", () => {
     });
   });
 
-  it("T-9-12: a prospect with a null marker still dispatches exactly as before", async () => {
+  it("T-9-12: a prospect that passes the rule dispatches exactly as before", async () => {
     const { sb, calls } = makeSupabaseMock();
     const client = { fullScanBulk: vi.fn(async () => ({ accepted: true })) };
 
-    const outcomes = await dispatchClaimedProspects(
-      sb,
-      [makeProspect({ not_scoreable_reason: null } as Partial<DispatchProspect>)],
-      { client, fetchImpl: makeFetchImpl(), sleep: async () => {}, validateUrlSafe: passthroughValidate }
-    );
+    const outcomes = await dispatchClaimedProspects(sb, [makeProspect()], {
+      client,
+      fetchImpl: makeFetchImpl(),
+      sleep: async () => {},
+      validateUrlSafe: passthroughValidate,
+    });
 
     expect(outcomes).toEqual([{ id: "p1", dispatched: true }]);
     expect(client.fullScanBulk).toHaveBeenCalledTimes(1);
     expect(calls.some((c) => c.table === "scans" && c.op === "insert")).toBe(true);
+  });
+
+  it("D-9-17: a stale stored marker is not trusted: a prospect that now passes the rule still dispatches", async () => {
+    const { sb } = makeSupabaseMock();
+    const client = { fullScanBulk: vi.fn(async () => ({ accepted: true })) };
+    const stale = { ...makeProspect(), not_scoreable_reason: "no_unique_match" };
+
+    const outcomes = await dispatchClaimedProspects(sb, [stale], {
+      client,
+      fetchImpl: makeFetchImpl(),
+      sleep: async () => {},
+      validateUrlSafe: passthroughValidate,
+    });
+
+    expect(outcomes).toEqual([{ id: "p1", dispatched: true }]);
+    expect(client.fullScanBulk).toHaveBeenCalledTimes(1);
+  });
+
+  it("fails closed: when the fresh read errors, the prospect is not dispatched and no attempt is spent", async () => {
+    const { sb, calls } = makeSupabaseMock({ scoreableReadError: { message: "boom" } });
+    const client = { fullScanBulk: vi.fn(async () => ({ accepted: true })) };
+
+    const outcomes = await dispatchClaimedProspects(sb, [makeProspect()], {
+      client,
+      fetchImpl: makeFetchImpl(),
+      sleep: async () => {},
+      validateUrlSafe: passthroughValidate,
+    });
+
+    expect(outcomes).toEqual([{ id: "p1", dispatched: false, reason: "scoreable_check_failed" }]);
+    expect(client.fullScanBulk).toHaveBeenCalledTimes(0);
+    expect(calls.some((c) => c.table === "scans")).toBe(false);
+    expect(calls).toContainEqual({
+      table: "prospects",
+      op: "update",
+      payload: { scan_status: "failed", scan_status_reason: "scoreable_check_failed" },
+    });
   });
 
   it("passes BULK_USER_AGENT (not any other identity) to the scanner client", async () => {
