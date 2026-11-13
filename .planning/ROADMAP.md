@@ -59,15 +59,23 @@ These are not phases and they do not block Phases 9 to 12. They exist here becau
 **Plans**: 9 plans in 5 waves
 
 Plans:
-
+**Wave 1**
 - [ ] 09-01-PLAN.md — Toolchain baseline and the ENG-07 Google-content guard (wave 1)
+
+**Wave 2** *(blocked on Wave 1 completion)*
 - [ ] 09-02-PLAN.md — The installers niche profile: trades, values, citations, checks, copy, categories (wave 2)
 - [ ] 09-03-PLAN.md — Migration 021: Overture coordinates, operating status, the not-scoreable marker, prospect retention (wave 2)
+
+**Wave 3** *(blocked on Wave 2 completion)*
 - [ ] 09-04-PLAN.md — ENG-06: the scoreable predicate folded into `isReleasable`, and the release and shortlist read paths (wave 3)
 - [ ] 09-05-PLAN.md — The own-site harvester and structured business facts (ENG-01) (wave 3)
+
+**Wave 4** *(blocked on Wave 3 completion)*
 - [ ] 09-06-PLAN.md — Marker refresh, the never-drafted gates, and random import modes (wave 4)
 - [ ] 09-07-PLAN.md — On-site social proof and quote-request readiness (ENG-02, ENG-05) (wave 4)
 - [ ] 09-08-PLAN.md — Dutch trade detection, no model involved (wave 4)
+
+**Wave 5** *(blocked on Wave 4 completion)*
 - [ ] 09-09-PLAN.md — The scan request contract, aggregation, migration 022 (wave 5)
 
 Notes:
