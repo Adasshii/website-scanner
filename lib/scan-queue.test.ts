@@ -73,6 +73,12 @@ describe("armBatch", () => {
     expect(armed).toEqual([]);
     expect(builders.length).toBe(1); // no update-builder created
   });
+
+  it("only selects scanner-owned prospects (Atrium, 2026-11-12)", async () => {
+    const { sb, builders } = makeSupabaseMock([{ data: [{ id: "p1" }], error: null }, { error: null }]);
+    await armBatch(sb);
+    expect(builders[0].eq).toHaveBeenCalledWith("owner", "scanner");
+  });
 });
 
 describe("claimNextScanBatch", () => {
