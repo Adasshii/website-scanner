@@ -67,6 +67,33 @@ describe("upsertOverturePlace", () => {
     expect(sources).toHaveLength(2);
   });
 
+  it("Atrium (2026-11-12): a domain owned by Atrium gets no source row and no write", async () => {
+    const domain = `atrium-collapse-${crypto.randomUUID().slice(0, 8)}.test`;
+    const { data: seeded, error: seedError } = await sb
+      .from("prospects")
+      .insert({ domain, name: "Atrium Lead", country: "NL", owner: "atrium", campaign_tag: CAMPAIGN_TAG })
+      .select("*")
+      .single();
+    if (seedError) throw seedError;
+
+    const result = await upsertOverturePlace(
+      sb,
+      makeOverturePlace({ websiteUrl: `https://www.${domain}/`, name: "Overture Name" }),
+      CAMPAIGN_TAG
+    );
+
+    expect(result).toEqual({ prospectId: seeded.id, created: false, skipped: "atrium-owned" });
+    const { data: sources, error: sourcesError } = await sb
+      .from("prospect_sources")
+      .select("id")
+      .eq("prospect_id", seeded.id);
+    if (sourcesError) throw sourcesError;
+    expect(sources).toHaveLength(0);
+    const { data: after, error: afterError } = await sb.from("prospects").select("*").eq("id", seeded.id).single();
+    if (afterError) throw afterError;
+    expect(after).toEqual(seeded);
+  });
+
   it("IMP-03: running upsertOverturePlace twice on an unchanged fixture leaves row counts unchanged", async () => {
     const place = makeOverturePlace();
 
