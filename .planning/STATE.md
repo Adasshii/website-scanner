@@ -5,16 +5,16 @@ milestone_name: Renewed Scanner
 current_phase: 09
 current_phase_name: Niche Profile & Own-Site Engine Data
 status: executing
-stopped_at: Completed 09-03-PLAN.md
-last_updated: "2026-11-13T15:56:51.809Z"
+stopped_at: Completed 09-04-PLAN.md
+last_updated: "2026-11-13T16:09:50.297Z"
 last_activity: 2026-11-13
 last_activity_desc: Phase 09 execution started
-state_head: 87cd07a20e615dc5bbefd97f4ff85459bfd7b44b
+state_head: 95ea7246bf36b5498c9705b0993f34871044b909
 progress:
   total_phases: 5
   completed_phases: 0
   total_plans: 9
-  completed_plans: 3
+  completed_plans: 4
   percent: 0
 ---
 
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-11-11)
 ## Current Position
 
 Phase: 09 (Niche Profile & Own-Site Engine Data) — EXECUTING
-Plan: 4 of 9
+Plan: 5 of 9
 Status: Ready to execute
 Last activity: 2026-11-13 — Phase 09 execution started
 
@@ -124,6 +124,7 @@ v1.0's phases 1 to 8 are archived at `.planning/milestones/v1.0-phases/`, its ro
 | Phase 09 P01 | about 1 h | 3 tasks | 2 files |
 | Phase 09 P02 | 7 min | 3 tasks | 9 files |
 | Phase 09 P03 | 22 min | 4 tasks | 10 files |
+| Phase 09 P04 | 9 min | 3 tasks | 10 files |
 
 ## Accumulated Context
 
@@ -221,6 +222,8 @@ Recent decisions affecting current work:
 - [Phase 09]: NicheProfile carries reviewWidgetHosts and the money-line template carries only {amount}, so toScannerSlice reads only the profile and Phase 12 adds trade labels if it wants them — Keeps the slice a pure function of the profile; no trade label field exists and the report is per trade
 - [Phase 09]: 09-03: latitude and longitude are anonymised (D-9-25); not_scoreable_reason and scoreable_checked_at are deliberately kept (reason code and timestamp, no personal data, preserves the D-7-17 reporting record)
 - [Phase 09]: 09-03: Task 1 one-way door resolved proceed-as-recorded (2026-11-13); coordinates stored on prospects at import (D-9-16). Migration 022 applied in production by hand; prospects columns confirmed (4 rows), raw_operating_status and the null-coordinate baseline not re-captured
+- [Phase 09]: 09-04: scoreable rule lives inside isReleasable; MIN_MATCH_CONFIDENCE = 0.5 inclusive confirmed against production histogram
+- [Phase 09]: 09-04: row field is 'sources' (confidence plus operating status), absence fails closed via positive-evidence checks; a not-scoreable row is never hidden by the Shortlist empty state
 
 ### Pending Todos
 
@@ -273,6 +276,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-11-13T15:56:51.766Z
-Stopped at: Completed 09-03-PLAN.md
+Last session: 2026-11-13T16:09:50.262Z
+Stopped at: Completed 09-04-PLAN.md
 Resume file: None
