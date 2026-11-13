@@ -411,3 +411,155 @@ describe("detectTrade: Dutch measured pitfalls, against the seeded profile", () 
     expect(result.scores.roofing).toBe(10);
   });
 });
+
+/**
+ * Two trades whose h1 hit counts are chosen directly, so a case reads as
+ * "a scored 30 and b scored 25". One h1 hit is worth the h1 weight of 5.
+ */
+function twoTrades(
+  aHits: number,
+  bHits: number,
+  options: { aRank?: number; bRank?: number; ratio?: number; reverse?: boolean; minimum?: number } = {}
+): ReturnType<typeof detectTrade> {
+  const specs: TradeSpec[] = [
+    { id: "a", terms: [{ term: "alfa", match: "prefix" }], tieBreakRank: options.aRank ?? 1 },
+    { id: "b", terms: [{ term: "beta", match: "prefix" }], tieBreakRank: options.bRank ?? 2 },
+  ];
+  const text = `${"alfa ".repeat(aHits)}${"beta ".repeat(bHits)}`;
+  return detectTrade(
+    zones({ h1: [text] }),
+    sliceOf(options.reverse ? [...specs].reverse() : specs, { minTradeScore: options.minimum ?? 1, dominanceRatio: options.ratio ?? 1.5 })
+  );
+}
+
+describe("detectTrade: ties resolve by rank, never by array position", () => {
+  it("an exact tie goes to the trade with the lower tieBreakRank", () => {
+    const result = twoTrades(4, 4, { aRank: 1, bRank: 2 });
+    expect(result.tradeId).toBe("a");
+    expect(result.scores.a).toBe(result.scores.b);
+    expect(result.runnerUpId).toBe("b");
+    expect(result.margin).toBe(0);
+  });
+
+  it("with the ranks swapped in the slice the other trade wins, so the rank decides and not the order", () => {
+    expect(twoTrades(4, 4, { aRank: 2, bRank: 1 }).tradeId).toBe("b");
+    expect(twoTrades(4, 4, { aRank: 2, bRank: 1 }).runnerUpId).toBe("a");
+  });
+
+  it("lists the trades in the opposite order and still gives the same answer", () => {
+    expect(twoTrades(4, 4, { aRank: 1, bRank: 2, reverse: true }).tradeId).toBe("a");
+    expect(twoTrades(4, 4, { aRank: 2, bRank: 1, reverse: true }).tradeId).toBe("b");
+  });
+
+  it("two trades with the same rank and the same score fall back to the id, in either array order", () => {
+    expect(twoTrades(4, 4, { aRank: 1, bRank: 1 }).tradeId).toBe("a");
+    expect(twoTrades(4, 4, { aRank: 1, bRank: 1, reverse: true }).tradeId).toBe("a");
+  });
+
+  it("a rank that is not a number loses to a real rank", () => {
+    expect(twoTrades(4, 4, { aRank: Number.NaN, bRank: 9 }).tradeId).toBe("b");
+    expect(twoTrades(4, 4, { aRank: Number.NaN, bRank: 9, reverse: true }).tradeId).toBe("b");
+  });
+
+  it("a higher score beats a lower rank: the rank only breaks an exact tie", () => {
+    expect(twoTrades(3, 4, { aRank: 1, bRank: 2 }).tradeId).toBe("b");
+  });
+
+  it("names the runner-up by the same order when three trades tie", () => {
+    const slice = sliceOf(
+      [
+        { id: "x", terms: [{ term: "alfa", match: "prefix" }], tieBreakRank: 3 },
+        { id: "y", terms: [{ term: "alfa", match: "prefix" }], tieBreakRank: 1 },
+        { id: "z", terms: [{ term: "alfa", match: "prefix" }], tieBreakRank: 2 },
+      ],
+      { minTradeScore: 1 }
+    );
+    const result = detectTrade(zones({ h1: ["alfa"] }), slice);
+    expect(result.tradeId).toBe("y");
+    expect(result.runnerUpId).toBe("z");
+  });
+
+  it("a hybrid installer that ties heat pump against central heating 30 to 30 is a heat pump installer, in either array order", () => {
+    const seeded = toScannerSlice(INSTALLERS_PROFILE);
+    const reversed: NicheScanSlice = { ...seeded, trades: [...seeded.trades].reverse() };
+    const tied = zones({ h1: [`${"warmtepomp ".repeat(6)}${"cv ketel ".repeat(6)}`] });
+    for (const slice of [seeded, reversed]) {
+      const result = detectTrade(tied, slice);
+      expect(result.scores.heat_pump).toBe(30);
+      expect(result.scores.central_heating).toBe(30);
+      expect(result.tradeId).toBe("heat_pump");
+      expect(result.runnerUpId).toBe("central_heating");
+    }
+  });
+});
+
+describe("detectTrade: a narrow winner is still the trade", () => {
+  it("records narrow and keeps the trade when the margin is under the dominance ratio", () => {
+    const result = twoTrades(6, 5);
+    expect(result.tradeId).toBe("a");
+    expect(result.confidence).toBe("narrow");
+    expect(result.runnerUpId).toBe("b");
+    expect(result.margin).toBe(5);
+  });
+
+  it("is clear at exactly the ratio and narrow just under it", () => {
+    expect(twoTrades(6, 4).confidence).toBe("clear"); // 30 against 20 is exactly 1.5
+    expect(twoTrades(7, 5).confidence).toBe("narrow"); // 35 against 25 is 1.4
+    expect(twoTrades(8, 5).confidence).toBe("clear"); // 40 against 25 is 1.6
+  });
+
+  it("an exact tie is narrow", () => {
+    expect(twoTrades(4, 4).confidence).toBe("narrow");
+  });
+
+  it("a winner with no runner-up score is clear", () => {
+    expect(twoTrades(1, 0).confidence).toBe("clear");
+  });
+
+  it("reads the ratio from the slice, not from the scanner", () => {
+    expect(twoTrades(6, 4, { ratio: 2 }).confidence).toBe("narrow"); // 1.5 is under 2
+    expect(twoTrades(6, 3, { ratio: 2 }).confidence).toBe("clear"); // exactly 2
+    expect(twoTrades(4, 4, { ratio: 1 }).confidence).toBe("clear"); // 1 is not under 1
+    expect(twoTrades(6, 4, { ratio: 1.2 }).confidence).toBe("clear");
+  });
+
+  it("a ratio that is not a number reads narrow when there is a runner-up, never clear", () => {
+    expect(twoTrades(6, 4, { ratio: Number.NaN }).confidence).toBe("narrow");
+    expect(twoTrades(6, 0, { ratio: Number.NaN }).confidence).toBe("clear");
+  });
+
+  it("a narrow reading of the seeded profile still names the trade and both scores", () => {
+    const seeded = toScannerSlice(INSTALLERS_PROFILE);
+    // 7 h1 hits for heat pump (35) against 5 for central heating (25).
+    const result = detectTrade(zones({ h1: [`${"warmtepomp ".repeat(7)}${"cv ketel ".repeat(5)}`] }), seeded);
+    expect(result.tradeId).toBe("heat_pump");
+    expect(result.confidence).toBe("narrow");
+    expect(result.scores.heat_pump).toBe(35);
+    expect(result.scores.central_heating).toBe(25);
+  });
+});
+
+describe("detectTrade: unreadable survives the full scorer", () => {
+  it("a generic contractor that names no trade reads null and unreadable", () => {
+    const generic = zones({
+      title: "Aannemersbedrijf Jansen | Bouw, verbouw en onderhoud",
+      h1: ["Uw aannemer voor elke klus"],
+      h2h3: ["Verbouwingen", "Uitbouwen", "Onderhoud"],
+      navTexts: ["Home", "Diensten", "Projecten", "Over ons", "Contact"],
+      internalPaths: ["/diensten", "/projecten", "/over-ons", "/contact"],
+      bodyText: "Wij verzorgen verbouwingen, uitbouwen en onderhoud in heel de regio.",
+    });
+    const result = detectTrade(generic, toScannerSlice(INSTALLERS_PROFILE));
+    expect(result.tradeId).toBeNull();
+    expect(result.confidence).toBe("unreadable");
+    expect(flat(Object.values(result.scores))).toBe(flat([0, 0, 0, 0, 0, 0]));
+  });
+
+  it("a single passing mention stays below the minimum score of the seeded profile", () => {
+    const mention = zones({ bodyText: "Voor een nieuwe keuken kunt u ook bij ons terecht.", h2h3: ["Keuken"] });
+    const result = detectTrade(mention, toScannerSlice(INSTALLERS_PROFILE));
+    expect(result.scores.kitchen).toBe(3);
+    expect(result.tradeId).toBeNull();
+    expect(result.confidence).toBe("unreadable");
+  });
+});
