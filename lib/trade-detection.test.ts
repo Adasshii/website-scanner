@@ -14,6 +14,7 @@ import { INSTALLERS_PROFILE, toScannerSlice } from "./niche-profile";
 import { detectTrade, normaliseText } from "../scanner-service/src/trade-detection";
 import type { TradeZones } from "../scanner-service/src/trade-detection";
 import type { NicheScanSlice } from "../types/niche-scan-slice";
+import { OWN_SITE_ZONE_CORPUS, OWN_SITE_ZONE_KNOWN_GAPS } from "../tests/fixtures/own-site-zones";
 
 type SliceTrade = NicheScanSlice["trades"][number];
 type Term = SliceTrade["terms"][number];
@@ -555,11 +556,91 @@ describe("detectTrade: unreadable survives the full scorer", () => {
     expect(flat(Object.values(result.scores))).toBe(flat([0, 0, 0, 0, 0, 0]));
   });
 
+  it("a lone passing mention is unreadable and keeps its score for the record", () => {
+    const result = detectTrade(zones({ bodyText: "Voor een nieuwe keuken kunt u ook bij ons terecht." }), toScannerSlice(INSTALLERS_PROFILE));
+    expect(result.scores.kitchen).toBe(1);
+    expect(result.tradeId).toBeNull();
+  });
+
   it("a single passing mention stays below the minimum score of the seeded profile", () => {
     const mention = zones({ bodyText: "Voor een nieuwe keuken kunt u ook bij ons terecht.", h2h3: ["Keuken"] });
     const result = detectTrade(mention, toScannerSlice(INSTALLERS_PROFILE));
     expect(result.scores.kitchen).toBe(3);
     expect(result.tradeId).toBeNull();
     expect(result.confidence).toBe("unreadable");
+  });
+});
+
+describe("detectTrade: the regression corpus", () => {
+  const SEEDED = toScannerSlice(INSTALLERS_PROFILE);
+
+  it("holds at least 15 entries with unique ids, each carrying its expected trade and confidence", () => {
+    expect(OWN_SITE_ZONE_CORPUS.length).toBeGreaterThanOrEqual(15);
+    expect(new Set(OWN_SITE_ZONE_CORPUS.map((entry) => entry.id)).size).toBe(OWN_SITE_ZONE_CORPUS.length);
+    for (const entry of OWN_SITE_ZONE_CORPUS) {
+      expect(entry.pages.length).toBeGreaterThan(0);
+      expect(["clear", "narrow", "unreadable"]).toContain(entry.expected.confidence);
+      // An unreadable site has no trade, and a readable one always has a trade.
+      expect(entry.expected.tradeId === null).toBe(entry.expected.confidence === "unreadable");
+    }
+  });
+
+  it("holds trimmed zone data and never saved HTML", () => {
+    const everyString = JSON.stringify([OWN_SITE_ZONE_CORPUS, OWN_SITE_ZONE_KNOWN_GAPS]);
+    expect(everyString.includes("<")).toBe(false);
+    expect(everyString.includes("</")).toBe(false);
+    expect(everyString.toLowerCase().includes("http")).toBe(false);
+  });
+
+  it("covers the classes the research measured", () => {
+    const expectedBy = (id: string) => OWN_SITE_ZONE_CORPUS.find((entry) => entry.id === id)?.expected;
+    expect(expectedBy("roofer-clear")?.tradeId).toBe("roofing");
+    expect(expectedBy("heat-pump-clear")?.tradeId).toBe("heat_pump");
+    expect(expectedBy("hybrid-heat-pump-and-boiler")?.confidence).toBe("narrow");
+    expect(expectedBy("plumber-multi-trade")?.confidence).toBe("narrow");
+    expect(expectedBy("generic-contractor")?.confidence).toBe("unreadable");
+    expect(OWN_SITE_ZONE_CORPUS.some((entry) => entry.pages.length === 7)).toBe(true);
+  });
+
+  for (const entry of OWN_SITE_ZONE_CORPUS) {
+    it(`resolves ${entry.id} to ${entry.expected.tradeId ?? "no trade"} (${entry.expected.confidence})`, () => {
+      const result = detectTrade(entry.pages, SEEDED);
+      expect(result.tradeId).toBe(entry.expected.tradeId);
+      expect(result.confidence).toBe(entry.expected.confidence);
+    });
+  }
+
+  it("resolves the whole corpus to its expected trades, naming every entry it breaks", () => {
+    const broken = OWN_SITE_ZONE_CORPUS.filter((entry) => {
+      const result = detectTrade(entry.pages, SEEDED);
+      return result.tradeId !== entry.expected.tradeId || result.confidence !== entry.expected.confidence;
+    }).map((entry) => entry.id);
+    expect(flat(broken)).toBe(flat([]));
+  });
+
+  it("answers the same for every entry when the profile lists its trades in the opposite order", () => {
+    const reversed: NicheScanSlice = { ...SEEDED, trades: [...SEEDED.trades].reverse() };
+    const differing = OWN_SITE_ZONE_CORPUS.filter((entry) => {
+      const a = detectTrade(entry.pages, SEEDED);
+      const b = detectTrade(entry.pages, reversed);
+      return a.tradeId !== b.tradeId || a.confidence !== b.confidence;
+    }).map((entry) => entry.id);
+    expect(flat(differing)).toBe(flat([]));
+  });
+
+  it("keeps the nav from multiplying on the 7-page roofer: solar in the nav is worth one page, not seven", () => {
+    const entry = OWN_SITE_ZONE_CORPUS.find((candidate) => candidate.id === "roofer-seven-pages-solar-in-nav");
+    expect(entry).toBeDefined();
+    const result = detectTrade(entry?.pages ?? [], SEEDED);
+    // One nav entry (3) plus one body mention on the first page (1).
+    expect(result.scores.solar).toBe(4);
+    expect(result.tradeId).toBe("roofing");
+  });
+
+  it("every known gap still resolves to what it resolves to today, so fixing the seed forces the entry into the corpus", () => {
+    for (const gap of OWN_SITE_ZONE_KNOWN_GAPS) {
+      expect(detectTrade(gap.pages, SEEDED).tradeId).toBe(gap.currentlyResolvesTo);
+      expect(gap.currentlyResolvesTo).not.toBe(gap.shouldBe);
+    }
   });
 });
