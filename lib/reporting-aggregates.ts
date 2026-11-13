@@ -131,6 +131,9 @@ export async function getReportingData(sb: SupabaseClient): Promise<ReportingPay
       .select(
         "id, lifecycle_state, triage_checked_at, scan_released_at, scan_status, booked_at, booked_match_method, created_at"
       )
+      // Atrium runs its own outreach (decision 2026-11-12), so its leads stay
+      // out of the scanner's funnel. Their scans still count below.
+      .eq("owner", "scanner")
       .order("id", { ascending: true })
       .range(from, to)
   );

@@ -47,6 +47,8 @@ export async function armBatch(
     .not("scan_released_at", "is", null)
     .is("scan_status", null)
     .not("website_url", "is", null)
+    // Atrium prospects are scanned through /api/admin/atrium, never armed here.
+    .eq("owner", "scanner")
     .order("scan_released_at", { ascending: true });
   if (error) throw error;
 

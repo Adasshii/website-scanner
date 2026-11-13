@@ -57,7 +57,9 @@ export async function getTriageCandidates(
     .from("prospects")
     .select("id, domain, website_url")
     .not("domain", "is", null)
-    .is("scan_released_at", null);
+    .is("scan_released_at", null)
+    // Atrium prospects are scanned through /api/admin/atrium, never triaged.
+    .eq("owner", "scanner");
   if (limit) query = query.limit(limit);
 
   const { data, error } = await query;
