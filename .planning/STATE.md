@@ -5,16 +5,16 @@ milestone_name: Renewed Scanner
 current_phase: 09
 current_phase_name: Niche Profile & Own-Site Engine Data
 status: executing
-stopped_at: Completed 09-05-PLAN.md
-last_updated: "2026-11-13T18:57:00.639Z"
+stopped_at: Completed 09-06-PLAN.md
+last_updated: "2026-11-13T22:51:13.703Z"
 last_activity: 2026-11-13
 last_activity_desc: Phase 09 execution started
-state_head: 904033efbd849fa54c6a5e0b707af275912220c5
+state_head: 1f2ce42317f49487e43810f9975178028a8ea7c2
 progress:
   total_phases: 5
   completed_phases: 0
   total_plans: 9
-  completed_plans: 5
+  completed_plans: 6
   percent: 0
 ---
 
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-11-11)
 ## Current Position
 
 Phase: 09 (Niche Profile & Own-Site Engine Data) — EXECUTING
-Plan: 6 of 9
+Plan: 7 of 9
 Status: Ready to execute
 Last activity: 2026-11-13 — Phase 09 execution started
 
@@ -126,6 +126,7 @@ v1.0's phases 1 to 8 are archived at `.planning/milestones/v1.0-phases/`, its ro
 | Phase 09 P03 | 22 min | 4 tasks | 10 files |
 | Phase 09 P04 | 9 min | 3 tasks | 10 files |
 | Phase 09 P05 | 2h 40m | 3 tasks | 5 files |
+| Phase 09 P06 | 9 min | 3 tasks | 14 files |
 
 ## Accumulated Context
 
@@ -228,6 +229,8 @@ Recent decisions affecting current work:
 - [Phase 09]: 09-05: a field not found while any JSON-LD block failed to parse, or a harvest cap cut the read short, is unreadable, not missing
 - [Phase 09]: 09-05: JSON-LD nodes enter the pool before microdata, so JSON-LD wins a tie and each found field records its source
 - [Phase 09]: 09-05: extractOwnSiteFacts takes OwnSiteHarvest or null; plan 09-09 maps harvestOwnSite's unreadable outcome to null
+- [Phase 09]: 09-06: scoreableFailureReason wrapper keeps scoreableVerdict at one production caller; refresh and isReleasable both go through it
+- [Phase 09]: 09-06: dispatch records a marked prospect via markScanFailed(not_scoreable, no attempt spent), the same as robots/SSRF skips, because the schema has no skipped state
 
 ### Pending Todos
 
@@ -251,6 +254,7 @@ The three prospect-quality todos were resolved by Phase 4.1 (moved to `.planning
 - **Overture data quality** is a proven risk here, not theoretical — prior research produced a 98% false-positive read before correction. Manual sample audit required in Phase 1.
 - Open follow-up: cited-number-vs-report locale match verified only against seeded fixture scans (report rendered English against a Dutch draft); confirm against a real NL crawl the first time this surface handles genuine production data
 - 07-07 Task 3 (checkpoint:decision, gate=blocking): production deploy + dashboard cron confirmation + live dry-run JSON + SQL count needed before RETENTION_MODE can be chosen (stay-dry-run / anonymize / delete)
+- 09-06: dispatch re-check cannot stop prospects released before migration 022 (no marker, refresh skips released). ENG-06 not marked complete; decision needed (see 09-06-SUMMARY Open items)
 
 ### Roadmap Evolution
 
@@ -280,6 +284,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-11-13T18:57:00.614Z
-Stopped at: Completed 09-05-PLAN.md
+Last session: 2026-11-13T22:51:13.601Z
+Stopped at: Completed 09-06-PLAN.md
 Resume file: None
