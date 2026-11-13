@@ -252,4 +252,30 @@ describe("upsertOverturePlace", () => {
     expect(prospect.website_url_pending).toBe(gainedWebsite.websiteUrl);
     expect(prospect.website_url_changed_at).not.toBeNull();
   });
+
+  it("D-9-16/D-9-22: an Overture point and operating status reach the stored prospect and its source row", async () => {
+    const place = makeOverturePlace({
+      lat: 52.1602462,
+      lon: 4.4984826,
+      operatingStatus: "open",
+    });
+    const { prospectId } = await upsertOverturePlace(sb, place, CAMPAIGN_TAG);
+
+    const { data: prospect, error } = await sb
+      .from("prospects")
+      .select("latitude, longitude")
+      .eq("id", prospectId)
+      .single();
+    if (error) throw error;
+    expect(prospect.latitude).toBe(52.1602462);
+    expect(prospect.longitude).toBe(4.4984826);
+
+    const { data: source, error: sourceError } = await sb
+      .from("prospect_sources")
+      .select("raw_operating_status")
+      .eq("overture_gers_id", place.gersId)
+      .single();
+    if (sourceError) throw sourceError;
+    expect(source.raw_operating_status).toBe("open");
+  });
 });

@@ -22,6 +22,9 @@ export function makeOverturePlace(overrides?: Partial<OverturePlaceRow>): Overtu
     country: "NL",
     websiteUrl: `https://example-${counter}.test`,
     confidence: 0.9,
+    lat: null,
+    lon: null,
+    operatingStatus: null,
     ...overrides,
   };
 }

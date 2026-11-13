@@ -380,6 +380,12 @@ export interface OverturePlaceRow {
   /** Already reduced from the raw Overture websites[0] array */
   websiteUrl: string | null;
   confidence: number | null;
+  /** Overture point latitude (ST_Y of the place geometry), D-9-16. Optional so existing stubs compile. */
+  lat?: number | null;
+  /** Overture point longitude (ST_X of the place geometry), D-9-16. */
+  lon?: number | null;
+  /** Overture operating_status as received (e.g. "open", "permanently_closed"), D-9-22. */
+  operatingStatus?: string | null;
 }
 
 /** prospects.lifecycle_state — see supabase/migrations/010_create_prospects.sql */

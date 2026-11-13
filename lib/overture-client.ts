@@ -277,11 +277,48 @@ export function buildPlacesSql(
 
   return `
       SELECT place.id AS gers_id, place.names.primary AS name, place.websites, place.addresses,
-             place.${categoryColumn} AS category, place.confidence
+             place.${categoryColumn} AS category, place.confidence,
+             ST_X(place.geometry) AS lon, ST_Y(place.geometry) AS lat,
+             place.operating_status AS operating_status
       FROM ${fromClause}
       WHERE ${conditions.join(" AND ")}
       ${limitClause}
     `;
+}
+
+/**
+ * Reduces one DuckDB result row to an OverturePlaceRow. Pure and exported so
+ * the column mapping is testable without a DuckDB/S3 connection.
+ */
+export function mapOvertureRow(
+  row: Record<string, unknown>,
+  fallbackCountry: string
+): OverturePlaceRow {
+  const websites = row.websites as unknown as string[] | null;
+  const addresses = row.addresses as unknown as OvertureAddress[] | null;
+  const address = addresses?.[0] ?? null;
+
+  return {
+    gersId: String(row.gers_id),
+    name: (row.name as unknown as string | null) ?? null,
+    // Overture's addresses[] is a struct list, not one formatted string —
+    // `freeform` is the closest match to a street-address line.
+    address: address?.freeform ?? null,
+    category: (row.category as unknown as string | null) ?? null,
+    region: address?.region ?? null,
+    country: address?.country ?? fallbackCountry,
+    // websites is an optional LIST, sparsely populated — absence is the
+    // no-website path (IMP-07, RESEARCH.md Pitfall 2), not a data error.
+    websiteUrl: websites && websites.length > 0 ? websites[0] : null,
+    confidence: (row.confidence as unknown as number | null) ?? null,
+    // D-9-16: the point is projected as two doubles inside DuckDB (X is
+    // longitude, Y is latitude); the raw geometry never enters Node.
+    lon: (row.lon as unknown as number | null) ?? null,
+    lat: (row.lat as unknown as number | null) ?? null,
+    // D-9-22: Overture's operating_status, captured for the fourth
+    // scoreable condition (permanently_closed).
+    operatingStatus: (row.operating_status as unknown as string | null) ?? null,
+  };
 }
 
 /**
@@ -347,26 +384,7 @@ export async function queryOverturePlaces(
     const reader = await conn.runAndReadAll(sql);
     const rows = reader.getRowObjectsJS();
 
-    return rows.map((row): OverturePlaceRow => {
-      const websites = row.websites as unknown as string[] | null;
-      const addresses = row.addresses as unknown as OvertureAddress[] | null;
-      const address = addresses?.[0] ?? null;
-
-      return {
-        gersId: String(row.gers_id),
-        name: (row.name as unknown as string | null) ?? null,
-        // Overture's addresses[] is a struct list, not one formatted string —
-        // `freeform` is the closest match to a street-address line.
-        address: address?.freeform ?? null,
-        category: (row.category as unknown as string | null) ?? null,
-        region: address?.region ?? null,
-        country: address?.country ?? params.country,
-        // websites is an optional LIST, sparsely populated — absence is the
-        // no-website path (IMP-07, RESEARCH.md Pitfall 2), not a data error.
-        websiteUrl: websites && websites.length > 0 ? websites[0] : null,
-        confidence: (row.confidence as unknown as number | null) ?? null,
-      };
-    });
+    return rows.map((row) => mapOvertureRow(row, params.country));
   } finally {
     conn.closeSync();
     instance.closeSync();

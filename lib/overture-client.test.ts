@@ -10,7 +10,12 @@
  * untested per RESEARCH.md §Validation Architecture.
  */
 import { describe, expect, it } from "vitest";
-import { buildPlacesSql, pickProvinceDivisionId, resolveBbox } from "./overture-client";
+import {
+  buildPlacesSql,
+  mapOvertureRow,
+  pickProvinceDivisionId,
+  resolveBbox,
+} from "./overture-client";
 
 describe("resolveBbox", () => {
   it("resolves a known region case/diacritic-insensitively", () => {
@@ -126,5 +131,49 @@ describe("buildPlacesSql", () => {
       null
     );
     expect(sql).not.toContain("LIMIT");
+  });
+
+  it("D-9-16/D-9-22: projects longitude as ST_X, latitude as ST_Y and operating_status", () => {
+    const sql = buildPlacesSql("s3://bucket/places/*", "categories.primary", params, null, null);
+    // X is longitude, Y is latitude. Swapped, every Dutch prospect lands in the Indian Ocean.
+    expect(sql).toContain("ST_X(place.geometry) AS lon");
+    expect(sql).toContain("ST_Y(place.geometry) AS lat");
+    expect(sql).toContain("place.operating_status AS operating_status");
+  });
+});
+
+describe("mapOvertureRow", () => {
+  const baseRow = {
+    gers_id: "08f2-fixture",
+    name: "Dakdekker Test BV",
+    websites: ["https://dakdekker.test"],
+    addresses: [{ freeform: "Damrak 1", region: "NH", country: "NL" }],
+    category: "roofing",
+    confidence: 0.91,
+  };
+
+  it("carries lon, lat and operating_status onto the OverturePlaceRow", () => {
+    const row = mapOvertureRow(
+      { ...baseRow, lon: 4.4984826, lat: 52.1602462, operating_status: "open" },
+      "NL"
+    );
+    expect(row.lon).toBe(4.4984826);
+    expect(row.lat).toBe(52.1602462);
+    expect(row.operatingStatus).toBe("open");
+  });
+
+  it("maps missing coordinate and status columns to null, not undefined", () => {
+    const row = mapOvertureRow(baseRow, "NL");
+    expect(row.lon).toBeNull();
+    expect(row.lat).toBeNull();
+    expect(row.operatingStatus).toBeNull();
+  });
+
+  it("keeps the existing mapping: websites[0] to websiteUrl, addresses[0] to address and region", () => {
+    const row = mapOvertureRow(baseRow, "NL");
+    expect(row.websiteUrl).toBe("https://dakdekker.test");
+    expect(row.address).toBe("Damrak 1");
+    expect(row.region).toBe("NH");
+    expect(row.country).toBe("NL");
   });
 });

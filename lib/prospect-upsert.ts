@@ -24,6 +24,13 @@ interface ProspectIdentitySnapshot {
  * D-04 (freeze-by-omission): lifecycle_state, triage_score, triage_checked_at,
  * latest_scan_id, contact_email, contact_email_type are NEVER written by any
  * branch here except the brand-new INSERT. Re-import cannot touch Joshua's work.
+ *
+ * D-9-16 (coordinates): `latitude` / `longitude` are written by the brand-new
+ * INSERT, and on a re-import ONLY by maybeFillCoordinates, which fills a null
+ * point and never overwrites a non-null one. A monthly Overture release with
+ * a shifted centroid therefore cannot move an existing prospect.
+ * `raw_operating_status` (D-9-22) is a raw source field like `raw_confidence`:
+ * it is refreshed on every re-import of a known source.
  */
 export async function upsertOverturePlace(
   sb: SupabaseClient,
@@ -65,6 +72,7 @@ export async function upsertOverturePlace(
         raw_country: place.country,
         raw_website_url: place.websiteUrl,
         raw_confidence: place.confidence,
+        raw_operating_status: place.operatingStatus ?? null,
         last_seen_at: new Date().toISOString(),
       })
       .eq("overture_gers_id", place.gersId);
@@ -78,6 +86,8 @@ export async function upsertOverturePlace(
     await maybeRefreshWebsiteUrl(sb, existingSource.prospect_id, effectiveWebsiteUrl, prospect);
     // D-13: country is frozen always, even while 'new' — stricter than website_url.
     await maybeFlagCountry(sb, existingSource.prospect_id, place.country, prospect.country);
+    // D-9-16: fill a null point once; never overwrite a non-null one.
+    await maybeFillCoordinates(sb, existingSource.prospect_id, place.lat, place.lon);
 
     return { prospectId: existingSource.prospect_id, created: false };
   }
@@ -102,12 +112,14 @@ export async function upsertOverturePlace(
         raw_country: place.country,
         raw_website_url: place.websiteUrl,
         raw_confidence: place.confidence,
+        raw_operating_status: place.operatingStatus ?? null,
       });
       if (sourceInsertError) throw sourceInsertError;
       // D-03: first-seen wins — display fields NOT touched here.
 
       await maybeRefreshWebsiteUrl(sb, existingProspect.id, effectiveWebsiteUrl, existingProspect);
       await maybeFlagCountry(sb, existingProspect.id, place.country, existingProspect.country);
+      await maybeFillCoordinates(sb, existingProspect.id, place.lat, place.lon);
 
       return { prospectId: existingProspect.id, created: false };
     }
@@ -126,6 +138,8 @@ export async function upsertOverturePlace(
       website_url: effectiveWebsiteUrl,
       lifecycle_state: domain ? "new" : "no_website",
       campaign_tag: campaignTag,
+      latitude: place.lat ?? null,
+      longitude: place.lon ?? null,
     })
     .select("id")
     .single();
@@ -141,6 +155,7 @@ export async function upsertOverturePlace(
     raw_country: place.country,
     raw_website_url: place.websiteUrl,
     raw_confidence: place.confidence,
+    raw_operating_status: place.operatingStatus ?? null,
   });
   if (sourceInsertError) throw sourceInsertError;
 
@@ -181,6 +196,31 @@ async function maybeRefreshWebsiteUrl(
       .eq("id", prospectId);
     if (error) throw error;
   }
+}
+
+/**
+ * D-9-16: the Overture point is captured once. A re-import fills a null
+ * coordinate and never overwrites a non-null one, so a later Overture release
+ * with a shifted centroid cannot move an existing prospect. The
+ * `.is("latitude", null)` filter makes that guarantee hold in the database,
+ * not in a read-then-write race. Both values are written together; the range
+ * CHECK in migration 022 rejects an out-of-range point. Returns early when
+ * either value is missing, so a half point is never stored.
+ */
+async function maybeFillCoordinates(
+  sb: SupabaseClient,
+  prospectId: string,
+  lat: number | null | undefined,
+  lon: number | null | undefined
+) {
+  if (lat == null || lon == null) return;
+
+  const { error } = await sb
+    .from("prospects")
+    .update({ latitude: lat, longitude: lon })
+    .eq("id", prospectId)
+    .is("latitude", null);
+  if (error) throw error;
 }
 
 /**
