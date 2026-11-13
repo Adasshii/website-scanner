@@ -64,7 +64,7 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1 completion)*
 - [x] 09-02-PLAN.md — The installers niche profile: trades, values, citations, checks, copy, categories (wave 2)
-- [x] 09-03-PLAN.md — Migration 021: Overture coordinates, operating status, the not-scoreable marker, prospect retention (wave 2)
+- [x] 09-03-PLAN.md — Migration 022: Overture coordinates, operating status, the not-scoreable marker, prospect retention (wave 2)
 
 **Wave 3** *(blocked on Wave 2 completion)*
 - [ ] 09-04-PLAN.md — ENG-06: the scoreable predicate folded into `isReleasable`, and the release and shortlist read paths (wave 3)
