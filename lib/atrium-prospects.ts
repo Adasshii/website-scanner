@@ -121,3 +121,42 @@ async function reuseExisting(
   if (error) throw error;
   return { kind: "registered", prospectId: existing.id, created: false };
 }
+
+export type ReleaseResult = "released" | "not_found" | "not_atrium";
+
+/**
+ * Route 5: removes one Atrium prospect and its scans, so no personal data
+ * stays in the scanner for a lead Atrium will never email. Suppressions are
+ * kept on purpose: an opt-out must outlive the prospect.
+ *
+ * Precondition, not checked here: the lead was never emailed (Plan B).
+ *
+ * FK-safe order. prospects.latest_scan_id and scans.prospect_id point at each
+ * other (both NO ACTION), and outreach_messages.scan_id points at scans, so:
+ * unlink latest_scan_id, delete drafts, delete scans, delete the prospect
+ * (prospect_sources cascades). Each step can be run again if a later one fails.
+ */
+export async function releaseAtriumProspect(sb: SupabaseClient, prospectId: string): Promise<ReleaseResult> {
+  const { data: prospect, error } = await sb
+    .from("prospects")
+    .select("id, owner")
+    .eq("id", prospectId)
+    .maybeSingle();
+  if (error) throw error;
+  if (!prospect) return "not_found";
+  if (prospect.owner !== "atrium") return "not_atrium";
+
+  const unlink = await sb.from("prospects").update({ latest_scan_id: null }).eq("id", prospectId);
+  if (unlink.error) throw unlink.error;
+
+  const drafts = await sb.from("outreach_messages").delete().eq("prospect_id", prospectId);
+  if (drafts.error) throw drafts.error;
+
+  const scans = await sb.from("scans").delete().eq("prospect_id", prospectId);
+  if (scans.error) throw scans.error;
+
+  const row = await sb.from("prospects").delete().eq("id", prospectId).eq("owner", "atrium");
+  if (row.error) throw row.error;
+
+  return "released";
+}
