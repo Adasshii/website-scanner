@@ -16,7 +16,13 @@ const META = { readAt: "2026-11-13T09:00:00.000Z" };
 /** Build a harvest from literal JSON-LD values (stringified) or raw strings. */
 function harvestOf(blocks: Array<unknown>): OwnSiteHarvest {
   const jsonLdBlocks = blocks.map((b) => (typeof b === "string" ? b : JSON.stringify(b)));
-  return { jsonLdBlocks, jsonLdBlocksFound: jsonLdBlocks.length, microdata: [], microdataCount: 0 };
+  return {
+    jsonLdBlocks,
+    jsonLdBlocksFound: jsonLdBlocks.length,
+    microdata: [],
+    microdataCount: 0,
+    microdataTruncated: false,
+  };
 }
 
 /** One-line comparison: multi-line vitest diffs corrupt the TAP report the RED gate reads. */
@@ -24,7 +30,13 @@ function flat(value: unknown): string {
   return JSON.stringify(value);
 }
 
-const NO_BLOCKS: OwnSiteHarvest = { jsonLdBlocks: [], jsonLdBlocksFound: 0, microdata: [], microdataCount: 0 };
+const NO_BLOCKS: OwnSiteHarvest = {
+  jsonLdBlocks: [],
+  jsonLdBlocksFound: 0,
+  microdata: [],
+  microdataCount: 0,
+  microdataTruncated: false,
+};
 
 describe("extractOwnSiteFacts: address", () => {
   it("reads a PostalAddress inside a Yoast-style @graph as found, from jsonld", () => {
@@ -221,6 +233,7 @@ describe("extractOwnSiteFacts: unreadable", () => {
       jsonLdBlocksFound: 1,
       microdata: [],
       microdataCount: 0,
+      microdataTruncated: false,
     } as unknown as OwnSiteHarvest;
     const facts = extractOwnSiteFacts(poisoned, META);
     expect(flat(facts.business.address)).toBe(flat({ state: "unreadable" }));

@@ -57,6 +57,8 @@ export interface OwnSiteHarvest {
   microdata: MicrodataItem[];
   /** Microdata items harvested in total, nested ones included, after the cap. */
   microdataCount: number;
+  /** True when a microdata cap cut the walk short, so an absence may be "could not tell". */
+  microdataTruncated: boolean;
 }
 
 /** A microdata value is trimmed text or a nested item. */

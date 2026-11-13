@@ -1,6 +1,11 @@
 import type { Page } from "playwright";
 import type { NicheScanSlice } from "../../types/niche-scan-slice";
-import type { OwnSiteHarvest, OwnSiteHarvestOutcome } from "../../types/own-site";
+import type {
+  MicrodataItem,
+  MicrodataValue,
+  OwnSiteHarvest,
+  OwnSiteHarvestOutcome,
+} from "../../types/own-site";
 
 /**
  * own-site-harvest.ts: Phase 9, ENG-01. The thin, bounded browser-side
@@ -25,6 +30,18 @@ export const HARVEST_CAPS = {
   jsonLdBlocks: 20,
   /** Characters kept from each JSON-LD block. */
   jsonLdChars: 200_000,
+  /** Microdata items read per page, nested items included. */
+  microdataItems: 50,
+  /** Nesting depth of microdata items. The root item is depth 1. */
+  microdataDepth: 4,
+  /** Elements the microdata walk may visit in total: the real bound on a huge DOM. */
+  microdataVisits: 5_000,
+  /** Characters kept from one microdata value. */
+  microdataValueChars: 1_000,
+  /** Distinct property names kept per microdata item. */
+  microdataPropsPerItem: 50,
+  /** Values kept per property name. */
+  microdataValuesPerProp: 20,
 } as const;
 
 export type HarvestCaps = typeof HARVEST_CAPS;
@@ -44,7 +61,84 @@ export function harvestOwnSiteInBrowser(args: HarvestArgs): OwnSiteHarvest {
   const jsonLdBlocks = scripts
     .slice(0, caps.jsonLdBlocks)
     .map((s) => (s.textContent || "").slice(0, caps.jsonLdChars));
-  return { jsonLdBlocks, jsonLdBlocksFound: scripts.length, microdata: [], microdataCount: 0 };
+
+  // Microdata: walk [itemscope] roots that are not themselves a property of
+  // another item. Iterative on purpose, with no named inner functions: the body
+  // is serialised into the page, and a tool that wraps named functions (tsx)
+  // would inject a helper the page does not have.
+  const items: MicrodataItem[] = [];
+  let count = 0;
+  let visits = 0;
+  let truncated = false;
+  const roots = Array.from(document.querySelectorAll("[itemscope]"));
+  rootLoop: for (const root of roots) {
+    if (root.hasAttribute("itemprop")) continue;
+    if (count >= caps.microdataItems) {
+      truncated = true;
+      break;
+    }
+    const rootItem: MicrodataItem = { type: root.getAttribute("itemtype") || "", props: Object.create(null) };
+    count++;
+    items.push(rootItem);
+    const frames: Array<{ el: Element; item: MicrodataItem; depth: number }> = [
+      { el: root, item: rootItem, depth: 1 },
+    ];
+    while (frames.length > 0) {
+      const frame = frames.pop() as { el: Element; item: MicrodataItem; depth: number };
+      const stack: Element[] = Array.from(frame.el.children).reverse();
+      while (stack.length > 0) {
+        visits++;
+        if (visits > caps.microdataVisits) {
+          truncated = true;
+          break rootLoop;
+        }
+        const el = stack.pop() as Element;
+        const names = (el.getAttribute("itemprop") || "").split(/\s+/).filter((n) => n !== "" && n !== "__proto__");
+        const isScope = el.hasAttribute("itemscope");
+        if (names.length === 0) {
+          // A scope with no itemprop is a separate root, found by the query above.
+          if (!isScope) for (const child of Array.from(el.children).reverse()) stack.push(child);
+          continue;
+        }
+        let value: MicrodataValue | null = null;
+        if (isScope) {
+          if (frame.depth >= caps.microdataDepth || count >= caps.microdataItems) {
+            truncated = true;
+          } else {
+            const nested: MicrodataItem = { type: el.getAttribute("itemtype") || "", props: Object.create(null) };
+            count++;
+            frames.push({ el, item: nested, depth: frame.depth + 1 });
+            value = nested;
+          }
+        } else {
+          const tag = el.tagName.toLowerCase();
+          let attr: string | null = null;
+          if (tag === "meta") attr = el.getAttribute("content");
+          else if (tag === "a" || tag === "link") attr = el.getAttribute("href");
+          else if (tag === "img" || tag === "source") attr = el.getAttribute("src");
+          else if (tag === "time") attr = el.getAttribute("datetime");
+          else if (tag === "data" || tag === "meter") attr = el.getAttribute("value");
+          value = (attr !== null ? attr : el.textContent || "").trim().slice(0, caps.microdataValueChars);
+          for (const child of Array.from(el.children).reverse()) stack.push(child);
+        }
+        if (value === null) continue;
+        for (const name of names) {
+          const known = name in frame.item.props;
+          if (!known && Object.keys(frame.item.props).length >= caps.microdataPropsPerItem) continue;
+          if (!known) frame.item.props[name] = [];
+          if (frame.item.props[name].length < caps.microdataValuesPerProp) frame.item.props[name].push(value);
+        }
+      }
+    }
+  }
+
+  return {
+    jsonLdBlocks,
+    jsonLdBlocksFound: scripts.length,
+    microdata: items,
+    microdataCount: count,
+    microdataTruncated: truncated,
+  };
 }
 
 /**

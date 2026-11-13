@@ -3,8 +3,13 @@ import type {
   FieldSource,
   OwnSiteAddress,
   OwnSiteBusinessFacts,
+  OwnSiteCertifications,
   OwnSiteFacts,
   OwnSiteHarvest,
+  OwnSiteOpeningHours,
+  OwnSiteOpeningHoursEntry,
+  OwnSiteServiceArea,
+  OwnSiteTelephone,
 } from "../../types/own-site";
 
 /**
@@ -252,6 +257,200 @@ function readAddress(node: Json, ctx: Context): OwnSiteAddress | null {
   return null;
 }
 
+/** Telephone: found when at least one value has 9 or more digits after stripping non-digits. */
+function readTelephone(node: Json, ctx: Context): OwnSiteTelephone | null {
+  const raw: string[] = [];
+  for (const c of candidates(node.telephone, ctx.byId)) {
+    const t = text(c);
+    if (t !== "") raw.push(t);
+  }
+  for (const point of candidates(node.contactPoint, ctx.byId)) {
+    if (!isObject(point)) continue;
+    for (const c of candidates(point.telephone, ctx.byId)) {
+      const t = text(c);
+      if (t !== "") raw.push(t);
+    }
+  }
+  const numbers = Array.from(new Set(raw.filter((n) => n.replace(/\D/g, "").length >= 9)));
+  return numbers.length > 0 ? { numbers } : null;
+}
+
+const WEEK = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
+const DAY_ABBREVIATIONS: Record<string, string> = {
+  mo: "monday",
+  tu: "tuesday",
+  we: "wednesday",
+  th: "thursday",
+  fr: "friday",
+  sa: "saturday",
+  su: "sunday",
+};
+
+/** "https://schema.org/Monday", "Monday", "Mo" to "monday"; anything else is null. */
+function normalizeDay(value: unknown): string | null {
+  let raw = "";
+  if (typeof value === "string") raw = value;
+  else if (isObject(value) && typeof value["@id"] === "string") raw = value["@id"];
+  else if (isObject(value) && typeof value.name === "string") raw = value.name;
+  const key = raw
+    .trim()
+    .replace(/^https?:\/\/schema\.org\//i, "")
+    .toLowerCase();
+  if (WEEK.includes(key)) return key;
+  return DAY_ABBREVIATIONS[key] ?? null;
+}
+
+function dayList(value: unknown): string[] {
+  const list = Array.isArray(value) ? value : [value];
+  const out: string[] = [];
+  for (const entry of list) {
+    const day = normalizeDay(entry);
+    if (day !== null && !out.includes(day)) out.push(day);
+  }
+  return out;
+}
+
+/** "9:00" and "09:00:00" both read as "09:00"; anything that is not a time is null. */
+function hhmm(value: string): string | null {
+  const m = /^(\d{1,2}):(\d{2})/.exec(value.trim());
+  return m ? `${m[1].padStart(2, "0")}:${m[2]}` : null;
+}
+
+/** "Mo-Fr" and "Mo,We,Fr" as day names. A range may wrap past Sunday. */
+function expandDayPart(part: string): string[] {
+  const out: string[] = [];
+  for (const token of part.split(",")) {
+    const range = token.split("-").map((t) => DAY_ABBREVIATIONS[t.trim().toLowerCase()]);
+    if (range.length === 0 || range.length > 2 || range.some((d) => d === undefined)) return [];
+    const start = WEEK.indexOf(range[0]);
+    const end = WEEK.indexOf(range[range.length - 1]);
+    for (let i = start, guard = 0; guard < 7; i = (i + 1) % 7, guard++) {
+      if (!out.includes(WEEK[i])) out.push(WEEK[i]);
+      if (i === end) break;
+    }
+  }
+  return out;
+}
+
+const HOURS_STRING = /^\s*([A-Za-z]{2}(?:\s*[-,]\s*[A-Za-z]{2})*)\s+(\d{1,2}:\d{2})\s*-\s*(\d{1,2}:\d{2})/;
+
+/**
+ * Opening hours: openingHoursSpecification (dayOfWeek as an array or a single
+ * value) and openingHours strings such as "Mo-Fr 09:00-17:00".
+ *
+ * looksDefault is set when all seven days span 00:00 to 23:59. That is a plugin
+ * placeholder observed in the real sample, not published hours. The value is
+ * stored with the flag rather than thrown away: dropping it would turn a
+ * detectable fault into an absence, and Phases 11 and 12 decide its weight.
+ */
+function readOpeningHours(node: Json, ctx: Context): OwnSiteOpeningHours | null {
+  const entries: OwnSiteOpeningHoursEntry[] = [];
+  for (const spec of candidates(node.openingHoursSpecification, ctx.byId)) {
+    if (!isObject(spec)) continue;
+    const days = dayList(spec.dayOfWeek);
+    const opens = text(spec.opens);
+    const closes = text(spec.closes);
+    if (days.length > 0 && opens !== "" && closes !== "") {
+      entries.push({ days, opens, closes, raw: null });
+    }
+  }
+  for (const candidate of candidates(node.openingHours, ctx.byId)) {
+    if (typeof candidate !== "string") continue;
+    const match = HOURS_STRING.exec(candidate);
+    if (!match) continue;
+    const days = expandDayPart(match[1]);
+    const opens = hhmm(match[2]);
+    const closes = hhmm(match[3]);
+    if (days.length > 0 && opens !== null && closes !== null) {
+      entries.push({ days, opens, closes, raw: candidate.trim() });
+    }
+  }
+  if (entries.length === 0) return null;
+  const coveredDays = new Set(entries.flatMap((e) => e.days));
+  const looksDefault =
+    coveredDays.size === 7 &&
+    entries.every((e) => hhmm(e.opens ?? "") === "00:00" && hhmm(e.closes ?? "") === "23:59");
+  return { entries, looksDefault };
+}
+
+function numberOrNull(value: unknown): number | null {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value === "string" && value.trim() !== "" && Number.isFinite(Number(value))) return Number(value);
+  return null;
+}
+
+/** A GeoShape or GeoCircle is only counted when it carries something: a midpoint, a radius or a shape. */
+function readGeoShape(value: Json, ctx: Context): OwnSiteServiceArea["geoShape"] {
+  const midpoint = deref(value.geoMidpoint, ctx.byId);
+  const latitude = isObject(midpoint) ? numberOrNull(midpoint.latitude) : null;
+  const longitude = isObject(midpoint) ? numberOrNull(midpoint.longitude) : null;
+  let radius = text(value.geoRadius) || null;
+  let lat = latitude;
+  let lon = longitude;
+  const circle = text(value.circle);
+  if (circle !== "") {
+    // schema.org circle text is "latitude longitude radius".
+    const parts = circle.split(/\s+/);
+    if (parts.length === 3) {
+      lat = lat ?? numberOrNull(parts[0]);
+      lon = lon ?? numberOrNull(parts[1]);
+      radius = radius ?? parts[2];
+    }
+  }
+  const hasOtherShape = ["polygon", "box", "line"].some((k) => text(value[k]) !== "");
+  if (lat === null && lon === null && radius === null && !hasOtherShape && circle === "") return null;
+  return { latitude: lat, longitude: lon, radius };
+}
+
+/**
+ * Service area: areaServed (and the legacy serviceArea) as text, as a Place,
+ * City or AdministrativeArea object or array of them, and as a GeoShape
+ * including the GeoCircle form. Found when there is at least one name or a
+ * geo shape.
+ */
+function readServiceArea(node: Json, ctx: Context): OwnSiteServiceArea | null {
+  const names: string[] = [];
+  let geoShape: OwnSiteServiceArea["geoShape"] = null;
+  const take = (value: unknown, depth: number): void => {
+    for (const c of candidates(value, ctx.byId)) {
+      if (typeof c === "string") {
+        if (c.trim() !== "") names.push(c.trim());
+        continue;
+      }
+      if (!isObject(c)) continue;
+      const name = text(c.name);
+      if (name !== "") names.push(name);
+      const types = typesOf(c);
+      const isShape = types.includes("geoshape") || types.includes("geocircle");
+      if (isShape && geoShape === null) geoShape = readGeoShape(c, ctx);
+      if (depth < 1 && c.geo !== undefined) take(c.geo, depth + 1);
+    }
+  };
+  take(node.areaServed, 0);
+  take(node.serviceArea, 0);
+  const unique = Array.from(new Set(names));
+  if (unique.length === 0 && geoShape === null) return null;
+  return { names: unique, geoShape };
+}
+
+/** Certifications: hasCredential, hasCertification, award and memberOf, each needing a non-empty name. */
+function readCertifications(node: Json, ctx: Context): OwnSiteCertifications | null {
+  const names: string[] = [];
+  for (const key of ["hasCredential", "hasCertification", "award", "memberOf"]) {
+    for (const c of candidates(node[key], ctx.byId)) {
+      const name = typeof c === "string" ? c.trim() : isObject(c) ? text(c.name) : "";
+      if (name !== "") names.push(name);
+    }
+  }
+  const unique = Array.from(new Set(names));
+  return unique.length > 0 ? { names: unique } : null;
+}
+
+/** Service nodes, searched after the business nodes for areaServed: real sites put it there. */
+function serviceNodes(nodes: PoolNode[]): PoolNode[] {
+  return nodes.filter((entry) => entry.types.includes("service"));
+}
+
 /**
  * First found value per field in node priority order. A node that carries the
  * field blank is skipped and the next is tried; conflicting values are never
@@ -321,6 +520,7 @@ export function extractOwnSiteFacts(
       blocksParsed: 0,
       microdataItems: 0,
       incomplete:
+        harvest.microdataTruncated === true ||
         rawBlocks.length > MAX_BLOCKS ||
         (typeof harvest.jsonLdBlocksFound === "number" && harvest.jsonLdBlocksFound > blocks.length),
     };
@@ -349,11 +549,15 @@ export function extractOwnSiteFacts(
 
     const business: OwnSiteBusinessFacts = {
       address: pickField(ordered, readAddress, ctx, () => absentFor<OwnSiteAddress>(state)),
-      // RED skeleton: the four remaining fields are not extracted yet.
-      telephone: { state: "unreadable" },
-      openingHours: { state: "unreadable" },
-      serviceArea: { state: "unreadable" },
-      certifications: { state: "unreadable" },
+      telephone: pickField(ordered, readTelephone, ctx, () => absentFor<OwnSiteTelephone>(state)),
+      openingHours: pickField(ordered, readOpeningHours, ctx, () => absentFor<OwnSiteOpeningHours>(state)),
+      serviceArea: pickField(
+        [...ordered, ...serviceNodes(nodes)],
+        readServiceArea,
+        ctx,
+        () => absentFor<OwnSiteServiceArea>(state)
+      ),
+      certifications: pickField(ordered, readCertifications, ctx, () => absentFor<OwnSiteCertifications>(state)),
     };
 
     return {
