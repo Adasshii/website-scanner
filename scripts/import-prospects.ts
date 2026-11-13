@@ -181,7 +181,7 @@ function formatSampleLine(
   domain: string | null,
   reachability: ReachabilitySignal
 ): string {
-  return `  - ${row.name ?? "(unnamed)"} | domain=${domain ?? "none"} | category=${row.category ?? "none"} | ${reachability}`;
+  return `  - ${row.name ?? "(unnamed)"} | domain=${domain ?? "none"} | category=${row.category ?? "none"} | lon=${row.lon ?? "none"} lat=${row.lat ?? "none"} | ${reachability}`;
 }
 
 // ── Orchestration ───────────────────────────────────────────────────────────

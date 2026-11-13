@@ -278,4 +278,68 @@ describe("upsertOverturePlace", () => {
     if (sourceError) throw sourceError;
     expect(source.raw_operating_status).toBe("open");
   });
+
+  it("D-9-16 guard: a re-import never overwrites a non-null coordinate, even when Overture now reports a shifted centroid", async () => {
+    const place = makeOverturePlace({ lat: 52.1602462, lon: 4.4984826 });
+    const { prospectId } = await upsertOverturePlace(sb, place, CAMPAIGN_TAG);
+
+    await upsertOverturePlace(sb, { ...place, lat: 52.5, lon: 5.1 }, CAMPAIGN_TAG);
+
+    const { data: prospect, error } = await sb
+      .from("prospects")
+      .select("latitude, longitude")
+      .eq("id", prospectId)
+      .single();
+    if (error) throw error;
+    expect(prospect.latitude).toBe(52.1602462);
+    expect(prospect.longitude).toBe(4.4984826);
+  });
+
+  it("D-9-16 guard: a re-import fills coordinates that were null", async () => {
+    const place = makeOverturePlace({ lat: null, lon: null });
+    const { prospectId } = await upsertOverturePlace(sb, place, CAMPAIGN_TAG);
+
+    const { data: before, error: beforeError } = await sb
+      .from("prospects")
+      .select("latitude, longitude")
+      .eq("id", prospectId)
+      .single();
+    if (beforeError) throw beforeError;
+    expect(before.latitude).toBeNull();
+    expect(before.longitude).toBeNull();
+
+    await upsertOverturePlace(sb, { ...place, lat: 52.1602462, lon: 4.4984826 }, CAMPAIGN_TAG);
+
+    const { data: after, error } = await sb
+      .from("prospects")
+      .select("latitude, longitude")
+      .eq("id", prospectId)
+      .single();
+    if (error) throw error;
+    expect(after.latitude).toBe(52.1602462);
+    expect(after.longitude).toBe(4.4984826);
+  });
+
+  it("D-9-16 guard: a re-import that fills coordinates never writes lifecycle_state", async () => {
+    const place = makeOverturePlace({ lat: null, lon: null });
+    const { prospectId } = await upsertOverturePlace(sb, place, CAMPAIGN_TAG);
+
+    const { error: seedError } = await sb
+      .from("prospects")
+      .update({ lifecycle_state: "qualified" })
+      .eq("id", prospectId);
+    if (seedError) throw seedError;
+
+    await upsertOverturePlace(sb, { ...place, lat: 52.1602462, lon: 4.4984826 }, CAMPAIGN_TAG);
+
+    const { data: prospect, error } = await sb
+      .from("prospects")
+      .select("lifecycle_state, latitude")
+      .eq("id", prospectId)
+      .single();
+    if (error) throw error;
+    // The point was filled, and the work column was left exactly as it was.
+    expect(prospect.latitude).toBe(52.1602462);
+    expect(prospect.lifecycle_state).toBe("qualified");
+  });
 });

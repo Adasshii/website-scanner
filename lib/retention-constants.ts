@@ -135,6 +135,12 @@ export const RETENTION_ID_CHUNK_SIZE = 150;
  * a street address identifies the business as squarely as its domain
  * does.
  *
+ * D-9-25 adds `latitude` and `longitude` (migration 022): the Overture
+ * point locates a business as precisely as its street address does, and a
+ * business point is personal data for a sole trader, which is most of this
+ * list. Each new personal-data column joins this map in the plan that
+ * creates it.
+ *
  * Kept, deliberately: `country`, `region`, `category`, `campaign_tag`,
  * `triage_score`, every timestamp (`created_at`, `updated_at`,
  * `triage_checked_at`, `scan_released_at`, `booked_at`,
@@ -143,6 +149,12 @@ export const RETENTION_ID_CHUNK_SIZE = 150;
  * precisely so the funnel history this same phase (TRK-05) reports on
  * survives the identifiers' expiry — nulling any of these would quietly
  * break that reporting surface a few months in.
+ *
+ * Also kept (D-9-25): `not_scoreable_reason` and `scoreable_checked_at`
+ * (migration 022). They hold a reason code and a timestamp, no personal
+ * data, and keeping them preserves the reporting record D-7-17 chose
+ * anonymise over delete to protect: why a business was dropped from
+ * scoring stays readable after its identifiers are gone.
  */
 export const ANONYMIZED_PROSPECT_FIELDS: Record<string, null> = {
   name: null,
@@ -151,6 +163,8 @@ export const ANONYMIZED_PROSPECT_FIELDS: Record<string, null> = {
   contact_email: null,
   website_url_pending: null,
   address: null,
+  latitude: null,
+  longitude: null,
 };
 
 /**

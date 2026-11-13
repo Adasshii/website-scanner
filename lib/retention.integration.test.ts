@@ -489,13 +489,15 @@ describe("runRetention — dry-run inertness (D-7-18)", () => {
  * dispatch and result-mapping without touching anything else.
  */
 describe("anonymizeProspects — field lists (D-7-17, Task 1)", () => {
-  it("clears all six ANONYMIZED_PROSPECT_FIELDS columns", async () => {
+  it("clears every ANONYMIZED_PROSPECT_FIELDS column", async () => {
     const { id } = await seedProspect(isoMonthsAgo(20), {
       name: "Test Business",
       website_url: "https://example-anon.test",
       website_url_pending: "https://pending-anon.test",
       address: "123 Test Street",
       contact_email: "contact@example-anon.test",
+      latitude: 52.1602462,
+      longitude: 4.4984826,
     });
 
     const counts = await anonymizeProspects(sb, [id]);
@@ -506,6 +508,33 @@ describe("anonymizeProspects — field lists (D-7-17, Task 1)", () => {
     for (const field of Object.keys(ANONYMIZED_PROSPECT_FIELDS)) {
       expect(after.data[field]).toBeNull();
     }
+  });
+
+  it("D-9-25: anonymise clears latitude and longitude on the same row where not_scoreable_reason and scoreable_checked_at survive", async () => {
+    // Both directions in ONE test: a test that only proved the clearing would
+    // pass if anonymise nulled the whole row.
+    const checkedAt = isoMonthsAgo(19);
+    const { id } = await seedProspect(isoMonthsAgo(20), {
+      name: "Test Business",
+      latitude: 52.1602462,
+      longitude: 4.4984826,
+      not_scoreable_reason: "no_own_domain",
+      scoreable_checked_at: checkedAt,
+    });
+
+    const before = await sb.from("prospects").select("*").eq("id", id).single();
+    if (before.error) throw before.error;
+    expect(before.data.latitude).toBe(52.1602462);
+    expect(before.data.longitude).toBe(4.4984826);
+
+    await anonymizeProspects(sb, [id]);
+
+    const after = await sb.from("prospects").select("*").eq("id", id).single();
+    if (after.error) throw after.error;
+    expect(after.data.latitude).toBeNull();
+    expect(after.data.longitude).toBeNull();
+    expect(after.data.not_scoreable_reason).toBe("no_own_domain");
+    expect(after.data.scoreable_checked_at).toBe(before.data.scoreable_checked_at);
   });
 
   it("keeps created_at, triage_checked_at, scan_released_at, triage_score, booked_at, country and the stored lifecycle value unchanged", async () => {
