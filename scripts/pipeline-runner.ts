@@ -31,6 +31,7 @@ import { fetchTriageSignals } from "@/lib/triage-fetch";
 import { computeTriageScore } from "@/lib/triage-scorer";
 import { queryOverturePlaces } from "@/lib/overture-client";
 import { upsertOverturePlace } from "@/lib/prospect-upsert";
+import { refreshScoreability } from "@/lib/scoreability-refresh";
 import { createServerClient } from "@/lib/supabase";
 import { validateUrlSafe } from "@/lib/url-validation.server";
 
@@ -85,6 +86,10 @@ async function runTriageMode(argv: string[]): Promise<void> {
     validateUrlSafe,
     computeTriageScore,
     createServerClient,
+    // Same end-of-run marker refresh the terminal script runs (D-9-17). It is
+    // injected here because this runner builds its own deps, so without it the
+    // admin Pipeline button would skip the refresh the terminal run performs.
+    refreshScoreability,
   };
 
   const result = await runTriage(args, deps);
@@ -140,6 +145,8 @@ async function runImportMode(argv: string[]): Promise<void> {
     createServerClient,
     validateUrlSafe,
     fetchReachability: fetchReachabilityForRunner,
+    // See runTriageMode: the button path must refresh the marker too (D-9-17).
+    refreshScoreability,
   };
 
   const result = await runImport(args, deps);

@@ -19,6 +19,7 @@ import { parseArgs } from "node:util";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { queryOverturePlaces, type OvertureQueryParams } from "@/lib/overture-client";
 import { upsertOverturePlace } from "@/lib/prospect-upsert";
+import { refreshScoreability, type ScoreabilityRefreshResult } from "@/lib/scoreability-refresh";
 import { createServerClient } from "@/lib/supabase";
 import { validateUrlSafe } from "@/lib/url-validation.server";
 import { isAggregatorDomain, normalizeDomain } from "@/lib/domain-normalize";
@@ -106,6 +107,8 @@ export interface ImportDeps {
   createServerClient: () => SupabaseClient;
   validateUrlSafe: (input: string) => Promise<string>;
   fetchReachability: (url: string) => Promise<{ ok: boolean; status: number }>;
+  /** End-of-run marker refresh (ENG-06, D-9-17). Never called on a dry run. */
+  refreshScoreability: (sb: SupabaseClient) => Promise<ScoreabilityRefreshResult>;
 }
 
 /**
@@ -136,6 +139,7 @@ const defaultDeps: ImportDeps = {
   createServerClient,
   validateUrlSafe,
   fetchReachability: defaultFetchReachability,
+  refreshScoreability,
 };
 
 // ── Dry-run reachability + sample reporting ────────────────────────────────
@@ -268,6 +272,11 @@ export async function runImport(
   console.log(
     `[import-prospects] done — created=${created} collapsed=${collapsed} skipped=${skipped}`
   );
+
+  // D-9-17: a newly imported prospect carries a current not-scoreable reason
+  // without a separate manual step. Runs once, after every write, and logs its
+  // own per-reason count.
+  await deps.refreshScoreability(sb);
 
   return {
     totalRows: rows.length,

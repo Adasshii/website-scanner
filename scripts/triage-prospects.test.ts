@@ -8,6 +8,7 @@
  */
 import { describe, expect, it, vi } from "vitest";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import type { ScoreabilityRefreshResult } from "@/lib/scoreability-refresh";
 import type { TriageCandidate } from "@/lib/triage-candidates";
 import type { TriageSignals } from "@/types/triage";
 import {
@@ -46,6 +47,12 @@ function makeSignals(overrides?: Partial<TriageSignals>): TriageSignals {
   };
 }
 
+const EMPTY_REFRESH: ScoreabilityRefreshResult = {
+  considered: 0,
+  scoreable: 0,
+  byReason: { no_own_domain: 0, no_unique_match: 0, no_location: 0, permanently_closed: 0 },
+};
+
 function makeDeps(overrides?: Partial<TriageDeps>): TriageDeps {
   return {
     getTriageCandidates: vi.fn(async () => [makeCandidate()]),
@@ -53,6 +60,7 @@ function makeDeps(overrides?: Partial<TriageDeps>): TriageDeps {
     fetchTriageSignals: vi.fn(async () => makeSignals()),
     computeTriageScore: vi.fn((signals) => ({ ...signals, score: 80, gated: false })),
     createServerClient: vi.fn(() => fakeSupabase),
+    refreshScoreability: vi.fn(async () => EMPTY_REFRESH),
     ...overrides,
   };
 }
@@ -107,6 +115,39 @@ describe("runTriage — --dry-run", () => {
     expect(result.dryRun).toBe(true);
     expect(result.triaged).toBe(1);
     expect(result.totalRows).toBe(1);
+  });
+
+  it("does not run the marker refresh, because the refresh writes (D-9-17)", async () => {
+    const fakeSb = { from: vi.fn(() => ({ update: vi.fn() })) } as unknown as SupabaseClient;
+    const deps = makeDeps({ createServerClient: vi.fn(() => fakeSb) });
+
+    await runTriage({ ...baseArgs, dryRun: true }, deps);
+
+    expect(deps.refreshScoreability).not.toHaveBeenCalled();
+  });
+});
+
+describe("runTriage — marker refresh (D-9-17)", () => {
+  it("runs the refresh once, with the run's client, after every prospect has been written", async () => {
+    const order: string[] = [];
+    const eqMock = vi.fn(async () => {
+      order.push("update");
+      return { error: null };
+    });
+    const fakeSb = { from: vi.fn(() => ({ update: vi.fn(() => ({ eq: eqMock })) })) } as unknown as SupabaseClient;
+    const deps = makeDeps({
+      createServerClient: vi.fn(() => fakeSb),
+      refreshScoreability: vi.fn(async () => {
+        order.push("refresh");
+        return EMPTY_REFRESH;
+      }),
+    });
+
+    await runTriage(baseArgs, deps);
+
+    expect(deps.refreshScoreability).toHaveBeenCalledTimes(1);
+    expect(deps.refreshScoreability).toHaveBeenCalledWith(fakeSb);
+    expect(order).toEqual(["update", "refresh"]);
   });
 });
 

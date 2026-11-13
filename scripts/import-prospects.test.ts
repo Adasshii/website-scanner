@@ -9,6 +9,7 @@
 import { describe, expect, it, vi } from "vitest";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { makeOverturePlace } from "@/tests/fixtures/overture";
+import type { ScoreabilityRefreshResult } from "@/lib/scoreability-refresh";
 import { validateUrlSafe } from "@/lib/url-validation.server";
 import {
   ImportArgsError,
@@ -22,6 +23,12 @@ import {
 
 const fakeSupabase = {} as SupabaseClient;
 
+const EMPTY_REFRESH: ScoreabilityRefreshResult = {
+  considered: 0,
+  scoreable: 0,
+  byReason: { no_own_domain: 0, no_unique_match: 0, no_location: 0, permanently_closed: 0 },
+};
+
 function makeDeps(overrides?: Partial<ImportDeps>): ImportDeps {
   return {
     queryOverturePlaces: vi.fn(async () => []),
@@ -29,6 +36,7 @@ function makeDeps(overrides?: Partial<ImportDeps>): ImportDeps {
     createServerClient: vi.fn(() => fakeSupabase),
     validateUrlSafe: vi.fn(async (url: string) => url),
     fetchReachability: vi.fn(async () => ({ ok: true, status: 200 })),
+    refreshScoreability: vi.fn(async () => EMPTY_REFRESH),
     ...overrides,
   };
 }
@@ -131,6 +139,14 @@ describe("runImport — --dry-run", () => {
     expect(result.collapsed).toBe(0);
   });
 
+  it("does not run the marker refresh, because the refresh writes (D-9-17)", async () => {
+    const deps = makeDeps({ queryOverturePlaces: vi.fn(async () => [makeOverturePlace()]) });
+
+    await runImport({ ...baseArgs, dryRun: true }, deps);
+
+    expect(deps.refreshScoreability).not.toHaveBeenCalled();
+  });
+
   it("counts has-domain vs no-website after normalizeDomain", async () => {
     const rows = [
       makeOverturePlace({ websiteUrl: "https://real-business.test" }),
@@ -179,6 +195,30 @@ describe("runImport — --dry-run", () => {
     expect(sampleLines).toContain("aggregator");
 
     logSpy.mockRestore();
+  });
+});
+
+describe("runImport — marker refresh (D-9-17)", () => {
+  it("runs the refresh once, with the run's client, after every upsert has been attempted", async () => {
+    const order: string[] = [];
+    const rows = [makeOverturePlace(), makeOverturePlace()];
+    const deps = makeDeps({
+      queryOverturePlaces: vi.fn(async () => rows),
+      upsertOverturePlace: vi.fn(async () => {
+        order.push("upsert");
+        return { prospectId: "ok-id", created: true };
+      }),
+      refreshScoreability: vi.fn(async () => {
+        order.push("refresh");
+        return EMPTY_REFRESH;
+      }),
+    });
+
+    await runImport({ ...baseArgs, dryRun: false }, deps);
+
+    expect(deps.refreshScoreability).toHaveBeenCalledTimes(1);
+    expect(deps.refreshScoreability).toHaveBeenCalledWith(fakeSupabase);
+    expect(order).toEqual(["upsert", "upsert", "refresh"]);
   });
 });
 

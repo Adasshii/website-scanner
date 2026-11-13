@@ -24,6 +24,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { getTriageCandidates, type TriageCandidate } from "@/lib/triage-candidates";
 import { fetchTriageSignals } from "@/lib/triage-fetch";
 import { computeTriageScore } from "@/lib/triage-scorer";
+import { refreshScoreability, type ScoreabilityRefreshResult } from "@/lib/scoreability-refresh";
 import { createServerClient } from "@/lib/supabase";
 import { validateUrlSafe } from "@/lib/url-validation.server";
 import { BATCH_SIZE, BATCH_DELAY_MS, DEFAULT_CUTOFF } from "@/lib/triage-constants";
@@ -103,6 +104,8 @@ export interface TriageDeps {
   ) => Promise<TriageSignals>;
   computeTriageScore: typeof computeTriageScore;
   createServerClient: () => SupabaseClient;
+  /** End-of-run marker refresh (ENG-06, D-9-17). Never called on a dry run. */
+  refreshScoreability: (sb: SupabaseClient) => Promise<ScoreabilityRefreshResult>;
 }
 
 const defaultDeps: TriageDeps = {
@@ -111,6 +114,7 @@ const defaultDeps: TriageDeps = {
   fetchTriageSignals,
   computeTriageScore,
   createServerClient,
+  refreshScoreability,
 };
 
 // ── Orchestration ───────────────────────────────────────────────────────────
@@ -188,6 +192,13 @@ export async function runTriage(
       (skipped > 0 ? `, ${skipped} skipped` : "") +
       (args.dryRun ? " — dry-run, zero writes performed." : "")
   );
+
+  // D-9-17: a newly triaged prospect carries a current not-scoreable reason
+  // without a separate manual step. A dry run performs zero writes, so it
+  // skips this too.
+  if (!args.dryRun) {
+    await deps.refreshScoreability(sb);
+  }
 
   return {
     totalRows: candidates.length,

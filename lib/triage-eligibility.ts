@@ -4,7 +4,10 @@
 // isReleasable — a divergent copy re-introduces the mislead Phase 4.1 fixed.
 // The scoreable rule lives inside isReleasable; scoreableVerdict is exported
 // only so its truth table can be tested directly, never for a caller to decide
-// releasability on its own.
+// releasability on its own. scoreableFailureReason is the one production caller
+// of scoreableVerdict and the one place MIN_MATCH_CONFIDENCE is applied: both
+// isReleasable and the marker refresh (lib/scoreability-refresh.ts) go through
+// it, so the stored reason can never come from a different rule than the gate.
 import type { TriageScore } from "@/types/triage";
 import { EXCLUDED_CATEGORIES, MIN_MATCH_CONFIDENCE } from "@/lib/triage-constants";
 import { isAggregatorDomain } from "@/lib/domain-normalize";
@@ -120,6 +123,19 @@ export function scoreableVerdict(row: ScoreableRow, minConfidence: number): Scor
 }
 
 /**
+ * The reason a row is not scoreable at the configured confidence limit, or
+ * null when it is (ENG-06, D-9-17). This is the only production caller of
+ * scoreableVerdict and the only place MIN_MATCH_CONFIDENCE is applied.
+ * isReleasable gates on it, and the marker refresh persists its output
+ * verbatim, so the explanation stored on prospects.not_scoreable_reason is by
+ * construction the verdict the release gate used and never a second decision.
+ */
+export function scoreableFailureReason(row: ScoreableRow): ScoreableFailureReason | null {
+  const verdict = scoreableVerdict(row, MIN_MATCH_CONFIDENCE);
+  return verdict.scoreable ? null : verdict.reason;
+}
+
+/**
  * The single releasability predicate. A row is releasable when:
  *  - it is reachable (D-4.1-03 — an unreachable site is short-circuited to
  *    false even though lib/triage-scorer.ts still stores gated===true for
@@ -129,8 +145,9 @@ export function scoreableVerdict(row: ScoreableRow, minConfidence: number): Scor
  *  - either the stored `gated` boolean is true (among reachable rows
  *    this can only mean !https — the D-4.1-04 no-HTTPS fast-track, always
  *    eligible and top priority) or its score is at/under `cutoff`
- *  - and it is scoreable (ENG-06, D-9-14): scoreableVerdict at
- *    MIN_MATCH_CONFIDENCE. The fast track does not override this.
+ *  - and it is scoreable (ENG-06, D-9-14): scoreableFailureReason, which is
+ *    scoreableVerdict at MIN_MATCH_CONFIDENCE. The fast track does not
+ *    override this.
  *
  * Cheap browserless triage still runs on every prospect; this gates the
  * expensive full scan.
@@ -143,6 +160,6 @@ export function isReleasable(
     row.triage_score.reachable &&
     !isExcludedCategory(row.category) &&
     (row.triage_score.gated || row.triage_score.score <= cutoff) &&
-    scoreableVerdict(row, MIN_MATCH_CONFIDENCE).scoreable
+    scoreableFailureReason(row) === null
   );
 }
