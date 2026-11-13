@@ -8,9 +8,16 @@
  * Every fixture is a literal object. No network, no saved third-party HTML.
  */
 import { describe, expect, it } from "vitest";
-import { extractOwnSiteFacts, extractSocialProof } from "../scanner-service/src/own-site-facts";
+import {
+  MIN_PROJECT_IMAGES,
+  MIN_QUOTE_FORM_FIELDS,
+  evaluateQuoteReadiness,
+  extractOwnSiteFacts,
+  extractSocialProof,
+  mergeQuoteReadiness,
+} from "../scanner-service/src/own-site-facts";
 import type { NicheScanSlice } from "../types/niche-scan-slice";
-import type { MicrodataItem, OwnSiteHarvest, OwnSiteSocialProof } from "../types/own-site";
+import type { MicrodataItem, OwnSiteHarvest, OwnSiteQuoteReadiness, OwnSiteSocialProof } from "../types/own-site";
 
 const META = { readAt: "2026-11-13T09:00:00.000Z" };
 
@@ -1094,5 +1101,310 @@ describe("extractSocialProof: stored host list", () => {
     const backward = readOf(extractSocialProof([second, first], SLICE));
     expect(flat(forward.widgetHosts)).toBe(flat(backward.widgetHosts));
     expect(flat(forward.widgetHosts)).toBe('["widget.kiyoh.com","widget.klantenvertellen.nl","widget.trustpilot.com"]');
+  });
+});
+
+// ── Quote readiness (ENG-05) ─────────────────────────────────────────────
+
+/** The per-trade terms. Dutch because the profile's are; the scanner holds none of its own. */
+const CHECKS = {
+  quoteTerms: ["offerte", "prijsopgave", "afspraak", "vrijblijvend"],
+  projectTerms: ["projecten", "portfolio", "realisaties", "referenties", "ons werk"],
+  certificationTerms: ["installq", "techniek nederland", "f-gas"],
+};
+
+type EvaluatedQuoteReadiness = Extract<OwnSiteQuoteReadiness, { state: "evaluated" }>;
+
+function evaluatedOf(result: OwnSiteQuoteReadiness): EvaluatedQuoteReadiness {
+  if (result.state !== "evaluated") throw new Error(`expected state "evaluated", got "${result.state}"`);
+  return result;
+}
+
+function evaluate(zones: Partial<OwnSiteHarvest>, checks = CHECKS): EvaluatedQuoteReadiness {
+  const result = evaluateQuoteReadiness(page([], zones), checks);
+  expect(result.state).toBe("evaluated");
+  return evaluatedOf(result);
+}
+
+const images = (n: number): OwnSiteHarvest["imgHints"] =>
+  Array.from({ length: n }, (_, i) => ({ alt: `foto ${i}`, file: `foto-${i}.jpg` }));
+
+describe("evaluateQuoteReadiness: quote form", () => {
+  it("passes a form with exactly 2 fillable fields and names the form", () => {
+    const q = evaluate({ formSummaries: [{ fieldCount: MIN_QUOTE_FORM_FIELDS, submitLabel: "Verstuur" }] });
+    expect(String(q.quoteForm.passed)).toBe("true");
+    expect(q.quoteForm.evidence).toBe("form with 2 fillable fields");
+  });
+
+  it("fails a form with exactly 1 fillable field, which is a newsletter signup", () => {
+    const q = evaluate({ formSummaries: [{ fieldCount: MIN_QUOTE_FORM_FIELDS - 1, submitLabel: "Aanmelden" }] });
+    expect(String(q.quoteForm.passed)).toBe("false");
+    expect(q.quoteForm.evidence).toBe("");
+  });
+
+  it("states the threshold as 2", () => {
+    expect(MIN_QUOTE_FORM_FIELDS).toBe(2);
+  });
+
+  it("passes with no form when a nav link names a quote term", () => {
+    const q = evaluate({ navTexts: ["Home", "Offerte aanvragen"] });
+    expect(String(q.quoteForm.passed)).toBe("true");
+    expect(q.quoteForm.evidence).toBe('link text: "Offerte aanvragen"');
+  });
+
+  it("passes when an internal link path names a quote term", () => {
+    const q = evaluate({ internalPaths: ["/over-ons", "/gratis-offerte-aanvragen"] });
+    expect(String(q.quoteForm.passed)).toBe("true");
+    expect(q.quoteForm.evidence).toBe("link path: /gratis-offerte-aanvragen");
+  });
+
+  it("reads a quote term at the start of a compound word", () => {
+    const q = evaluate({ navTexts: ["Offerteaanvraag"] });
+    expect(String(q.quoteForm.passed)).toBe("true");
+  });
+
+  it("passes a one-field form whose button names a quote term", () => {
+    const q = evaluate({ formSummaries: [{ fieldCount: 1, submitLabel: "Vraag vrijblijvend offerte aan" }] });
+    expect(String(q.quoteForm.passed)).toBe("true");
+    expect(q.quoteForm.evidence).toBe('button text: "Vraag vrijblijvend offerte aan"');
+  });
+
+  it("does not read a quote word that only appears in the running text as a way to ask", () => {
+    const q = evaluate({ bodyText: "Wij maken graag een offerte voor u. Bel ons." });
+    expect(String(q.quoteForm.passed)).toBe("false");
+  });
+});
+
+describe("evaluateQuoteReadiness: tap-to-call", () => {
+  it("passes on a tel link and names it", () => {
+    const q = evaluate({ telHrefs: ["tel:+31401234567"] });
+    expect(String(q.tapToCall.passed)).toBe("true");
+    expect(q.tapToCall.evidence).toBe("tel link: tel:+31401234567");
+  });
+
+  it("fails when the site only has a mailto link", () => {
+    const q = evaluate({ telHrefs: [], internalPaths: ["/contact"], bodyText: "mail ons: info@example.test" });
+    expect(String(q.tapToCall.passed)).toBe("false");
+    expect(q.tapToCall.evidence).toBe("");
+  });
+
+  it("fails when the phone number is only in the body text with no tel link", () => {
+    const q = evaluate({ bodyText: "Bel 040 123 4567 voor een afspraak." });
+    expect(String(q.tapToCall.passed)).toBe("false");
+  });
+
+  it("ignores a harvested href that is not the telephone scheme", () => {
+    const q = evaluate({ telHrefs: ["mailto:info@example.test", "  "] });
+    expect(String(q.tapToCall.passed)).toBe("false");
+  });
+});
+
+describe("evaluateQuoteReadiness: project photos", () => {
+  it("passes a project term in the nav with enough images", () => {
+    const q = evaluate({ navTexts: ["Projecten"], imgHints: images(MIN_PROJECT_IMAGES) });
+    expect(String(q.projectPhotos.passed)).toBe("true");
+    expect(q.projectPhotos.evidence).toBe('"projecten" in nav, 3 images');
+  });
+
+  it("passes a project term in an internal link path", () => {
+    const q = evaluate({ internalPaths: ["/realisaties/dakrenovatie"], imgHints: images(5) });
+    expect(String(q.projectPhotos.passed)).toBe("true");
+    expect(q.projectPhotos.evidence).toBe('"realisaties" in link path, 5 images');
+  });
+
+  it("passes a multi-word project term in a heading", () => {
+    const q = evaluate({ h2h3: ["Ons werk"], imgHints: images(4) });
+    expect(String(q.projectPhotos.passed)).toBe("true");
+    expect(q.projectPhotos.evidence).toBe('"ons werk" in heading, 4 images');
+  });
+
+  it("fails a project term with no images", () => {
+    const q = evaluate({ navTexts: ["Projecten"], imgHints: [] });
+    expect(String(q.projectPhotos.passed)).toBe("false");
+    expect(q.projectPhotos.evidence).toBe("");
+  });
+
+  it("fails a project term with fewer images than the minimum", () => {
+    const q = evaluate({ navTexts: ["Projecten"], imgHints: images(MIN_PROJECT_IMAGES - 1) });
+    expect(String(q.projectPhotos.passed)).toBe("false");
+  });
+
+  it("fails many images with no project term anywhere", () => {
+    const q = evaluate({ navTexts: ["Home", "Contact"], imgHints: images(20) });
+    expect(String(q.projectPhotos.passed)).toBe("false");
+  });
+});
+
+describe("evaluateQuoteReadiness: certifications", () => {
+  it("passes a scheme name as whole words in the visible text", () => {
+    const q = evaluate({ bodyText: "Wij zijn InstallQ erkend en werken veilig." });
+    expect(String(q.certifications.passed)).toBe("true");
+    expect(q.certifications.evidence).toBe('"installq" in visible text');
+  });
+
+  it("passes a multi-word scheme name across a hyphen or a space", () => {
+    const q = evaluate({ bodyText: "Lid van Techniek-Nederland sinds 2012." });
+    expect(String(q.certifications.passed)).toBe("true");
+    expect(q.certifications.evidence).toBe('"techniek nederland" in visible text');
+  });
+
+  it("passes a scheme name that only appears in an image alt attribute", () => {
+    const q = evaluate({ imgHints: [{ alt: "InstallQ erkend installateur", file: "badge.png" }] });
+    expect(String(q.certifications.passed)).toBe("true");
+    expect(q.certifications.evidence).toBe('"installq" in image alt');
+  });
+
+  it("passes a scheme name that only appears in an image file name", () => {
+    const q = evaluate({ imgHints: [{ alt: "", file: "installq-logo.png" }] });
+    expect(String(q.certifications.passed)).toBe("true");
+    expect(q.certifications.evidence).toBe('"installq" in image file name');
+  });
+
+  it("fails a scheme name that only appears where a class attribute or script body would carry it", () => {
+    // A class attribute is never harvested, so the only places the name can sit are
+    // the raw JSON-LD block, a script host and similar. None of them is read.
+    const q = evaluate({
+      jsonLdBlocks: ['{"@type":"WebPage","description":"installq"}'],
+      widgetHosts: ["installq.example.test"],
+    });
+    expect(String(q.certifications.passed)).toBe("false");
+    expect(q.certifications.evidence).toBe("");
+  });
+
+  it("does not match a short term inside a longer word", () => {
+    const q = evaluate({ bodyText: "Een stekker en een stekdoos." }, { ...CHECKS, certificationTerms: ["stek"] });
+    expect(String(q.certifications.passed)).toBe("false");
+    const whole = evaluate({ bodyText: "Wij zijn STEK gecertificeerd." }, { ...CHECKS, certificationTerms: ["stek"] });
+    expect(String(whole.certifications.passed)).toBe("true");
+  });
+
+  it("never passes on the chamber-of-commerce number, the bare word recognised or the standard acronym alone", () => {
+    const q = evaluate({ bodyText: "KvK 12345678. Erkend bedrijf. ISO 9001. Gecertificeerd.", h2h3: ["Erkend"] });
+    expect(String(q.certifications.passed)).toBe("false");
+  });
+
+  it("passes nothing term-based when the slice carries no terms", () => {
+    const empty = { quoteTerms: [], projectTerms: [], certificationTerms: [] };
+    const q = evaluate(
+      { bodyText: "InstallQ offerte projecten", navTexts: ["Offerte", "Projecten"], imgHints: images(9) },
+      empty
+    );
+    expect(String(q.certifications.passed)).toBe("false");
+    expect(String(q.projectPhotos.passed)).toBe("false");
+    expect(String(q.quoteForm.passed)).toBe("false");
+  });
+});
+
+describe("evaluateQuoteReadiness: terms are literals, never patterns", () => {
+  const hostile = ["(a+)+$", ".*", "[", "\\", "a{999999}", "(?<=x)", "^", "*"];
+
+  it("neither throws nor matches arbitrary text for a term full of regex metacharacters", () => {
+    const text = `${"a".repeat(5000)}!`;
+    for (const term of hostile) {
+      const checks = { quoteTerms: [term], projectTerms: [term], certificationTerms: [term] };
+      const q = evaluate({ bodyText: text, navTexts: [text], internalPaths: [text], h2h3: [text], imgHints: images(5) }, checks);
+      expect(String(q.certifications.passed)).toBe("false");
+      expect(String(q.quoteForm.passed)).toBe("false");
+      expect(String(q.projectPhotos.passed)).toBe("false");
+    }
+  });
+
+  it("still finds a term that really is the text, punctuation and all", () => {
+    const q = evaluate({ bodyText: "Gecertificeerd F-gas installateur." });
+    expect(String(q.certifications.passed)).toBe("true");
+    expect(q.certifications.evidence).toBe('"f-gas" in visible text');
+  });
+
+  it("bounds a slice that carries thousands of terms", () => {
+    const many = Array.from({ length: 5000 }, (_, i) => `term${i}`);
+    const q = evaluate({ bodyText: "term4999 hier" }, { quoteTerms: many, projectTerms: many, certificationTerms: many });
+    expect(String(q.certifications.passed)).toBe("false");
+  });
+});
+
+describe("evaluateQuoteReadiness: evidence and failure", () => {
+  it("gives every passing check a non-empty evidence string and every failing check an empty one", () => {
+    const q = evaluate({
+      formSummaries: [{ fieldCount: 3, submitLabel: "Verstuur" }],
+      telHrefs: ["tel:0401234567"],
+      navTexts: ["Projecten"],
+      imgHints: images(4),
+      bodyText: "InstallQ erkend",
+    });
+    for (const check of [q.quoteForm, q.tapToCall, q.projectPhotos, q.certifications]) {
+      expect(String(check.passed)).toBe("true");
+      expect(check.evidence.length > 0).toBe(true);
+    }
+    const none = evaluate({});
+    for (const check of [none.quoteForm, none.tapToCall, none.projectPhotos, none.certifications]) {
+      expect(String(check.passed)).toBe("false");
+      expect(check.evidence).toBe("");
+    }
+  });
+
+  it("reads a page whose harvest failed as unreadable, not as four false booleans", () => {
+    const result = evaluateQuoteReadiness(null, CHECKS);
+    expect(result.state).toBe("unreadable");
+    expect(flat(result)).toBe('{"state":"unreadable"}');
+  });
+
+  it("reads a page as unreadable when evaluating it throws", () => {
+    const interrupted = {
+      ...page([]),
+      get formSummaries(): OwnSiteHarvest["formSummaries"] {
+        throw new Error("page closed mid-read");
+      },
+    } as OwnSiteHarvest;
+    expect(evaluateQuoteReadiness(interrupted, CHECKS).state).toBe("unreadable");
+  });
+
+  it("reads a harvest whose zones are the wrong shape as unreadable rather than guessing", () => {
+    const broken = { ...page([]), telHrefs: "tel:123" } as unknown as OwnSiteHarvest;
+    expect(evaluateQuoteReadiness(broken, CHECKS).state).toBe("unreadable");
+  });
+});
+
+describe("mergeQuoteReadiness: one result for the whole site", () => {
+  const withTel = evaluateQuoteReadiness(page([], { telHrefs: ["tel:0401234567"] }), CHECKS);
+  const withForm = evaluateQuoteReadiness(page([], { formSummaries: [{ fieldCount: 4, submitLabel: "Stuur" }] }), CHECKS);
+  const everything = evaluateQuoteReadiness(
+    page([], {
+      formSummaries: [{ fieldCount: 4, submitLabel: "Stuur" }],
+      telHrefs: ["tel:0401234567"],
+      navTexts: ["Projecten"],
+      imgHints: images(4),
+      bodyText: "InstallQ",
+    }),
+    CHECKS
+  );
+  const unreadable: OwnSiteQuoteReadiness = { state: "unreadable" };
+
+  it("passes a check when any page passes it, and fails it when every page was read and none did", () => {
+    const merged = evaluatedOf(mergeQuoteReadiness([withTel, withForm]));
+    expect(String(merged.tapToCall.passed)).toBe("true");
+    expect(String(merged.quoteForm.passed)).toBe("true");
+    expect(String(merged.certifications.passed)).toBe("false");
+    expect(merged.certifications.evidence).toBe("");
+  });
+
+  it("reads the whole site as unreadable when a page failed and a check is still unproven", () => {
+    expect(mergeQuoteReadiness([withTel, unreadable]).state).toBe("unreadable");
+  });
+
+  it("keeps the result when a page failed but every check was already proven on another page", () => {
+    expect(mergeQuoteReadiness([everything, unreadable]).state).toBe("evaluated");
+  });
+
+  it("reads unreadable for no pages and for only failed pages", () => {
+    expect(mergeQuoteReadiness([]).state).toBe("unreadable");
+    expect(mergeQuoteReadiness([unreadable, unreadable]).state).toBe("unreadable");
+  });
+
+  it("stores the same result whatever order the pages arrive in", () => {
+    const other = evaluateQuoteReadiness(page([], { telHrefs: ["tel:0507654321"] }), CHECKS);
+    const forward = mergeQuoteReadiness([withTel, other, withForm]);
+    const backward = mergeQuoteReadiness([withForm, other, withTel]);
+    expect(flat(forward)).toBe(flat(backward));
+    expect(evaluatedOf(forward).tapToCall.evidence).toBe("tel link: tel:0401234567");
   });
 });

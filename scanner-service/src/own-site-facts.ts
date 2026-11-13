@@ -8,6 +8,7 @@ import type {
   OwnSiteHarvest,
   OwnSiteOpeningHours,
   OwnSiteOpeningHoursEntry,
+  OwnSiteQuoteReadiness,
   OwnSiteServiceArea,
   OwnSiteSocialProof,
   OwnSiteTelephone,
@@ -968,4 +969,27 @@ export function extractSocialProof(
   } catch {
     return { state: "unreadable" };
   }
+}
+
+// ── Quote readiness (ENG-05) ─────────────────────────────────────────────
+
+/** The per-trade terms the slice carries. The scanner holds no term list of its own. */
+export type TradeChecks = NicheScanSlice["trades"][number]["checks"];
+
+/** A form passes at exactly 2 fillable fields and fails at 1: a single field is a newsletter signup. */
+export const MIN_QUOTE_FORM_FIELDS = 2;
+/** Images needed beside a project term. A signal, not proof. */
+export const MIN_PROJECT_IMAGES = 3;
+
+/** Skeleton: replaced by the implementation in the GREEN commit. */
+export function evaluateQuoteReadiness(harvest: OwnSiteHarvest | null, checks: TradeChecks): OwnSiteQuoteReadiness {
+  void harvest;
+  void checks;
+  return { state: "unreadable" };
+}
+
+/** Skeleton: replaced by the implementation in the GREEN commit. */
+export function mergeQuoteReadiness(pages: ReadonlyArray<OwnSiteQuoteReadiness>): OwnSiteQuoteReadiness {
+  void pages;
+  return { state: "unreadable" };
 }

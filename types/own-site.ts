@@ -192,6 +192,35 @@ export type OwnSiteSocialProof =
       widgetHosts: string[];
     };
 
+/** One quote-readiness check: whether it passed and what matched. Evidence is "" when nothing did, never null. */
+export interface OwnSiteCheck {
+  passed: boolean;
+  evidence: string;
+}
+
+/**
+ * Whether a customer can actually ask for a quote (ENG-05): four checks, each a
+ * boolean with its evidence, computed from integer counts and literal term
+ * matches only, so no rounding or tie-breaking contract exists.
+ *
+ * "unreadable" is a whole-page state, not four false booleans: the harvest for
+ * the page failed, so an absent check and a failed check must not look alike.
+ * A later to-do list proposes a fix only for what is genuinely missing.
+ */
+export type OwnSiteQuoteReadiness =
+  | { state: "unreadable" }
+  | {
+      state: "evaluated";
+      /** A form with at least 2 fillable fields, or a link or button naming a quote term. */
+      quoteForm: OwnSiteCheck;
+      /** An anchor whose href is the telephone scheme. Not a number in the text, not a mailto. */
+      tapToCall: OwnSiteCheck;
+      /** A project term in nav, a link path or a heading, plus enough images. A signal, not proof. */
+      projectPhotos: OwnSiteCheck;
+      /** A trade certification term as whole words in text, link paths or image attributes. */
+      certifications: OwnSiteCheck;
+    };
+
 /**
  * What one invocation of the business-fact extractor produces. The stored
  * OwnSiteFacts adds the members other extractors own.
@@ -219,4 +248,5 @@ export interface OwnSiteFactsCore {
  */
 export interface OwnSiteFacts extends OwnSiteFactsCore {
   socialProof: OwnSiteSocialProof;
+  quoteReadiness: OwnSiteQuoteReadiness;
 }
