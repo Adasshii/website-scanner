@@ -8,7 +8,7 @@ requires:
     provides: "09-01 guard module (lib/google-content-guard.ts) that the isolation test sits beside"
 provides:
   - "INSTALLERS_PROFILE: six trades with approved job values, citations, keyword terms, site-check terms, review widget hosts, competitor rules and bilingual copy"
-  - "toScannerSlice(profile): the only shape that crosses to Railway (NicheScanSlice, 4.9KB-class, no value, citation or copy)"
+  - "toScannerSlice(profile): the only shape that crosses to Railway (NicheScanSlice, 2676 bytes serialised, no value, citation or copy)"
   - "getTrade (keyed on TradeId), getNicheProfile, staleJobValues (pure over an injected clock)"
   - "OVERTURE_IMPORT_CATEGORIES (8) and TARGET_REGIONS (12) for plan 09-06's random import"
   - "NIC-03 and NIC-04 enforced as failing builds, plus the 20480-byte slice budget"

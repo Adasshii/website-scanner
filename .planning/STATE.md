@@ -5,16 +5,16 @@ milestone_name: Renewed Scanner
 current_phase: 09
 current_phase_name: Niche Profile & Own-Site Engine Data
 status: executing
-stopped_at: Completed 09-01-PLAN.md
-last_updated: "2026-11-13T15:06:09.413Z"
+stopped_at: Completed 09-02-PLAN.md
+last_updated: "2026-11-13T15:19:00.275Z"
 last_activity: 2026-11-13
 last_activity_desc: Phase 09 execution started
-state_head: 5692c246f9e2b9794a5016f7759fc35b945a6a4e
+state_head: 6690e129deebb1bfddd080d6874ab91e56a32203
 progress:
   total_phases: 5
   completed_phases: 0
   total_plans: 9
-  completed_plans: 1
+  completed_plans: 2
   percent: 0
 ---
 
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-11-11)
 ## Current Position
 
 Phase: 09 (Niche Profile & Own-Site Engine Data) — EXECUTING
-Plan: 2 of 9
+Plan: 3 of 9
 Status: Ready to execute
 Last activity: 2026-11-13 — Phase 09 execution started
 
@@ -122,6 +122,7 @@ v1.0's phases 1 to 8 are archived at `.planning/milestones/v1.0-phases/`, its ro
 | Phase 07 P10 | ~15min | 3 tasks | 3 files |
 | Phase quick P260803-lh0 | ~45min | 2 tasks | 2 files |
 | Phase 09 P01 | about 1 h | 3 tasks | 2 files |
+| Phase 09 P02 | 7 min | 3 tasks | 9 files |
 
 ## Accumulated Context
 
@@ -216,6 +217,7 @@ Recent decisions affecting current work:
 - [Phase ?]: [Quick 260803-lh0]: Paginated getReportingData()'s scans read too (beyond plan's locked scope) after live local DB (1045 scans in 30-day window) reproduced the identical PostgREST 1000-row cap on a third read the plan assumed was already safe
 - [Phase 09]: 09-01: Google guard bans distinctive Places names and endpoint tokens only; name, address, rating, reviews, latitude, longitude, displayName stay legal as source tokens
 - [Phase 09]: 09-01: ALLOWED_GOOGLE_CLIENT_FILES is empty; Phase 12 adds exactly one entry, and its client must call toStorableGooglePlace
+- [Phase 09]: NicheProfile carries reviewWidgetHosts and the money-line template carries only {amount}, so toScannerSlice reads only the profile and Phase 12 adds trade labels if it wants them — Keeps the slice a pure function of the profile; no trade label field exists and the report is per trade
 
 ### Pending Todos
 
@@ -268,6 +270,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-11-13T15:06:09.382Z
-Stopped at: Completed 09-01-PLAN.md
+Last session: 2026-11-13T15:19:00.244Z
+Stopped at: Completed 09-02-PLAN.md
 Resume file: None

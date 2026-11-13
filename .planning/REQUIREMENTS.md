@@ -30,8 +30,8 @@ Phase numbering continues from v1.0, which ended at Phase 8. v2.0 starts at Phas
 ### Niche profile
 
 - [ ] **NIC-01**: An installers profile holds trades, job values, AI questions, competitor rules, trade-specific website checks and all copy
-- [ ] **NIC-02**: Each default job value carries a citation to the source it came from
-- [ ] **NIC-03**: Country and locale are parameters of the profile, never hardcoded
+- [x] **NIC-02**: Each default job value carries a citation to the source it came from
+- [x] **NIC-03**: Country and locale are parameters of the profile, never hardcoded
 - [ ] **NIC-04**: Adding a niche is a new profile plus a landing page, with no change to the engine
 
 ### Scoring
@@ -118,8 +118,8 @@ Phase 8.
 | AIV-04 | Phase 10 | Pending |
 | AIV-05 | Phase 11 | Pending |
 | NIC-01 | Phase 9 | Pending |
-| NIC-02 | Phase 9 | Pending |
-| NIC-03 | Phase 9 | Pending |
+| NIC-02 | Phase 9 | Complete |
+| NIC-03 | Phase 9 | Complete |
 | NIC-04 | Phase 9 | Pending |
 | SCR-01 | Phase 11 | Pending |
 | SCR-02 | Phase 11 | Pending |
