@@ -38,6 +38,9 @@ const MAX_BLOCK_CHARS = 200_000;
 const POOL_DEPTH_LIMIT = 6;
 /** Hops when following an @id reference. */
 const DEREF_HOP_LIMIT = 4;
+/** Microdata items and values kept per property, matching the browser caps. */
+const MAX_MICRODATA_ITEMS = 50;
+const MAX_MICRODATA_VALUES = 20;
 /** Total nodes the pool will hold. 20 blocks of 200,000 chars could otherwise be a million. */
 const POOL_NODE_LIMIT = 5_000;
 
@@ -122,6 +125,34 @@ function addToPool(root: unknown, source: FieldSource, pool: PoolNode[]): void {
 }
 
 /**
+ * Convert a harvested microdata item into the JSON-LD-like shape the pool
+ * walks, so the field extractors are written once and serve both sources.
+ * Depth-bounded like the pool. A property named __proto__ is skipped: the item
+ * came from a page we did not write, and assigning that key onto a plain object
+ * would change its prototype.
+ */
+function microdataToNode(item: unknown, depth: number): Json | null {
+  if (depth > POOL_DEPTH_LIMIT || !isObject(item)) return null;
+  const node: Json = {};
+  const rawType = typeof item.type === "string" ? item.type.trim() : "";
+  if (rawType !== "") {
+    const types = rawType.split(/\s+/);
+    node["@type"] = types.length === 1 ? types[0] : types;
+  }
+  const props = isObject(item.props) ? item.props : {};
+  for (const [name, values] of Object.entries(props)) {
+    if (name === "__proto__" || !Array.isArray(values)) continue;
+    const converted: unknown[] = [];
+    for (const value of values.slice(0, MAX_MICRODATA_VALUES)) {
+      const out = typeof value === "string" ? value : microdataToNode(value, depth + 1);
+      if (out !== null) converted.push(out);
+    }
+    if (converted.length > 0) node[name] = converted.length === 1 ? converted[0] : converted;
+  }
+  return node;
+}
+
+/**
  * Index nodes by @id across ALL blocks. A bare reference ({ "@id": ... } and
  * nothing else) is never an entry, so a reference cannot shadow its target. If
  * two nodes share an @id, the one with more keys is kept: it is the fuller
@@ -150,6 +181,12 @@ function isReference(value: unknown): value is { "@id": string } {
  * Follow an @id reference to its node, across blocks. Bounded by a hop limit
  * and a cycle guard, so a cyclic reference graph terminates. An unresolvable
  * or over-deep reference is null: it reads as no value, never as a guess.
+ *
+ * Both guards are defense in depth. indexById never stores a bare reference,
+ * so a lookup lands on a full node and the loop ends on the next hop; a cycle
+ * in the graph cannot make it spin today. They stay because the index rule is
+ * the only thing keeping that true, and a later change to it must not be able
+ * to turn a hostile page into an unbounded loop.
  */
 function deref(value: unknown, byId: Map<string, Json>): unknown {
   let current = value;
@@ -543,6 +580,16 @@ export function extractOwnSiteFacts(
       addToPool(parsed, "jsonld", nodes);
     }
     if (state.blocksInvalid > 0) state.incomplete = true;
+
+    // Microdata joins the same pool after the JSON-LD nodes, so JSON-LD wins a
+    // tie and the field's source records which markup produced the value.
+    const microdata = Array.isArray(harvest.microdata) ? harvest.microdata.slice(0, MAX_MICRODATA_ITEMS) : [];
+    const claimed = typeof harvest.microdataCount === "number" ? Math.floor(harvest.microdataCount) : 0;
+    state.microdataItems = Math.min(MAX_MICRODATA_ITEMS, Math.max(microdata.length, claimed, 0));
+    for (const item of microdata) {
+      const node = microdataToNode(item, 0);
+      if (node !== null) addToPool(node, "microdata", nodes);
+    }
 
     const ctx: Context = { byId: indexById(nodes) };
     const ordered = businessNodesInPriorityOrder(nodes);

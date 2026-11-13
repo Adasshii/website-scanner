@@ -59,6 +59,36 @@ export interface OwnSiteHarvest {
   microdataCount: number;
   /** True when a microdata cap cut the walk short, so an absence may be "could not tell". */
   microdataTruncated: boolean;
+
+  // Zones plans 09-07 and 09-08 read. Harvested now so neither has to reopen
+  // the browser boundary. Not persisted: they travel in memory beside the page
+  // result, the way the screenshot buffers do.
+  title: string;
+  h1: string[];
+  h2h3: string[];
+  /** Anchor text inside nav, [role=navigation] and header. */
+  navTexts: string[];
+  /** Pathnames of internal anchors, deduped. */
+  internalPaths: string[];
+  /** First 20,000 characters of the visible text. */
+  bodyText: string;
+  telHrefs: string[];
+  formSummaries: OwnSiteFormSummary[];
+  imgHints: OwnSiteImgHint[];
+  /** Hostnames of script[src] and iframe[src]. */
+  widgetHosts: string[];
+}
+
+export interface OwnSiteFormSummary {
+  /** Visible input, select and textarea fields; hidden and button-like inputs do not count. */
+  fieldCount: number;
+  submitLabel: string;
+}
+
+export interface OwnSiteImgHint {
+  alt: string;
+  /** The filename part of the src, without path or query. */
+  file: string;
 }
 
 /** A microdata value is trimmed text or a nested item. */

@@ -42,11 +42,31 @@ export const HARVEST_CAPS = {
   microdataPropsPerItem: 50,
   /** Values kept per property name. */
   microdataValuesPerProp: 20,
+  /** Link hrefs kept per list: internal paths, tel hrefs and nav texts. */
+  linkHrefs: 100,
+  /** Anchors examined when collecting internal paths. */
+  linkScan: 2_000,
+  /** Distinct script and iframe hostnames kept. */
+  widgetHosts: 100,
+  /** Script and iframe elements examined, so a page with a million of them cannot hold a slot. */
+  widgetElements: 1_000,
+  /** Characters of visible text kept. */
+  bodyText: 20_000,
+  /** Characters kept from a short text item: a heading, a label, an alt. */
+  textChars: 200,
+  /** Headings kept per list. */
+  headings: 50,
+  /** Forms summarised. */
+  forms: 20,
+  /** Image hints kept. */
+  imgHints: 50,
 } as const;
 
 export type HarvestCaps = typeof HARVEST_CAPS;
 
 export interface HarvestArgs {
+  /** The page origin, to tell internal anchors from external ones. */
+  origin: string;
   caps: HarvestCaps;
 }
 
@@ -132,12 +152,87 @@ export function harvestOwnSiteInBrowser(args: HarvestArgs): OwnSiteHarvest {
     }
   }
 
+  // The zones trade scoring and the own-site checks need. One browser round
+  // trip, so plans 09-07 and 09-08 never reopen the boundary.
+  const h1 = Array.from(document.querySelectorAll("h1"))
+    .slice(0, caps.headings)
+    .map((e) => (e.textContent || "").trim().slice(0, caps.textChars));
+  const h2h3 = Array.from(document.querySelectorAll("h2, h3"))
+    .slice(0, caps.headings)
+    .map((e) => (e.textContent || "").trim().slice(0, caps.textChars));
+  const navTexts = Array.from(document.querySelectorAll('nav a, [role="navigation"] a, header a'))
+    .slice(0, caps.linkHrefs)
+    .map((e) => (e.textContent || "").trim().slice(0, caps.textChars));
+
+  const internalPaths: string[] = [];
+  for (const a of Array.from(document.querySelectorAll("a[href]")).slice(0, caps.linkScan)) {
+    if (internalPaths.length >= caps.linkHrefs) break;
+    try {
+      const u = new URL(a.getAttribute("href") || "", args.origin);
+      if (u.origin === args.origin && !internalPaths.includes(u.pathname)) internalPaths.push(u.pathname);
+    } catch {
+      // An unparseable href is simply not an internal path.
+    }
+  }
+
+  const telHrefs = Array.from(document.querySelectorAll('a[href^="tel:"]'))
+    .slice(0, caps.linkHrefs)
+    .map((e) => (e.getAttribute("href") || "").trim().slice(0, caps.textChars));
+
+  const formSummaries = Array.from(document.querySelectorAll("form"))
+    .slice(0, caps.forms)
+    .map((form) => {
+      const fields = Array.from(form.querySelectorAll("input, select, textarea"))
+        .slice(0, 200)
+        .filter((f) => {
+          if (f.tagName.toLowerCase() !== "input") return true;
+          const type = (f.getAttribute("type") || "text").toLowerCase();
+          return !["hidden", "submit", "button", "image", "reset"].includes(type);
+        });
+      const button = Array.from(form.querySelectorAll('button, input[type="submit"]'))[0];
+      const label = button
+        ? (button.tagName.toLowerCase() === "input" ? button.getAttribute("value") : button.textContent) || ""
+        : "";
+      return { fieldCount: fields.length, submitLabel: label.trim().slice(0, caps.textChars) };
+    });
+
+  const imgHints = Array.from(document.querySelectorAll("img"))
+    .slice(0, caps.imgHints)
+    .map((img) => ({
+      alt: (img.getAttribute("alt") || "").trim().slice(0, caps.textChars),
+      file: ((img.getAttribute("src") || "").split("#")[0].split("?")[0].split("/").pop() || "").slice(
+        0,
+        caps.textChars
+      ),
+    }));
+
+  const widgetHosts: string[] = [];
+  for (const el of Array.from(document.querySelectorAll("script[src], iframe[src]")).slice(0, caps.widgetElements)) {
+    if (widgetHosts.length >= caps.widgetHosts) break;
+    try {
+      const host = new URL(el.getAttribute("src") || "", args.origin).hostname;
+      if (host !== "" && !widgetHosts.includes(host)) widgetHosts.push(host);
+    } catch {
+      // An unparseable src has no host to report.
+    }
+  }
+
   return {
     jsonLdBlocks,
     jsonLdBlocksFound: scripts.length,
     microdata: items,
     microdataCount: count,
     microdataTruncated: truncated,
+    title: (document.title || "").trim().slice(0, caps.textChars),
+    h1,
+    h2h3,
+    navTexts,
+    internalPaths,
+    bodyText: ((document.body && document.body.innerText) || "").slice(0, caps.bodyText),
+    telHrefs,
+    formSummaries,
+    imgHints,
+    widgetHosts,
   };
 }
 
@@ -154,7 +249,8 @@ export async function harvestOwnSite(
 ): Promise<OwnSiteHarvestOutcome | null> {
   if (!slice) return null;
   try {
-    const harvest = await page.evaluate(harvestOwnSiteInBrowser, { caps: HARVEST_CAPS });
+    const origin = new URL(page.url()).origin;
+    const harvest = await page.evaluate(harvestOwnSiteInBrowser, { origin, caps: HARVEST_CAPS });
     return { state: "harvested", harvest };
   } catch (err) {
     console.error(

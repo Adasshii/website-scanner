@@ -9,9 +9,23 @@
  */
 import { describe, expect, it } from "vitest";
 import { extractOwnSiteFacts } from "../scanner-service/src/own-site-facts";
-import type { OwnSiteHarvest } from "../types/own-site";
+import type { MicrodataItem, OwnSiteHarvest } from "../types/own-site";
 
 const META = { readAt: "2026-11-13T09:00:00.000Z" };
+
+/** The zones the business-fact parser does not read, empty. */
+const ZONES = {
+  title: "",
+  h1: [],
+  h2h3: [],
+  navTexts: [],
+  internalPaths: [],
+  bodyText: "",
+  telHrefs: [],
+  formSummaries: [],
+  imgHints: [],
+  widgetHosts: [],
+};
 
 /** Build a harvest from literal JSON-LD values (stringified) or raw strings. */
 function harvestOf(blocks: Array<unknown>): OwnSiteHarvest {
@@ -22,6 +36,7 @@ function harvestOf(blocks: Array<unknown>): OwnSiteHarvest {
     microdata: [],
     microdataCount: 0,
     microdataTruncated: false,
+    ...ZONES,
   };
 }
 
@@ -36,6 +51,7 @@ const NO_BLOCKS: OwnSiteHarvest = {
   microdata: [],
   microdataCount: 0,
   microdataTruncated: false,
+  ...ZONES,
 };
 
 describe("extractOwnSiteFacts: address", () => {
@@ -593,6 +609,180 @@ describe("extractOwnSiteFacts: per-field independence", () => {
     const b = extractOwnSiteFacts(null, META).business;
     expect(Object.keys(b).sort().join(",")).toBe("address,certifications,openingHours,serviceArea,telephone");
     expect(b.serviceArea.state).toBe("unreadable");
+  });
+});
+
+/** A harvest carrying only microdata items, optionally with JSON-LD blocks too. */
+function microdataHarvest(
+  items: MicrodataItem[],
+  blocks: unknown[] = [],
+  extra: Partial<OwnSiteHarvest> = {}
+): OwnSiteHarvest {
+  return { ...harvestOf(blocks), microdata: items, microdataCount: items.length, ...extra };
+}
+
+const SCHEMA = "https://schema.org/";
+
+const BREADCRUMB: MicrodataItem = {
+  type: `${SCHEMA}BreadcrumbList`,
+  props: { itemListElement: [{ type: `${SCHEMA}ListItem`, props: { name: ["Home"] } }] },
+};
+
+const BUSINESS: MicrodataItem = {
+  type: `${SCHEMA}LocalBusiness`,
+  props: {
+    name: ["Micro Installatie"],
+    telephone: ["+31 40 123 4567"],
+    address: [
+      {
+        type: `${SCHEMA}PostalAddress`,
+        props: { streetAddress: ["Microlaan 8"], addressLocality: ["Eindhoven"], postalCode: ["5611 AB"] },
+      },
+    ],
+  },
+};
+
+describe("extractOwnSiteFacts: microdata fallback", () => {
+  it("reads a microdata-only page, with source microdata", () => {
+    const facts = extractOwnSiteFacts(microdataHarvest([BUSINESS]), META);
+    const address = facts.business.address;
+    expect(address.state).toBe("found");
+    if (address.state === "found") {
+      expect(address.source).toBe("microdata");
+      expect(address.value.streetAddress).toBe("Microlaan 8");
+    }
+    const phone = facts.business.telephone;
+    expect(phone.state === "found" && phone.source === "microdata").toBe(true);
+    expect(facts.structuredData.microdataItems).toBe(1);
+  });
+
+  it("reads the business when the first itemscope root is a breadcrumb", () => {
+    const facts = extractOwnSiteFacts(microdataHarvest([BREADCRUMB, BUSINESS]), META);
+    const address = facts.business.address;
+    expect(address.state === "found" && address.value.streetAddress === "Microlaan 8").toBe(true);
+  });
+
+  it("reads missing, not found, when the only microdata item is a breadcrumb", () => {
+    const facts = extractOwnSiteFacts(microdataHarvest([BREADCRUMB]), META);
+    expect(flat(facts.business.address)).toBe(flat({ state: "missing", reason: "not_in_markup" }));
+  });
+
+  it("lets JSON-LD win over microdata that disagrees, and records which one produced the value", () => {
+    const facts = extractOwnSiteFacts(
+      microdataHarvest(
+        [BUSINESS],
+        [{ "@type": "LocalBusiness", address: { streetAddress: "Jsonlaan 1", addressLocality: "Breda" } }]
+      ),
+      META
+    );
+    const address = facts.business.address;
+    expect(address.state === "found" && address.source === "jsonld").toBe(true);
+    expect(address.state === "found" && address.value.streetAddress === "Jsonlaan 1").toBe(true);
+  });
+
+  it("falls back to microdata for a field JSON-LD leaves out", () => {
+    const facts = extractOwnSiteFacts(
+      microdataHarvest(
+        [BUSINESS],
+        [{ "@type": "LocalBusiness", address: { streetAddress: "Jsonlaan 1", addressLocality: "Breda" } }]
+      ),
+      META
+    );
+    const phone = facts.business.telephone;
+    expect(phone.state === "found" && phone.source === "microdata").toBe(true);
+  });
+
+  it("reads unreadable, not missing, when a microdata cap cut the walk short", () => {
+    const facts = extractOwnSiteFacts(microdataHarvest([BREADCRUMB], [], { microdataTruncated: true }), META);
+    expect(facts.business.address.state).toBe("unreadable");
+  });
+
+  it("does not let a __proto__ property in microdata smuggle an address in through inheritance", () => {
+    // If the converter assigned this key onto a plain object it would become the
+    // node's prototype, and node.address would then be read off the prototype.
+    const hostile: MicrodataItem = {
+      type: `${SCHEMA}LocalBusiness`,
+      props: JSON.parse(
+        '{"__proto__": [{"type": "x", "props": {"address": ["Erfgoed 1, Utrecht"]}}], "name": ["Hostile"]}'
+      ),
+    };
+    const facts = extractOwnSiteFacts(microdataHarvest([hostile]), META);
+    expect(facts.business.address.state).toBe("missing");
+    expect(({} as Record<string, unknown>)["address"]).toBeUndefined();
+  });
+});
+
+describe("extractOwnSiteFacts: hostile structure", () => {
+  it("terminates on a cyclic @id reference graph", () => {
+    const facts = extractOwnSiteFacts(
+      harvestOf([
+        {
+          "@graph": [
+            { "@type": "LocalBusiness", "@id": "#a", address: { "@id": "#b" }, areaServed: { "@id": "#b" } },
+            { "@type": "PostalAddress", "@id": "#b", location: { "@id": "#a" }, geo: { "@id": "#b" } },
+            { "@id": "#c", sameAs: { "@id": "#d" } },
+            { "@id": "#d", sameAs: { "@id": "#c" } },
+          ],
+        },
+      ]),
+      META
+    );
+    expect(facts.business.address.state).toBe("missing");
+  });
+
+  it("reads a reference that points back at itself as no value", () => {
+    const facts = extractOwnSiteFacts(
+      harvestOf([{ "@type": "LocalBusiness", "@id": "#a", address: { "@id": "#a" } }]),
+      META
+    );
+    expect(facts.business.address.state).toBe("missing");
+  });
+
+  it("walks no deeper than 6 levels and holds no more than 5,000 nodes", () => {
+    let deep: unknown = { "@type": "Plumber", address: { streetAddress: "Te Diep 1", addressLocality: "X" } };
+    for (let i = 0; i < 30; i++) deep = { "@type": "Thing", child: deep };
+    expect(extractOwnSiteFacts(harvestOf([deep]), META).business.address.state).toBe("missing");
+
+    // 12,000 tiny nodes stay under the 200,000 character block cap, so the pool
+    // cap (5,000) is what stops the walk. The business node after them is never reached.
+    const filler = Array.from({ length: 12_000 }, () => ({ "@type": "T" }));
+    const late = { "@type": "Plumber", address: { streetAddress: "Te Laat 1", addressLocality: "X" } };
+    const raw = JSON.stringify({ "@graph": [...filler, late] });
+    expect(raw.length).toBeLessThan(200_000);
+    const facts = extractOwnSiteFacts(harvestOf([raw]), META);
+    expect(facts.business.address.state).toBe("missing");
+    const early = JSON.stringify({ "@graph": [late, ...filler] });
+    expect(extractOwnSiteFacts(harvestOf([early]), META).business.address.state).toBe("found");
+  });
+
+  it("reads a block at the 200,000 character cap as unreadable even when the text happens to parse", () => {
+    // Valid JSON, padded to exactly the cap: the harvester cuts at this length, so
+    // a block this long may have been cut off and must not be trusted as complete.
+    const core = '{"@type":"Plumber","address":{"streetAddress":"Kapweg 1","addressLocality":"X"},"pad":""}';
+    const padded = core.replace('"pad":""', `"pad":"${"p".repeat(200_000 - core.length)}"`);
+    expect(padded.length).toBe(200_000);
+    const facts = extractOwnSiteFacts(harvestOf([padded]), META);
+    expect(facts.business.address.state).toBe("unreadable");
+    expect(facts.structuredData.jsonLdInvalid).toBe(1);
+
+    const justUnder = core.replace('"pad":""', `"pad":"${"p".repeat(199_999 - core.length)}"`);
+    expect(justUnder.length).toBe(199_999);
+    expect(extractOwnSiteFacts(harvestOf([justUnder]), META).business.address.state).toBe("found");
+  });
+
+  it("reads unreadable when the page held more blocks than the harvester kept", () => {
+    const facts = extractOwnSiteFacts(
+      { ...harvestOf([{ "@type": "WebSite" }]), jsonLdBlocksFound: 25 },
+      META
+    );
+    expect(facts.business.address.state).toBe("unreadable");
+  });
+
+  it("applies its own block cap to a harvest that exceeds it", () => {
+    const blocks = Array.from({ length: 30 }, () => ({ "@type": "WebSite" }));
+    const facts = extractOwnSiteFacts(harvestOf(blocks), META);
+    expect(facts.structuredData.jsonLdBlocks).toBe(20);
+    expect(facts.business.address.state).toBe("unreadable");
   });
 });
 
