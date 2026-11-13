@@ -55,6 +55,14 @@ export interface OwnSiteHarvest {
   jsonLdBlocksFound: number;
 }
 
+/**
+ * What harvestOwnSite() answers when a slice was requested. A failure in the
+ * harvest is a value, not an exception: it must never fail the page.
+ */
+export type OwnSiteHarvestOutcome =
+  | { state: "harvested"; harvest: OwnSiteHarvest }
+  | { state: "unreadable" };
+
 /** The business facts ENG-01 asks for, one FieldState per field. */
 export interface OwnSiteBusinessFacts {
   address: FieldState<OwnSiteAddress>;
