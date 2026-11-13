@@ -6,10 +6,10 @@ current_phase: 09
 current_phase_name: Niche Profile & Own-Site Engine Data
 status: executing
 stopped_at: Completed 09-06-PLAN.md
-last_updated: "2026-11-13T22:51:13.703Z"
+last_updated: "2026-11-13T23:00:51.522Z"
 last_activity: 2026-11-13
 last_activity_desc: Phase 09 execution started
-state_head: 1f2ce42317f49487e43810f9975178028a8ea7c2
+state_head: 5cad85fa0731f694bf6cc4b59372ddd62f9796d1
 progress:
   total_phases: 5
   completed_phases: 0
@@ -231,6 +231,7 @@ Recent decisions affecting current work:
 - [Phase 09]: 09-05: extractOwnSiteFacts takes OwnSiteHarvest or null; plan 09-09 maps harvestOwnSite's unreadable outcome to null
 - [Phase 09]: 09-06: scoreableFailureReason wrapper keeps scoreableVerdict at one production caller; refresh and isReleasable both go through it
 - [Phase 09]: 09-06: dispatch records a marked prospect via markScanFailed(not_scoreable, no attempt spent), the same as robots/SSRF skips, because the schema has no skipped state
+- [Phase 09]: 09-06: dispatch computes the scoreable verdict fresh via scoreableFailureReason (Joshua chose option b, 2026-11-13); the refresh is not widened to released prospects; the stored marker is the Shortlist explanation only
 
 ### Pending Todos
 
@@ -254,7 +255,6 @@ The three prospect-quality todos were resolved by Phase 4.1 (moved to `.planning
 - **Overture data quality** is a proven risk here, not theoretical — prior research produced a 98% false-positive read before correction. Manual sample audit required in Phase 1.
 - Open follow-up: cited-number-vs-report locale match verified only against seeded fixture scans (report rendered English against a Dutch draft); confirm against a real NL crawl the first time this surface handles genuine production data
 - 07-07 Task 3 (checkpoint:decision, gate=blocking): production deploy + dashboard cron confirmation + live dry-run JSON + SQL count needed before RETENTION_MODE can be chosen (stay-dry-run / anonymize / delete)
-- 09-06: dispatch re-check cannot stop prospects released before migration 022 (no marker, refresh skips released). ENG-06 not marked complete; decision needed (see 09-06-SUMMARY Open items)
 
 ### Roadmap Evolution
 
