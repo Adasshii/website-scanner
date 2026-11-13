@@ -537,6 +537,59 @@ function absentFor<T>(state: ParseState): FieldState<T> {
 }
 
 /**
+ * Parse one page's structured data into the node pool every extractor reads,
+ * and record what could not be read in full. Shared by the business facts and
+ * the social-proof extractor so both apply the same caps and the same rule for
+ * "could not tell". Throws only on a bug; callers wrap it.
+ */
+function readStructuredData(harvest: OwnSiteHarvest): { nodes: PoolNode[]; state: ParseState } {
+  const rawBlocks = Array.isArray(harvest.jsonLdBlocks) ? harvest.jsonLdBlocks : [];
+  const blocks = rawBlocks.filter((b): b is string => typeof b === "string").slice(0, MAX_BLOCKS);
+
+  const state: ParseState = {
+    blocksHarvested: blocks.length,
+    blocksInvalid: 0,
+    blocksParsed: 0,
+    microdataItems: 0,
+    incomplete:
+      harvest.microdataTruncated === true ||
+      rawBlocks.length > MAX_BLOCKS ||
+      (typeof harvest.jsonLdBlocksFound === "number" && harvest.jsonLdBlocksFound > blocks.length),
+  };
+
+  const nodes: PoolNode[] = [];
+  for (const block of blocks) {
+    // A block at the cap was cut off by the harvester, so it cannot be read in full.
+    if (block.length >= MAX_BLOCK_CHARS) {
+      state.blocksInvalid++;
+      continue;
+    }
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(block);
+    } catch {
+      state.blocksInvalid++;
+      continue;
+    }
+    state.blocksParsed++;
+    addToPool(parsed, "jsonld", nodes);
+  }
+  if (state.blocksInvalid > 0) state.incomplete = true;
+
+  // Microdata joins the same pool after the JSON-LD nodes, so JSON-LD wins a
+  // tie and the field's source records which markup produced the value.
+  const microdata = Array.isArray(harvest.microdata) ? harvest.microdata.slice(0, MAX_MICRODATA_ITEMS) : [];
+  const claimed = typeof harvest.microdataCount === "number" ? Math.floor(harvest.microdataCount) : 0;
+  state.microdataItems = Math.min(MAX_MICRODATA_ITEMS, Math.max(microdata.length, claimed, 0));
+  for (const item of microdata) {
+    const node = microdataToNode(item, 0);
+    if (node !== null) addToPool(node, "microdata", nodes);
+  }
+
+  return { nodes, state };
+}
+
+/**
  * Turn a harvest into OwnSiteFacts. A null harvest means the harvest itself
  * failed. Never throws: a bug here must not fail the scan, so anything
  * unexpected answers "unreadable".
@@ -548,49 +601,7 @@ export function extractOwnSiteFacts(
   try {
     if (harvest === null) return unreadableFacts(meta);
 
-    const rawBlocks = Array.isArray(harvest.jsonLdBlocks) ? harvest.jsonLdBlocks : [];
-    const blocks = rawBlocks.filter((b): b is string => typeof b === "string").slice(0, MAX_BLOCKS);
-
-    const state: ParseState = {
-      blocksHarvested: blocks.length,
-      blocksInvalid: 0,
-      blocksParsed: 0,
-      microdataItems: 0,
-      incomplete:
-        harvest.microdataTruncated === true ||
-        rawBlocks.length > MAX_BLOCKS ||
-        (typeof harvest.jsonLdBlocksFound === "number" && harvest.jsonLdBlocksFound > blocks.length),
-    };
-
-    const nodes: PoolNode[] = [];
-    for (const block of blocks) {
-      // A block at the cap was cut off by the harvester, so it cannot be read in full.
-      if (block.length >= MAX_BLOCK_CHARS) {
-        state.blocksInvalid++;
-        continue;
-      }
-      let parsed: unknown;
-      try {
-        parsed = JSON.parse(block);
-      } catch {
-        state.blocksInvalid++;
-        continue;
-      }
-      state.blocksParsed++;
-      addToPool(parsed, "jsonld", nodes);
-    }
-    if (state.blocksInvalid > 0) state.incomplete = true;
-
-    // Microdata joins the same pool after the JSON-LD nodes, so JSON-LD wins a
-    // tie and the field's source records which markup produced the value.
-    const microdata = Array.isArray(harvest.microdata) ? harvest.microdata.slice(0, MAX_MICRODATA_ITEMS) : [];
-    const claimed = typeof harvest.microdataCount === "number" ? Math.floor(harvest.microdataCount) : 0;
-    state.microdataItems = Math.min(MAX_MICRODATA_ITEMS, Math.max(microdata.length, claimed, 0));
-    for (const item of microdata) {
-      const node = microdataToNode(item, 0);
-      if (node !== null) addToPool(node, "microdata", nodes);
-    }
-
+    const { nodes, state } = readStructuredData(harvest);
     const ctx: Context = { byId: indexById(nodes) };
     const ordered = businessNodesInPriorityOrder(nodes);
 
