@@ -10,6 +10,7 @@
  * must stay vocabulary-free, so the words it matches arrive through the slice.
  */
 import { describe, expect, it } from "vitest";
+import { INSTALLERS_PROFILE, toScannerSlice } from "./niche-profile";
 import { detectTrade, normaliseText } from "../scanner-service/src/trade-detection";
 import type { TradeZones } from "../scanner-service/src/trade-detection";
 import type { NicheScanSlice } from "../types/niche-scan-slice";
@@ -164,5 +165,214 @@ describe("detectTrade: tracer (one zone, one match mode)", () => {
       const result = detectTrade(zones({ h1: ["Dakreparatie"] }), sliceOf([{ id: "t", terms: [{ term, match: "prefix" }] }]));
       expect(result.scores.t).toBe(0);
     }
+  });
+});
+
+/** The same page repeated, the way a scan of several pages hands them over. */
+function pagesOf(count: number, over: Partial<TradeZones>): TradeZones[] {
+  return Array.from({ length: count }, () => zones(over));
+}
+
+/** Score of a one-trade slice for one term, so a case reads as zone text in, score out. */
+function scoreOf(over: Partial<TradeZones> | TradeZones[], term: string, match: Term["match"] = "prefix"): number {
+  const input = Array.isArray(over) ? over : zones(over);
+  return detectTrade(input, sliceOf([{ id: "t", terms: [{ term, match }] }], { minTradeScore: 1 })).scores.t;
+}
+
+describe("detectTrade: zone weights and caps", () => {
+  it("weights each zone as the research measured it", () => {
+    expect(scoreOf({ title: "Dakwerk" }, "dak")).toBe(5);
+    expect(scoreOf({ h1: ["Dakwerk"] }, "dak")).toBe(5);
+    expect(scoreOf({ navTexts: ["Dakwerk"] }, "dak")).toBe(3);
+    expect(scoreOf({ internalPaths: ["/dakwerk"] }, "dak")).toBe(3);
+    expect(scoreOf({ h2h3: ["Dakwerk"] }, "dak")).toBe(2);
+    expect(scoreOf({ bodyText: "Dakwerk" }, "dak")).toBe(1);
+  });
+
+  it("orders the zones: title and h1 above nav and paths, above headings, above body", () => {
+    const title = scoreOf({ title: "dak" }, "dak");
+    const nav = scoreOf({ navTexts: ["dak"] }, "dak");
+    const heading = scoreOf({ h2h3: ["dak"] }, "dak");
+    const body = scoreOf({ bodyText: "dak" }, "dak");
+    expect(title).toBeGreaterThan(nav);
+    expect(nav).toBeGreaterThan(heading);
+    expect(heading).toBeGreaterThan(body);
+  });
+
+  it("caps h2/h3 hits at 5 on a page, however many headings repeat the word", () => {
+    expect(scoreOf({ h2h3: ["dak dak dak dak dak dak dak dak dak dak dak dak"] }, "dak")).toBe(10);
+    expect(scoreOf({ h2h3: Array.from({ length: 12 }, () => "dak") }, "dak")).toBe(10);
+    expect(scoreOf({ h2h3: ["dak dak dak dak dak"] }, "dak")).toBe(10);
+    expect(scoreOf({ h2h3: ["dak dak dak dak"] }, "dak")).toBe(8);
+  });
+
+  it("caps body hits at 10 on a page, so a stuffed page scores the same as a ten-hit page", () => {
+    const stuffed = scoreOf({ bodyText: "dak ".repeat(50) }, "dak");
+    const tenHits = scoreOf({ bodyText: "dak ".repeat(10) }, "dak");
+    expect(stuffed).toBe(10);
+    expect(tenHits).toBe(10);
+    expect(scoreOf({ bodyText: "dak ".repeat(9) }, "dak")).toBe(9);
+  });
+
+  it("two terms matching the same word are one hit, not two", () => {
+    const slice = sliceOf([{ id: "t", terms: [{ term: "dak", match: "prefix" }, { term: "dakdekk", match: "prefix" }] }]);
+    expect(detectTrade(zones({ h1: ["Dakdekker"] }), slice).scores.t).toBe(5);
+  });
+
+  it("reads at most 20,000 characters of one text and 200 items of one zone", () => {
+    expect(scoreOf({ bodyText: "x ".repeat(10_001) + "dak" }, "dak")).toBe(0);
+    expect(scoreOf({ bodyText: "x ".repeat(9_990) + "dak" }, "dak")).toBe(1);
+    expect(scoreOf({ h1: Array.from({ length: 300 }, () => "dak") }, "dak")).toBe(1000);
+  });
+});
+
+describe("detectTrade: aggregation across a 7-page scan", () => {
+  it("sums body text across pages, because it differs per page", () => {
+    expect(scoreOf(pagesOf(7, { bodyText: "dakwerk" }), "dak")).toBe(7);
+  });
+
+  it("sums title, h1 and h2/h3 across pages too", () => {
+    expect(scoreOf(pagesOf(7, { title: "dakwerk" }), "dak")).toBe(35);
+    expect(scoreOf(pagesOf(7, { h1: ["dakwerk"] }), "dak")).toBe(35);
+    expect(scoreOf(pagesOf(7, { h2h3: ["dakwerk"] }), "dak")).toBe(14);
+  });
+
+  it("applies the heading and body caps per page, then sums", () => {
+    expect(scoreOf(pagesOf(7, { h2h3: ["dak ".repeat(12)] }), "dak")).toBe(70);
+    expect(scoreOf(pagesOf(7, { bodyText: "dak ".repeat(50) }), "dak")).toBe(70);
+  });
+
+  it("counts a nav that repeats on every page once, not seven times", () => {
+    const once = scoreOf([zones({ navTexts: ["Dakreparatie"] })], "dak");
+    const sevenPages = scoreOf(pagesOf(7, { navTexts: ["Dakreparatie"] }), "dak");
+    expect(once).toBe(3);
+    expect(sevenPages).toBe(3);
+  });
+
+  it("counts an internal link path that repeats on every page once", () => {
+    expect(scoreOf(pagesOf(7, { internalPaths: ["/dakreparatie"] }), "dak")).toBe(3);
+  });
+
+  it("takes the distinct union of nav text, so different entries on different pages all count", () => {
+    const pages = [zones({ navTexts: ["Dakreparatie"] }), zones({ navTexts: ["Dakreparatie", "Daklekkage"] })];
+    expect(scoreOf(pages, "dak")).toBe(6);
+  });
+
+  it("treats nav entries that differ only by case or hyphen as the same entry", () => {
+    const pages = [zones({ navTexts: ["Dak-reparatie"] }), zones({ navTexts: ["dak reparatie"] }), zones({ navTexts: ["DAK_REPARATIE"] })];
+    expect(scoreOf(pages, "dak")).toBe(3);
+  });
+
+  it("proves the two rules differ on one scan: the same word counts once in nav and seven times in body", () => {
+    const pages = pagesOf(7, { navTexts: ["Dakwerk"], bodyText: "dakwerk" });
+    expect(scoreOf(pages, "dak")).toBe(3 + 7);
+  });
+
+  it("accepts one page or a list of one page and answers the same", () => {
+    const page = zones({ h1: ["Dakreparatie"], navTexts: ["Dakwerk"] });
+    const slice = sliceOf([ROOFING_PREFIX]);
+    expect(flat(detectTrade([page], slice))).toBe(flat(detectTrade(page, slice)));
+    expect(detectTrade([page], slice).tradeId).toBe("roofing");
+  });
+
+  it("reads an empty list of pages as unreadable", () => {
+    const result = detectTrade([], sliceOf([ROOFING_PREFIX]));
+    expect(result.tradeId).toBeNull();
+    expect(result.confidence).toBe("unreadable");
+  });
+});
+
+describe("detectTrade: the three match modes are not interchangeable", () => {
+  const MODES: Term["match"][] = ["substring", "prefix", "word"];
+  const hitsByMode = (text: string, term: string): number[] => MODES.map((mode) => scoreOf({ h1: [text] }, term, mode) / 5);
+
+  it("substring matches inside a word, prefix only at a word start, word only as a whole word", () => {
+    expect(flat(hitsByMode("warmtepomp installatie", "pomp"))).toBe(flat([1, 0, 0]));
+    expect(flat(hitsByMode("pompinstallatie", "pomp"))).toBe(flat([1, 1, 0]));
+    expect(flat(hitsByMode("pomp installatie", "pomp"))).toBe(flat([1, 1, 1]));
+  });
+
+  it("a whole word is bounded by punctuation, a hyphen and the ends of the text", () => {
+    expect(scoreOf({ h1: ["EPDM."] }, "epdm", "word")).toBe(5);
+    expect(scoreOf({ h1: ["epdm-dakbedekking"] }, "epdm", "word")).toBe(5);
+    expect(scoreOf({ h1: ["(epdm)"] }, "epdm", "word")).toBe(5);
+    expect(scoreOf({ h1: ["epdmx"] }, "epdm", "word")).toBe(0);
+    expect(scoreOf({ h1: ["xepdm"] }, "epdm", "word")).toBe(0);
+  });
+
+  it("treats a multi-word phrase as one boundary-delimited unit, not as two independent words", () => {
+    expect(scoreOf({ h1: ["Nieuwe cv ketel plaatsen"] }, "cv ketel", "word")).toBe(5);
+    expect(scoreOf({ h1: ["Nieuwe CV-ketel plaatsen"] }, "cv ketel", "word")).toBe(5);
+    expect(scoreOf({ h1: ["cv ketelservice"] }, "cv ketel", "word")).toBe(0);
+    expect(scoreOf({ h1: ["xcv ketel"] }, "cv ketel", "word")).toBe(0);
+    expect(scoreOf({ h1: ["de cv en ketel"] }, "cv ketel", "word")).toBe(0);
+    expect(scoreOf({ h1: ["ketel cv"] }, "cv ketel", "word")).toBe(0);
+    expect(scoreOf({ h1: ["cv, ketel"] }, "cv ketel", "word")).toBe(0);
+  });
+
+  it("matches a multi-word substring phrase across a hyphen, a space or an underscore", () => {
+    for (const text of ["lucht-water warmtepomp", "lucht water warmtepomp", "lucht_water warmtepomp"]) {
+      expect(scoreOf({ h1: [text] }, "lucht water", "substring")).toBe(5);
+    }
+  });
+
+  it("matches on accented letters as word characters", () => {
+    expect(scoreOf({ h1: ["cafeïne"] }, "cafe", "word")).toBe(0);
+    expect(scoreOf({ h1: ["École"] }, "cole", "prefix")).toBe(0);
+    expect(scoreOf({ h1: ["Café Dak"] }, "dak", "word")).toBe(5);
+  });
+});
+
+describe("detectTrade: Dutch measured pitfalls, against the seeded profile", () => {
+  const SEEDED = toScannerSlice(INSTALLERS_PROFILE);
+
+  it("the solar stem matches both the singular and the plural, which differ by a vowel", () => {
+    expect(scoreOf({ h1: ["Zonnepaneel kopen"] }, "zonnepane", "substring")).toBe(5);
+    expect(scoreOf({ h1: ["Zonnepanelen kopen"] }, "zonnepane", "substring")).toBe(5);
+    expect(detectTrade(zones({ h1: ["Zonnepaneel kopen"] }), SEEDED).scores.solar).toBe(5);
+    expect(detectTrade(zones({ h1: ["Zonnepanelen kopen"] }), SEEDED).scores.solar).toBe(5);
+  });
+
+  it("neither full Dutch form matches the other, so the shortened stem is the fix and no stemmer is needed", () => {
+    expect(scoreOf({ h1: ["Zonnepanelen kopen"] }, "zonnepaneel", "substring")).toBe(0);
+    expect(scoreOf({ h1: ["Zonnepaneel kopen"] }, "zonnepanelen", "substring")).toBe(0);
+  });
+
+  it("the seeded central heating terms never include the bare abbreviation, which also means curriculum vitae", () => {
+    const heating = SEEDED.trades.find((trade) => trade.id === "central_heating");
+    expect(heating).toBeDefined();
+    const bare = (heating?.terms ?? []).filter((entry) => normaliseText(entry.term) === "cv");
+    expect(bare.length).toBe(0);
+  });
+
+  it("a vacancy block full of the abbreviation scores central heating zero", () => {
+    const vacancy = zones({
+      bodyText: "Werken bij ons? Stuur je CV naar info. Solliciteer met cv en motivatiebrief. Vacatures: monteur, planner. Je cv is welkom.",
+      h2h3: ["Vacatures", "Solliciteer met je CV"],
+    });
+    expect(detectTrade(vacancy, SEEDED).scores.central_heating).toBe(0);
+  });
+
+  it("a roofer whose body mentions solar panels once is a roofer: a mention is not an offer", () => {
+    const roofer = zones({
+      title: "Jansen Dakdekkers | Dakreparatie en dakonderhoud",
+      h1: ["Dakdekker in Utrecht"],
+      h2h3: ["Wij repareren uw dak", "Lekkage"],
+      navTexts: ["Home", "Dakwerk", "Dakreparatie", "Over ons"],
+      internalPaths: ["/dakwerk", "/dakreparatie", "/contact"],
+      bodyText: "Wij plaatsen ook zonnepanelen op uw dak.",
+    });
+    const result = detectTrade(roofer, SEEDED);
+    expect(result.tradeId).toBe("roofing");
+    expect(result.scores.roofing).toBe(35);
+    expect(result.scores.solar).toBe(1);
+    expect(result.confidence).toBe("clear");
+  });
+
+  it("matches a roofing compound the profile never enumerated", () => {
+    // Title and h1 together reach the profile's minimum score of 8.
+    const result = detectTrade(zones({ title: "Dakreparatie Utrecht", h1: ["Dakreparatie nodig? Wij helpen."] }), SEEDED);
+    expect(result.tradeId).toBe("roofing");
+    expect(result.scores.roofing).toBe(10);
   });
 });
