@@ -56,7 +56,7 @@ These are not phases and they do not block Phases 9 to 12. They exist here becau
   4. Changing country, locale, trade, competitor radius or copy is a change to the profile file and nothing else, and every default job value in it carries a citation to the source it came from (NIC-02, NIC-03, NIC-04)
   5. A test fails if any field Google returns is written to a Supabase table (ENG-07)
 
-**Plans**: 6/9 plans executed in 5 waves
+**Plans**: 7/9 plans executed in 5 waves
 
 Plans:
 **Wave 1**
@@ -72,7 +72,7 @@ Plans:
 
 **Wave 4** *(blocked on Wave 3 completion)*
 - [x] 09-06-PLAN.md — Marker refresh, the never-drafted gates, and random import modes (wave 4)
-- [ ] 09-07-PLAN.md — On-site social proof and quote-request readiness (ENG-02, ENG-05) (wave 4)
+- [x] 09-07-PLAN.md — On-site social proof and quote-request readiness (ENG-02, ENG-05) (wave 4)
 - [ ] 09-08-PLAN.md — Dutch trade detection, no model involved (wave 4)
 
 **Wave 5** *(blocked on Wave 4 completion)*
@@ -210,7 +210,7 @@ Phase 13 may be planned and built at any time. It may not ship until the Paralle
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 9. Niche Profile & Own-Site Engine Data | 6/9 | In Progress | - |
+| 9. Niche Profile & Own-Site Engine Data | 7/9 | In Progress | - |
 | 10. Competitor Position & AI Visibility | 0/? | Not started | - |
 | 11. One Score, Everywhere | 0/? | Not started | - |
 | 12. The New Report | 0/? | Not started | - |

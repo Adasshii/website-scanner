@@ -5,16 +5,16 @@ milestone_name: Renewed Scanner
 current_phase: 09
 current_phase_name: Niche Profile & Own-Site Engine Data
 status: executing
-stopped_at: Completed 09-06-PLAN.md
-last_updated: "2026-11-13T23:00:51.522Z"
+stopped_at: Completed 09-07-PLAN.md
+last_updated: "2026-11-13T23:18:08.940Z"
 last_activity: 2026-11-13
 last_activity_desc: Phase 09 execution started
-state_head: 5cad85fa0731f694bf6cc4b59372ddd62f9796d1
+state_head: 68b90323019641879fab64ddee408dae4f143fca
 progress:
   total_phases: 5
   completed_phases: 0
   total_plans: 9
-  completed_plans: 6
+  completed_plans: 7
   percent: 0
 ---
 
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-11-11)
 ## Current Position
 
 Phase: 09 (Niche Profile & Own-Site Engine Data) — EXECUTING
-Plan: 7 of 9
+Plan: 8 of 9
 Status: Ready to execute
 Last activity: 2026-11-13 — Phase 09 execution started
 
@@ -127,6 +127,7 @@ v1.0's phases 1 to 8 are archived at `.planning/milestones/v1.0-phases/`, its ro
 | Phase 09 P04 | 9 min | 3 tasks | 10 files |
 | Phase 09 P05 | 2h 40m | 3 tasks | 5 files |
 | Phase 09 P06 | 9 min | 3 tasks | 14 files |
+| Phase 09 P07 | 13 min | 3 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -232,6 +233,8 @@ Recent decisions affecting current work:
 - [Phase 09]: 09-06: scoreableFailureReason wrapper keeps scoreableVerdict at one production caller; refresh and isReleasable both go through it
 - [Phase 09]: 09-06: dispatch records a marked prospect via markScanFailed(not_scoreable, no attempt spent), the same as robots/SSRF skips, because the schema has no skipped state
 - [Phase 09]: 09-06: dispatch computes the scoreable verdict fresh via scoreableFailureReason (Joshua chose option b, 2026-11-13); the refresh is not widened to released prospects; the stored marker is the Shortlist explanation only
+- [Phase 09]: 09-07: A6 accepted by Joshua 2026-11-14 (option 1): an on-site review count is the business's own published data. His own commercial judgement, not reviewed by counsel, not legally cleared. Stored with source recorded, never presented as a Google figure.
+- [Phase 09]: 09-07: shown and markedUp are boolean or null (null = could not tell); social proof and quote readiness each carry an unreadable member; site-level quote readiness reads unreadable if any page failed and any check is unproven.
 
 ### Pending Todos
 
@@ -284,6 +287,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-11-13T22:51:13.601Z
-Stopped at: Completed 09-06-PLAN.md
+Last session: 2026-11-13T23:18:08.908Z
+Stopped at: Completed 09-07-PLAN.md
 Resume file: None
