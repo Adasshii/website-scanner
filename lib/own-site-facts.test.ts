@@ -1299,10 +1299,14 @@ describe("evaluateQuoteReadiness: terms are literals, never patterns", () => {
   const hostile = ["(a+)+$", ".*", "[", "\\", "a{999999}", "(?<=x)", "^", "*"];
 
   it("neither throws nor matches arbitrary text for a term full of regex metacharacters", () => {
+    // "a" runs are the classic catastrophic-backtracking input. The other zones carry a
+    // different letter because "(a+)+$" reduces to the literal word "a", which would
+    // legitimately start a word that begins with "a".
     const text = `${"a".repeat(5000)}!`;
+    const other = `${"b".repeat(5000)}!`;
     for (const term of hostile) {
       const checks = { quoteTerms: [term], projectTerms: [term], certificationTerms: [term] };
-      const q = evaluate({ bodyText: text, navTexts: [text], internalPaths: [text], h2h3: [text], imgHints: images(5) }, checks);
+      const q = evaluate({ bodyText: text, navTexts: [other], internalPaths: [other], h2h3: [other], imgHints: images(5) }, checks);
       expect(String(q.certifications.passed)).toBe("false");
       expect(String(q.quoteForm.passed)).toBe("false");
       expect(String(q.projectPhotos.passed)).toBe("false");

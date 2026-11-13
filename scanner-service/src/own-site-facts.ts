@@ -4,6 +4,7 @@ import type {
   OwnSiteAddress,
   OwnSiteBusinessFacts,
   OwnSiteCertifications,
+  OwnSiteCheck,
   OwnSiteFactsCore,
   OwnSiteHarvest,
   OwnSiteOpeningHours,
@@ -664,8 +665,9 @@ function containsWords(normalizedHaystack: string, normalizedTerm: string): bool
 
 /**
  * The term at the start of a word. Dutch compounds put the head word last, so
- * the stems that matter ("offerte" in "offerteaanvraag") sit at the front of a
- * longer word. The end is left open on purpose.
+ * the stems that matter sit at the front of a longer word. The end is left open
+ * on purpose. Known cost: a multi-word term also matches as the front of a longer
+ * compound, which can over-match a heading of a different kind.
  */
 function startsAWord(normalizedHaystack: string, normalizedTerm: string): boolean {
   return normalizedTerm !== "" && ` ${normalizedHaystack}`.includes(` ${normalizedTerm}`);
@@ -674,13 +676,20 @@ function startsAWord(normalizedHaystack: string, normalizedTerm: string): boolea
 /** Slice terms are untrusted input: bounded in count and length, blanks dropped, normalised once. */
 const MAX_SLICE_TERMS = 50;
 const MAX_SLICE_TERM_CHARS = 100;
-function sliceTerms(terms: readonly string[] | undefined): string[] {
+interface TermPair {
+  /** As the profile wrote it: what the evidence line quotes. */
+  original: string;
+  /** Lower-case words separated by single spaces: what is compared. */
+  normalized: string;
+}
+function sliceTerms(terms: readonly string[] | undefined): TermPair[] {
   if (!Array.isArray(terms)) return [];
-  const out: string[] = [];
+  const out: TermPair[] = [];
   for (const term of terms.slice(0, MAX_SLICE_TERMS)) {
     if (typeof term !== "string") continue;
-    const normalized = normalizeForMatch(term.slice(0, MAX_SLICE_TERM_CHARS));
-    if (normalized !== "" && !out.includes(normalized)) out.push(normalized);
+    const original = term.slice(0, MAX_SLICE_TERM_CHARS).trim();
+    const normalized = normalizeForMatch(original);
+    if (normalized !== "" && !out.some((t) => t.normalized === normalized)) out.push({ original, normalized });
   }
   return out;
 }
@@ -981,15 +990,186 @@ export const MIN_QUOTE_FORM_FIELDS = 2;
 /** Images needed beside a project term. A signal, not proof. */
 export const MIN_PROJECT_IMAGES = 3;
 
-/** Skeleton: replaced by the implementation in the GREEN commit. */
-export function evaluateQuoteReadiness(harvest: OwnSiteHarvest | null, checks: TradeChecks): OwnSiteQuoteReadiness {
-  void harvest;
-  void checks;
-  return { state: "unreadable" };
+const NOT_PASSED: OwnSiteCheck = { passed: false, evidence: "" };
+
+/** The zones the checks read, taken once and shape-checked. null means the harvest is not the shape we expect. */
+interface Zones {
+  headings: string[];
+  navTexts: string[];
+  internalPaths: string[];
+  telHrefs: string[];
+  forms: Array<{ fieldCount: number; submitLabel: string }>;
+  images: Array<{ alt: string; file: string }>;
+  bodyText: string;
 }
 
-/** Skeleton: replaced by the implementation in the GREEN commit. */
+function strings(value: unknown): string[] | null {
+  if (!Array.isArray(value)) return null;
+  return value.filter((v): v is string => typeof v === "string");
+}
+
+function readZones(harvest: OwnSiteHarvest): Zones | null {
+  const h1 = strings(harvest.h1);
+  const h2h3 = strings(harvest.h2h3);
+  const navTexts = strings(harvest.navTexts);
+  const internalPaths = strings(harvest.internalPaths);
+  const telHrefs = strings(harvest.telHrefs);
+  if (!h1 || !h2h3 || !navTexts || !internalPaths || !telHrefs) return null;
+  if (!Array.isArray(harvest.formSummaries) || !Array.isArray(harvest.imgHints)) return null;
+  if (typeof harvest.bodyText !== "string" || typeof harvest.title !== "string") return null;
+  const forms = harvest.formSummaries
+    .filter((f) => f !== null && typeof f === "object" && Number.isFinite(f.fieldCount))
+    .map((f) => ({ fieldCount: f.fieldCount, submitLabel: typeof f.submitLabel === "string" ? f.submitLabel : "" }));
+  const images = harvest.imgHints
+    .filter((i) => i !== null && typeof i === "object")
+    .map((i) => ({ alt: typeof i.alt === "string" ? i.alt : "", file: typeof i.file === "string" ? i.file : "" }));
+  return {
+    headings: [harvest.title, ...h1, ...h2h3],
+    navTexts,
+    internalPaths,
+    telHrefs,
+    forms,
+    images,
+    bodyText: harvest.bodyText,
+  };
+}
+
+/** First term, in profile order, found in the first zone, in zone order: the same page always names the same match. */
+function firstTermIn(
+  terms: TermPair[],
+  zones: Array<{ label: string; texts: string[] }>,
+  matches: (haystack: string, term: string) => boolean
+): { term: TermPair; label: string } | null {
+  for (const term of terms) {
+    for (const zone of zones) {
+      if (zone.texts.some((text) => matches(normalizeForMatch(text), term.normalized))) return { term, label: zone.label };
+    }
+  }
+  return null;
+}
+
+/** Quote form: a form with MIN_QUOTE_FORM_FIELDS or more fields, or a link or button naming a quote term. */
+function checkQuoteForm(zones: Zones, terms: TermPair[]): OwnSiteCheck {
+  const widest = zones.forms.reduce((max, f) => Math.max(max, Math.floor(f.fieldCount)), 0);
+  if (widest >= MIN_QUOTE_FORM_FIELDS) return { passed: true, evidence: `form with ${widest} fillable fields` };
+  const sources: Array<{ prefix: string; quote: boolean; texts: string[] }> = [
+    { prefix: "link text", quote: true, texts: zones.navTexts },
+    { prefix: "link path", quote: false, texts: zones.internalPaths },
+    { prefix: "button text", quote: true, texts: zones.forms.map((f) => f.submitLabel) },
+  ];
+  for (const source of sources) {
+    for (const text of source.texts) {
+      const normalized = normalizeForMatch(text);
+      if (terms.some((t) => startsAWord(normalized, t.normalized))) {
+        return { passed: true, evidence: source.quote ? `${source.prefix}: "${clip(text)}"` : `${source.prefix}: ${clip(text)}` };
+      }
+    }
+  }
+  return NOT_PASSED;
+}
+
+/** Tap-to-call: an anchor whose href is the telephone scheme. Not a mailto, not a number in the text. */
+function checkTapToCall(zones: Zones): OwnSiteCheck {
+  const href = zones.telHrefs.map((h) => h.trim()).find((h) => h.toLowerCase().startsWith("tel:"));
+  return href === undefined ? NOT_PASSED : { passed: true, evidence: `tel link: ${clip(href)}` };
+}
+
+/**
+ * Project photos: a project term in the nav, an internal link path or a heading,
+ * plus MIN_PROJECT_IMAGES images. 34 of 53 sampled pages carried a project word,
+ * so this is a signal that a portfolio exists and not proof that it is good.
+ */
+function checkProjectPhotos(zones: Zones, terms: TermPair[]): OwnSiteCheck {
+  if (zones.images.length < MIN_PROJECT_IMAGES) return NOT_PASSED;
+  const hit = firstTermIn(
+    terms,
+    [
+      { label: "nav", texts: zones.navTexts },
+      { label: "link path", texts: zones.internalPaths },
+      { label: "heading", texts: zones.headings },
+    ],
+    startsAWord
+  );
+  return hit === null
+    ? NOT_PASSED
+    : { passed: true, evidence: `"${clip(hit.term.original)}" in ${hit.label}, ${zones.images.length} images` };
+}
+
+/**
+ * Certifications: whole words, in visible text, headings, nav, link paths and
+ * image alt text or file names. Not in class attributes or script bodies, which
+ * the harvest never carries. On the measured sample a raw-HTML substring count
+ * read one short acronym 10 times, all noise, where visible text with word
+ * boundaries read it zero times. Two real scheme mentions lived only in image
+ * attributes, which is why those are read.
+ */
+function checkCertifications(zones: Zones, terms: TermPair[]): OwnSiteCheck {
+  const hit = firstTermIn(
+    terms,
+    [
+      { label: "heading", texts: zones.headings },
+      { label: "nav", texts: zones.navTexts },
+      { label: "visible text", texts: [zones.bodyText] },
+      { label: "link path", texts: zones.internalPaths },
+      { label: "image alt", texts: zones.images.map((i) => i.alt) },
+      { label: "image file name", texts: zones.images.map((i) => i.file) },
+    ],
+    containsWords
+  );
+  return hit === null ? NOT_PASSED : { passed: true, evidence: `"${clip(hit.term.original)}" in ${hit.label}` };
+}
+
+/**
+ * The four quote-readiness checks for one page, with the trade's terms from the
+ * slice. A null harvest, a harvest of the wrong shape, or anything that throws
+ * is "unreadable" for the page, never four false booleans: an absent check and
+ * a failed check mean different things to a later to-do list.
+ *
+ * Existing detectors are not reused. hasCta has no Dutch quote word at all, and
+ * hasContactInfo merges tel links with mailto links and body text, so it cannot
+ * answer tap-to-call.
+ *
+ * Known limit: a full scan reads at most 7 pages and page priority has no entry
+ * for quote or project words, so a quote page can go unread. The homepage's own
+ * nav and link paths are the substitute evidence this reads.
+ */
+export function evaluateQuoteReadiness(harvest: OwnSiteHarvest | null, checks: TradeChecks): OwnSiteQuoteReadiness {
+  try {
+    if (harvest === null || harvest === undefined) return { state: "unreadable" };
+    const zones = readZones(harvest);
+    if (zones === null) return { state: "unreadable" };
+    return {
+      state: "evaluated",
+      quoteForm: checkQuoteForm(zones, sliceTerms(checks?.quoteTerms)),
+      tapToCall: checkTapToCall(zones),
+      projectPhotos: checkProjectPhotos(zones, sliceTerms(checks?.projectTerms)),
+      certifications: checkCertifications(zones, sliceTerms(checks?.certificationTerms)),
+    };
+  } catch {
+    return { state: "unreadable" };
+  }
+}
+
+const QUOTE_CHECK_KEYS = ["quoteForm", "tapToCall", "projectPhotos", "certifications"] as const;
+
+/**
+ * Fold per-page results into one for the site. A check passes when any page
+ * passed it, with the smallest evidence string as its evidence so page order
+ * never changes the stored value. A check that no page passed is only reported
+ * as not passed when every page was read: a page that failed may have held it,
+ * so with any failed page and any unproven check the whole site reads
+ * "unreadable". That gives up the checks that did pass; it never states an
+ * absence we did not measure.
+ */
 export function mergeQuoteReadiness(pages: ReadonlyArray<OwnSiteQuoteReadiness>): OwnSiteQuoteReadiness {
-  void pages;
-  return { state: "unreadable" };
+  const evaluated = pages.filter((p): p is Extract<OwnSiteQuoteReadiness, { state: "evaluated" }> => p.state === "evaluated");
+  if (evaluated.length === 0) return { state: "unreadable" };
+  const merged = {} as Record<(typeof QUOTE_CHECK_KEYS)[number], OwnSiteCheck>;
+  for (const key of QUOTE_CHECK_KEYS) {
+    const passing = evaluated.map((p) => p[key]).filter((c) => c.passed);
+    merged[key] = passing.length === 0 ? NOT_PASSED : { passed: true, evidence: passing.map((c) => c.evidence).sort()[0] };
+  }
+  const failedPages = pages.length - evaluated.length;
+  if (failedPages > 0 && QUOTE_CHECK_KEYS.some((k) => !merged[k].passed)) return { state: "unreadable" };
+  return { state: "evaluated", ...merged };
 }
