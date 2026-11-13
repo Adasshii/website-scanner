@@ -5,16 +5,16 @@ milestone_name: Renewed Scanner
 current_phase: 09
 current_phase_name: Niche Profile & Own-Site Engine Data
 status: executing
-stopped_at: Completed 09-07-PLAN.md
-last_updated: "2026-11-13T23:18:08.940Z"
+stopped_at: Completed 09-08-PLAN.md
+last_updated: "2026-11-13T23:45:27.535Z"
 last_activity: 2026-11-13
 last_activity_desc: Phase 09 execution started
-state_head: 68b90323019641879fab64ddee408dae4f143fca
+state_head: f3f9869d09993dd6589773a584c12a859e64b33e
 progress:
   total_phases: 5
   completed_phases: 0
   total_plans: 9
-  completed_plans: 7
+  completed_plans: 8
   percent: 0
 ---
 
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-11-11)
 ## Current Position
 
 Phase: 09 (Niche Profile & Own-Site Engine Data) — EXECUTING
-Plan: 8 of 9
+Plan: 9 of 9
 Status: Ready to execute
 Last activity: 2026-11-13 — Phase 09 execution started
 
@@ -128,6 +128,7 @@ v1.0's phases 1 to 8 are archived at `.planning/milestones/v1.0-phases/`, its ro
 | Phase 09 P05 | 2h 40m | 3 tasks | 5 files |
 | Phase 09 P06 | 9 min | 3 tasks | 14 files |
 | Phase 09 P07 | 13 min | 3 tasks | 3 files |
+| Phase 09 P08 | 25 min | 3 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -235,6 +236,10 @@ Recent decisions affecting current work:
 - [Phase 09]: 09-06: dispatch computes the scoreable verdict fresh via scoreableFailureReason (Joshua chose option b, 2026-11-13); the refresh is not widened to released prospects; the stored marker is the Shortlist explanation only
 - [Phase 09]: 09-07: A6 accepted by Joshua 2026-11-14 (option 1): an on-site review count is the business's own published data. His own commercial judgement, not reviewed by counsel, not legally cleared. Stored with source recorded, never presented as a Google figure.
 - [Phase 09]: 09-07: shown and markedUp are boolean or null (null = could not tell); social proof and quote readiness each carry an unreadable member; site-level quote readiness reads unreadable if any page failed and any check is unproven.
+- [Phase 09]: 09-08: detectTrade takes one page or a list of pages; title, h1, h2/h3 and body sum across pages, nav text and link paths are a distinct union — A repeating nav would otherwise multiply one keyword by the page count (Pitfall 5); the other four zones genuinely differ per page
+- [Phase 09]: 09-08: heading and body hit caps apply per page, hits are counted per distinct start position, and an exact tie goes to tieBreakRank then id, never array position — A stuffed page must not swamp a page that names its trade in its title; a stem and a longer stem on one word are one hit; a tie broken by position changes after an unrelated profile edit
+- [Phase 09]: 09-08: a non-numeric minimum reads unreadable, a non-numeric dominance ratio reads narrow, a non-numeric rank sorts last — Each fails toward the cautious reading, so a bad slice never produces a confident trade
+- [Phase 09]: 09-08: the regression corpus is composed from the research's measured site classes, not captured live pages — The 53-site sample is not on disk and no captures were invented; the corpus guards regression, and the first real scans are the live check
 
 ### Pending Todos
 
@@ -287,6 +292,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-11-13T23:18:08.908Z
-Stopped at: Completed 09-07-PLAN.md
+Last session: 2026-11-13T23:45:27.506Z
+Stopped at: Completed 09-08-PLAN.md
 Resume file: None
