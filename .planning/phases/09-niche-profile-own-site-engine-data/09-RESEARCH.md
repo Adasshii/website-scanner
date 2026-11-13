@@ -808,7 +808,7 @@ function deref(v: unknown, byId: Map<string, Node>, hops = 0): unknown {
 | A3 | Zone weights (5/5/3/3/2/1), `MIN_TRADE_SCORE` 8 and `DOMINANCE_RATIO` 1.5 are right for 7-page scans | Pattern 6 | Too many or too few trades read; tunable constants, fixtures guard regressions |
 | A4 | All keyword and certification seed terms except those marked VERIFIED are correct and sufficient | Patterns 5 and 6 | Missed trades (money line quiet) or false trades; confirm on the real list |
 | A5 | `kiyoh` and `feedbackcompany` are widget hosts worth listing | Pattern 4 | Missed review widgets; low cost |
-| A6 | Reading an on-site `AggregateRating` is outside Google's restriction because it is read from the owner's own page | Pattern 4 | A legal reading with no counsel review; if wrong, drop the count and keep only `shown` and `markedUp` |
+| A6 | ACCEPTED 2026-11-14 by Joshua: reading an on-site `AggregateRating` is outside Google's restriction because it is read from the owner's own public page, not from a Maps Platform API, and no Google key is held | Pattern 4 | Joshua's own commercial judgement, taken 2026-11-14 after being shown three options (accept, read-but-never-store, pause for counsel). NOT reviewed by counsel. If it later proves wrong, the fallback is unchanged: drop the count and keep only `shown` and `markedUp` |
 | A7 | Heat pump should outrank central heating on an exact tie | Pattern 6 | Wrong money line for hybrid installers; Phase 12 also receives `confidence: "narrow"` |
 | A8 | Overture GERS ids may change between releases and create a second source row | Pattern 9 | A false `no_unique_match`; unmeasured, mitigated by logging |
 | A9 | Bare `cv` would false-match job-vacancy text | Pattern 6 | Only a missed keyword if wrong; no cost |
