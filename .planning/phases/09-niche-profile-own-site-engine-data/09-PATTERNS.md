@@ -28,8 +28,8 @@ All analog paths below were confirmed git-tracked. No gitignored mirror paths ar
 | `scanner-service/src/index.ts` (modify route) | route | request-response | itself, `/api/scan/full-async` (397-427) | exact |
 | `lib/scanner-client.ts` (modify `fullScanBulk`) | service | request-response | itself, lines 71-102 | exact |
 | `lib/own-site-facts.test.ts`, `own-site-harvest.test.ts`, `trade-detection.test.ts` | test | transform | `lib/scanner-design-prompt.test.ts`, `lib/scanner-capacity.test.ts` | exact placement |
-| `supabase/migrations/021_*.sql` | migration | CRUD | `supabase/migrations/019_add_booked_at_to_prospects.sql` | exact |
-| `supabase/migrations/022_add_scans_own_site_facts.sql` | migration | CRUD | `019_add_booked_at_to_prospects.sql` | role-match |
+| `supabase/migrations/022_*.sql` | migration | CRUD | `supabase/migrations/019_add_booked_at_to_prospects.sql` | exact |
+| `supabase/migrations/023_add_scans_own_site_facts.sql` | migration | CRUD | `019_add_booked_at_to_prospects.sql` | role-match |
 | `lib/overture-client.ts` (modify SQL + map) | service | batch | itself, `buildPlacesSql` ~279, `rows.map` ~350 | exact |
 | `lib/prospect-upsert.ts` (modify, `maybeFillCoordinates`) | service | CRUD | itself, `maybeRefreshWebsiteUrl` (160-181) | exact |
 | `scripts/import-prospects.ts` (modify, random modes) | utility (CLI) | batch | itself, `parseImportArgs` | exact |
@@ -99,7 +99,7 @@ async function maybeRefreshWebsiteUrl(
 
 `maybeFillCoordinates` follows this: `.update({ latitude, longitude }).eq("id", prospectId).is("latitude", null)`, `if (error) throw error;`, called at lines ~78 and ~109 beside the other `maybe*` calls, and included directly in the new-insert branch. In `lib/overture-client.ts` add `ST_X(place.geometry) AS lon, ST_Y(place.geometry) AS lat` to the SELECT at lines 279-280 and map them in `rows.map` (line ~350). `OverturePlaceRow.lat/lon` optional so `tests/fixtures/overture.ts` still compiles.
 
-### Migrations 021, 022 (migration, CRUD)
+### Migrations 022, 023 (migration, CRUD)
 
 **Analog:** `supabase/migrations/019_add_booked_at_to_prospects.sql`
 
@@ -117,7 +117,7 @@ end $$;
 -- 019:28-29: RLS already enabled; no new policy (service-role-only)
 ```
 
-021: `latitude`/`longitude` double precision, `not_scoreable_reason` text with CHECK limited to `no_own_domain | no_unique_match | no_location`, `scoreable_checked_at` timestamptz. 022: jsonb on `scans` for own-site facts. Header comment style: decision ID, "additive, reads and writes no existing row". Applied by Joshua through the SQL Editor, never `db push`. Column names must pass the ENG-07 schema assertion.
+022: `latitude`/`longitude` double precision, `not_scoreable_reason` text with CHECK limited to `no_own_domain | no_unique_match | no_location`, `scoreable_checked_at` timestamptz. 023: jsonb on `scans` for own-site facts. Header comment style: decision ID, "additive, reads and writes no existing row". Applied by Joshua through the SQL Editor, never `db push`. Column names must pass the ENG-07 schema assertion.
 
 ### `lib/retention-constants.ts` (config)
 

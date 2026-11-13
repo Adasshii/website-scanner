@@ -4,6 +4,21 @@
 **Domain:** Node/TypeScript engine work inside an existing Playwright scanner (JSON-LD and microdata value extraction, Dutch keyword scoring, Overture GeoParquet via DuckDB, Supabase migrations, vitest enforcement tests)
 **Confidence:** MEDIUM-HIGH. The code seams and the Overture facts are verified against the repo and live data this session. The keyword lists, scoring weights and thresholds are seeds measured on a 53-site sample and stay `[ASSUMED]` until tuned on the real list.
 
+> **Erratum, 2026-11-13: the migration numbers in this document are superseded.**
+> This research was written when 021 and 022 were the next free numbers. Since then the
+> unmerged branch `feat/atrium-routes` (commit `837882f`) has claimed
+> `supabase/migrations/021_add_prospect_owner.sql`, so Phase 9's two migrations moved up by one.
+>
+> | This document says | The plans say, and the plans are authoritative |
+> |---|---|
+> | migration 021, prospect coordinates and the scoreable marker | **migration 022**, `022_add_prospect_coordinates_and_scoreable_marker.sql` |
+> | migration 022, own-site facts on `scans` | **migration 023**, `023_add_scans_own_site_facts.sql` |
+>
+> Everywhere below that names "021" or "022" for Phase 9 work, read 022 and 023. The ordering
+> advice is unchanged: apply the first before the importer and triage deploy, and the second
+> before the scanner deploys. The body is left as it was written, because it carries `[VERIFIED]`
+> citations and is a record of what was measured, not a live instruction sheet.
+
 <user_constraints>
 ## User Constraints (from CONTEXT.md)
 
