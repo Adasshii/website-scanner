@@ -51,6 +51,16 @@ export const ZONE_WEIGHTS = {
   body: 1, // tunable default
 } as const;
 
+/**
+ * Hits counted per page in the zones where repetition is cheap, so a page that
+ * repeats one word fifty times cannot outrank a page that says what it does in
+ * its title. Applied per page, then summed across pages.
+ */
+export const ZONE_HIT_CAPS = {
+  h2h3: 5, // tunable default
+  body: 10, // tunable default
+} as const;
+
 /** Bounds on what one call will read, so a hostile page is bounded work (T-9-16). */
 const MAX_TEXT_CHARS = 20_000; // matches the harvester's body cap
 const MAX_ITEMS_PER_ZONE = 200;
@@ -64,6 +74,22 @@ type MatchMode = TradeSlice["trades"][number]["terms"][number]["match"];
 interface PreparedTerm {
   text: string;
   match: MatchMode;
+}
+
+/** One page's zones after normalisation. Nav and link paths are held apart: they are unioned, not summed. */
+interface PreparedPage {
+  title: string;
+  h1: string[];
+  h2h3: string[];
+  body: string;
+}
+
+interface PreparedSite {
+  pages: PreparedPage[];
+  /** Distinct normalised nav texts across every page. */
+  nav: string[];
+  /** Distinct normalised internal link paths across every page. */
+  paths: string[];
 }
 
 /**
@@ -90,28 +116,53 @@ function startsWord(text: string, at: number): boolean {
   return at === 0 || !isWordChar(text.charCodeAt(at - 1));
 }
 
+function endsWord(text: string, end: number): boolean {
+  return end >= text.length || !isWordChar(text.charCodeAt(end));
+}
+
+/**
+ * The three modes, each added for a measured failure and none interchangeable:
+ *   substring  anywhere in a word: long unique stems.
+ *   prefix     at a word start, any continuation: Dutch compounds put the head
+ *              word last, so a short stem sits at the front of a longer word.
+ *   word       the whole term between boundaries: abbreviations a loose match
+ *              would collide with. A multi-word term is ONE unit, so two words
+ *              of it that sit apart in the text do not match.
+ */
 function matchesAt(text: string, at: number, term: PreparedTerm): boolean {
-  // prefix: at a word start, any continuation, so a compound built on the term is found.
+  if (term.match === "substring") return true;
   if (term.match === "prefix") return startsWord(text, at);
+  if (term.match === "word") return startsWord(text, at) && endsWord(text, at + term.text.length);
   return false;
 }
 
 /**
  * Distinct start positions at which any term matches, so two terms that both
  * match the same word (a stem and a longer stem) count as one hit, not two.
+ * Stops as soon as `limit` positions are found.
  */
-function countHits(text: string, terms: readonly PreparedTerm[]): number {
+function countHits(text: string, terms: readonly PreparedTerm[], limit: number): number {
   const positions = new Set<number>();
   for (const term of terms) {
     let from = 0;
-    for (;;) {
+    while (positions.size < limit) {
       const at = text.indexOf(term.text, from);
       if (at === -1) break;
       from = at + 1;
       if (matchesAt(text, at, term)) positions.add(at);
     }
   }
-  return positions.size;
+  return Math.min(positions.size, limit);
+}
+
+/** Hits over several texts that share one cap, the cap applying to the sum. */
+function countHitsCapped(texts: readonly string[], terms: readonly PreparedTerm[], cap: number): number {
+  let total = 0;
+  for (const text of texts) {
+    if (total >= cap) break;
+    total += countHits(text, terms, cap - total);
+  }
+  return total;
 }
 
 function prepareTerms(trade: TradeSlice["trades"][number]): PreparedTerm[] {
@@ -123,24 +174,60 @@ function prepareTerms(trade: TradeSlice["trades"][number]): PreparedTerm[] {
   return prepared;
 }
 
-function boundedTexts(items: readonly string[]): string[] {
-  return items.slice(0, MAX_ITEMS_PER_ZONE).map((item) => normaliseText(String(item).slice(0, MAX_TEXT_CHARS)));
+function normaliseBounded(text: string): string {
+  return normaliseText(String(text).slice(0, MAX_TEXT_CHARS));
 }
 
-function scoreTrade(pages: readonly TradeZones[], terms: readonly PreparedTerm[]): number {
-  let score = 0;
+function normaliseItems(items: readonly string[]): string[] {
+  return items.slice(0, MAX_ITEMS_PER_ZONE).map(normaliseBounded);
+}
+
+/**
+ * Normalises every page once, ahead of the per-trade loop. Nav text and internal
+ * link paths are collected as a DISTINCT UNION across pages, while title, h1,
+ * h2/h3 and body stay per page to be summed. The split is deliberate and is the
+ * one part a later reader will be tempted to simplify: the same nav is on every
+ * page, so summing it would multiply one keyword by the page count (a nav naming
+ * one trade on a 7-page scan would count seven times and bury the real signal),
+ * whereas the other four zones genuinely differ from page to page.
+ */
+function prepareSite(pages: readonly TradeZones[]): PreparedSite {
+  const nav = new Set<string>();
+  const paths = new Set<string>();
+  const prepared: PreparedPage[] = [];
   for (const page of pages) {
-    for (const text of boundedTexts(page.h1)) score += countHits(text, terms) * ZONE_WEIGHTS.h1;
+    prepared.push({
+      title: normaliseBounded(page.title),
+      h1: normaliseItems(page.h1),
+      h2h3: normaliseItems(page.h2h3),
+      body: normaliseBounded(page.bodyText),
+    });
+    for (const text of normaliseItems(page.navTexts)) nav.add(text);
+    for (const text of normaliseItems(page.internalPaths)) paths.add(text);
   }
+  return { pages: prepared, nav: [...nav], paths: [...paths] };
+}
+
+function scoreTrade(site: PreparedSite, terms: readonly PreparedTerm[]): number {
+  let score = 0;
+  for (const page of site.pages) {
+    score += countHits(page.title, terms, Infinity) * ZONE_WEIGHTS.title;
+    for (const text of page.h1) score += countHits(text, terms, Infinity) * ZONE_WEIGHTS.h1;
+    score += countHitsCapped(page.h2h3, terms, ZONE_HIT_CAPS.h2h3) * ZONE_WEIGHTS.h2h3;
+    score += countHits(page.body, terms, ZONE_HIT_CAPS.body) * ZONE_WEIGHTS.body;
+  }
+  for (const text of site.nav) score += countHits(text, terms, Infinity) * ZONE_WEIGHTS.nav;
+  for (const text of site.paths) score += countHits(text, terms, Infinity) * ZONE_WEIGHTS.path;
   return score;
 }
 
 export function detectTrade(zones: TradeZones | readonly TradeZones[], slice: TradeSlice): TradeDetectionResult {
   const pages = (Array.isArray(zones) ? zones : [zones]).slice(0, MAX_PAGES) as readonly TradeZones[];
+  const site = prepareSite(pages);
   const scores: Record<string, number> = {};
   const ranked: Array<{ id: string; score: number }> = [];
   for (const trade of slice.trades.slice(0, MAX_TRADES)) {
-    const score = scoreTrade(pages, prepareTerms(trade));
+    const score = scoreTrade(site, prepareTerms(trade));
     scores[trade.id] = score;
     ranked.push({ id: trade.id, score });
   }
