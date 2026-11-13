@@ -16,6 +16,8 @@
  *   1. scan.prospect_id is nullish -> not our branch, a public-lead scan.
  *   2. scan.status isn't 'completed', or scores/summary is missing.
  *   3. the prospect row can't be loaded.
+ *   3b. owner is 'atrium'. Atrium drafts and sends for its own prospects
+ *      (decision 2026-11-12), so this hook never writes a row for them.
  *   4. contact_email is nullish/empty (D-6-07).
  *   5. contact_email_type is 'named-person' (D-6-06) — manual generate
  *      (built in 06-08) is the entry point for these and bypasses this gate.
@@ -77,7 +79,7 @@ export async function maybeGenerateDraftForProspectScan(
 
     const { data: prospect, error: prospectError } = await sb
       .from("prospects")
-      .select("name, domain, country, contact_email, contact_email_type, lifecycle_state")
+      .select("name, domain, country, contact_email, contact_email_type, lifecycle_state, owner")
       .eq("id", scan.prospect_id)
       .single();
 
@@ -85,6 +87,12 @@ export async function maybeGenerateDraftForProspectScan(
     if (prospectError || !prospect) {
       console.error(`[draft] prospect ${scan.prospect_id} not found for scan ${scan.id}:`, prospectError);
       return { outcome: "skipped", reason: "prospect-not-found" };
+    }
+
+    // Gate 3b: one source of truth for drafts. Atrium owns drafting for its
+    // own prospects, so they never enter outreach_messages.
+    if (prospect.owner === "atrium") {
+      return { outcome: "skipped", reason: "atrium-owned" };
     }
 
     // Gate 4 (D-6-07): no usable contact email, no draft, no queue row.
