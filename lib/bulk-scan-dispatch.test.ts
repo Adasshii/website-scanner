@@ -273,6 +273,21 @@ describe("dispatchClaimedProspects", () => {
     });
   });
 
+  it("T-9-12: a missing prospect_sources embed (null) fails closed, it is not read as a match", async () => {
+    const { sb } = makeSupabaseMock({ scoreableRead: { prospect_sources: null } });
+    const client = { fullScanBulk: vi.fn(async () => ({ accepted: true })) };
+
+    const outcomes = await dispatchClaimedProspects(sb, [makeProspect()], {
+      client,
+      fetchImpl: makeFetchImpl(),
+      sleep: async () => {},
+      validateUrlSafe: passthroughValidate,
+    });
+
+    expect(outcomes[0]?.reason).toBe("not_scoreable");
+    expect(client.fullScanBulk).toHaveBeenCalledTimes(0);
+  });
+
   it("T-9-12: a prospect that passes the rule dispatches exactly as before", async () => {
     const { sb, calls } = makeSupabaseMock();
     const client = { fullScanBulk: vi.fn(async () => ({ accepted: true })) };

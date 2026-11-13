@@ -17,16 +17,13 @@ import {
 } from "@/lib/bulk-scan-constants";
 import { markScanFailed, requeueToQueued, type ClaimedProspect } from "@/lib/scan-queue";
 import { ScannerClient } from "@/lib/scanner-client";
+import {
+  scoreableFailureReason,
+  type ScoreableRow,
+  type ScoreableSource,
+} from "@/lib/triage-eligibility";
 
 export type DispatchOutcome = { id: string; dispatched: boolean; reason?: string };
-
-/**
- * A claimed row as dispatch sees it. claim_next_scan_batch returns `setof
- * prospects`, so the stored marker (migration 022) is already on the row at
- * runtime; ClaimedProspect predates it and does not name it. Optional because
- * a row that was never refreshed carries null, and null means "no marker".
- */
-export type DispatchProspect = ClaimedProspect & { not_scoreable_reason?: string | null };
 
 type Sleep = (ms: number) => Promise<void>;
 
@@ -55,7 +52,7 @@ interface DispatchDeps {
  */
 export async function dispatchClaimedProspects(
   sb: SupabaseClient,
-  claimed: DispatchProspect[],
+  claimed: ClaimedProspect[],
   deps: DispatchDeps = {}
 ): Promise<DispatchOutcome[]> {
   const client = deps.client ?? new ScannerClient();
@@ -77,20 +74,45 @@ export async function dispatchClaimedProspects(
 
 async function dispatchOne(
   sb: SupabaseClient,
-  prospect: DispatchProspect,
+  prospect: ClaimedProspect,
   client: Pick<ScannerClient, "fullScanBulk">,
   fetchImpl?: TriageFetchImpl,
   validateUrlSafe: ValidateUrlSafe = defaultValidateUrlSafe
 ): Promise<DispatchOutcome> {
-  // ENG-06, D-9-17, T-9-12: a prospect marked not scoreable is never scanned,
-  // even if it was released or queued before the rule existed. Checked before
-  // any network call. Recorded the same way the robots and SSRF pre-flight
-  // skips are (no attempt spent, a reason that tells it apart from a dispatch
-  // failure): the schema has no skipped state, and returning without writing
-  // would leave the row stranded in 'scanning'. No scans row is created, so
-  // nothing the scanner's own monitoring reads is touched. This READS the
-  // marker; it recomputes no condition of the rule (D-9-R1).
-  if (prospect.not_scoreable_reason) {
+  // ENG-06, T-9-12: a prospect that fails the scoreable rule is never scanned,
+  // including one released or queued before the rule existed, which carries no
+  // stored marker (the marker refresh only ever touches un-released prospects).
+  // So the verdict is computed fresh here, from the prospect's own columns and
+  // prospect_sources, by scoreableFailureReason: the one place the rule and
+  // MIN_MATCH_CONFIDENCE live (D-9-R1). This file evaluates no condition itself,
+  // and the stored prospects.not_scoreable_reason is not consulted: it is the
+  // readable explanation the Shortlist shows (D-9-17), not what dispatch trusts.
+  // Checked before any network call.
+  const { data: fresh, error: freshError } = await sb
+    .from("prospects")
+    .select(
+      "domain, website_url, address, latitude, longitude, prospect_sources(raw_confidence, raw_operating_status)"
+    )
+    .eq("id", prospect.id)
+    .single();
+
+  // Fail closed: with no readable row there is no verdict, and no verdict is
+  // never read as a pass. No attempt is spent, so a re-queue can retry.
+  if (freshError || !fresh) {
+    await markScanFailed(sb, prospect.id, "scoreable_check_failed", { attemptSpent: false });
+    return { id: prospect.id, dispatched: false, reason: "scoreable_check_failed" };
+  }
+
+  // A missing embed becomes an empty list, which is not one match: it fails closed.
+  const { prospect_sources, ...columns } = fresh as unknown as Omit<ScoreableRow, "sources"> & {
+    prospect_sources: ScoreableSource[] | null;
+  };
+  if (scoreableFailureReason({ ...columns, sources: prospect_sources ?? [] }) !== null) {
+    // Recorded the way the robots and SSRF pre-flight skips are (no attempt
+    // spent, a reason that tells it apart from a dispatch failure): the schema
+    // has no skipped state, and returning without a write would strand the row
+    // in 'scanning'. No scans row is created, so nothing the scanner's own
+    // monitoring reads is touched.
     await markScanFailed(sb, prospect.id, "not_scoreable", { attemptSpent: false });
     return { id: prospect.id, dispatched: false, reason: "not_scoreable" };
   }
