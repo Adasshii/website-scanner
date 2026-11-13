@@ -98,11 +98,17 @@ interface PreparedSite {
  * to the profile term alike: Dutch sites write one compound three different ways.
  */
 export function normaliseText(text: string): string {
-  return text
-    .toLowerCase()
-    .replace(/[-‐-―_]/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
+  const lower = text.toLowerCase();
+  let spaced = "";
+  for (let index = 0; index < lower.length; index++) {
+    spaced += isSeparator(lower.charCodeAt(index)) ? " " : lower.charAt(index);
+  }
+  return spaced.replace(/\s+/g, " ").trim();
+}
+
+/** The ASCII hyphen, the Unicode dashes U+2010 to U+2015, and the underscore. */
+function isSeparator(code: number): boolean {
+  return code === 0x2d || code === 0x5f || (code >= 0x2010 && code <= 0x2015);
 }
 
 /** Letters and digits, Latin range only. Everything else is a word boundary. */
@@ -239,8 +245,8 @@ export function detectTrade(zones: TradeZones | readonly TradeZones[], slice: Tr
     if (entry !== top && (second === null || entry.score > second.score)) second = entry;
   }
 
-  const readable = top !== null && top.score > 0 && Number.isFinite(slice.minTradeScore) && top.score >= slice.minTradeScore;
-  if (top === null || !readable) {
+  // A minimum that is not a number makes the comparison false, so the trade reads unreadable.
+  if (top === null || !(top.score > 0 && top.score >= slice.minTradeScore)) {
     return { tradeId: null, confidence: "unreadable", scores, runnerUpId: null, margin: 0 };
   }
   const runnerUpScore = second === null ? 0 : second.score;
