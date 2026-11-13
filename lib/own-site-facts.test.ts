@@ -8,8 +8,9 @@
  * Every fixture is a literal object. No network, no saved third-party HTML.
  */
 import { describe, expect, it } from "vitest";
-import { extractOwnSiteFacts } from "../scanner-service/src/own-site-facts";
-import type { MicrodataItem, OwnSiteHarvest } from "../types/own-site";
+import { extractOwnSiteFacts, extractSocialProof } from "../scanner-service/src/own-site-facts";
+import type { NicheScanSlice } from "../types/niche-scan-slice";
+import type { MicrodataItem, OwnSiteHarvest, OwnSiteSocialProof } from "../types/own-site";
 
 const META = { readAt: "2026-11-13T09:00:00.000Z" };
 
@@ -628,7 +629,7 @@ const BREADCRUMB: MicrodataItem = {
   props: { itemListElement: [{ type: `${SCHEMA}ListItem`, props: { name: ["Home"] } }] },
 };
 
-const BUSINESS: MicrodataItem = {
+const MICRO_BUSINESS: MicrodataItem = {
   type: `${SCHEMA}LocalBusiness`,
   props: {
     name: ["Micro Installatie"],
@@ -644,7 +645,7 @@ const BUSINESS: MicrodataItem = {
 
 describe("extractOwnSiteFacts: microdata fallback", () => {
   it("reads a microdata-only page, with source microdata", () => {
-    const facts = extractOwnSiteFacts(microdataHarvest([BUSINESS]), META);
+    const facts = extractOwnSiteFacts(microdataHarvest([MICRO_BUSINESS]), META);
     const address = facts.business.address;
     expect(address.state).toBe("found");
     if (address.state === "found") {
@@ -657,7 +658,7 @@ describe("extractOwnSiteFacts: microdata fallback", () => {
   });
 
   it("reads the business when the first itemscope root is a breadcrumb", () => {
-    const facts = extractOwnSiteFacts(microdataHarvest([BREADCRUMB, BUSINESS]), META);
+    const facts = extractOwnSiteFacts(microdataHarvest([BREADCRUMB, MICRO_BUSINESS]), META);
     const address = facts.business.address;
     expect(address.state === "found" && address.value.streetAddress === "Microlaan 8").toBe(true);
   });
@@ -670,7 +671,7 @@ describe("extractOwnSiteFacts: microdata fallback", () => {
   it("lets JSON-LD win over microdata that disagrees, and records which one produced the value", () => {
     const facts = extractOwnSiteFacts(
       microdataHarvest(
-        [BUSINESS],
+        [MICRO_BUSINESS],
         [{ "@type": "LocalBusiness", address: { streetAddress: "Jsonlaan 1", addressLocality: "Breda" } }]
       ),
       META
@@ -683,7 +684,7 @@ describe("extractOwnSiteFacts: microdata fallback", () => {
   it("falls back to microdata for a field JSON-LD leaves out", () => {
     const facts = extractOwnSiteFacts(
       microdataHarvest(
-        [BUSINESS],
+        [MICRO_BUSINESS],
         [{ "@type": "LocalBusiness", address: { streetAddress: "Jsonlaan 1", addressLocality: "Breda" } }]
       ),
       META
@@ -792,5 +793,306 @@ describe("extractOwnSiteFacts: stored shape", () => {
     expect(facts.schemaVersion).toBe(1);
     expect(facts.readAt).toBe("2026-01-02T03:04:05.000Z");
     expect(facts.pagesRead).toBe(3);
+  });
+});
+
+// ── Social proof (ENG-02) ────────────────────────────────────────────────
+
+/**
+ * A slice built by hand. The widget host list lives here and in the real
+ * profile, never in the scanner: the host-list case below proves the extractor
+ * reads it from the slice by handing it a slice that lacks a host.
+ */
+function sliceWith(reviewWidgetHosts: string[]): NicheScanSlice {
+  return {
+    nicheId: "test-niche",
+    trades: [
+      {
+        id: "test_trade",
+        terms: [],
+        tieBreakRank: 1,
+        checks: { quoteTerms: [], projectTerms: [], certificationTerms: [] },
+      },
+    ],
+    reviewWidgetHosts,
+    minTradeScore: 8,
+    dominanceRatio: 1.5,
+  };
+}
+
+const SLICE = sliceWith(["klantenvertellen", "trustpilot", "trustindex", "kiyoh", "feedbackcompany"]);
+
+/** One page: JSON-LD values plus any zone overrides. */
+function page(blocks: Array<unknown> = [], zones: Partial<OwnSiteHarvest> = {}): OwnSiteHarvest {
+  return { ...harvestOf(blocks), ...zones };
+}
+
+type ReadSocialProof = Extract<OwnSiteSocialProof, { state: "read" }>;
+
+/** Narrow a social-proof result. Callers assert state first so a failure names the state. */
+function readOf(proof: OwnSiteSocialProof): ReadSocialProof {
+  if (proof.state !== "read") throw new Error(`expected state "read", got "${proof.state}"`);
+  return proof;
+}
+
+const BUSINESS = { "@type": "LocalBusiness", "@id": "https://example.test/#biz", name: "Example Installatie" };
+
+describe("extractSocialProof: whether reviews are shown", () => {
+  it("reads a known review widget host as reviews shown, and names the host", () => {
+    const proof = extractSocialProof([page([], { widgetHosts: ["widget.klantenvertellen.nl", "cdn.example.test"] })], SLICE);
+    expect(proof.state).toBe("read");
+    const p = readOf(proof);
+    expect(String(p.shown)).toBe("true");
+    expect(p.evidence.join("|")).toContain("widget host: widget.klantenvertellen.nl");
+    expect(flat(p.widgetHosts)).toBe('["widget.klantenvertellen.nl"]');
+  });
+
+  it("reads the host list from the slice it was handed, not from a list of its own", () => {
+    const withoutHost = sliceWith(["acme-reviews"]);
+    const absent = readOf(extractSocialProof([page([], { widgetHosts: ["widget.klantenvertellen.nl"] })], withoutHost));
+    expect(String(absent.shown)).toBe("false");
+    const present = readOf(extractSocialProof([page([], { widgetHosts: ["cdn.acme-reviews.example"] })], withoutHost));
+    expect(String(present.shown)).toBe("true");
+  });
+
+  it("matches a slice host fragment against the hostname without case sensitivity and ignores a blank fragment", () => {
+    const slice = sliceWith(["", "  ", "TrustPilot"]);
+    const p = readOf(extractSocialProof([page([], { widgetHosts: ["widget.trustpilot.com", "cdn.example.test"] })], slice));
+    expect(String(p.shown)).toBe("true");
+    expect(flat(p.widgetHosts)).toBe('["widget.trustpilot.com"]');
+    const none = readOf(extractSocialProof([page([], { widgetHosts: ["cdn.example.test"] })], slice));
+    expect(String(none.shown)).toBe("false");
+  });
+
+  it("reads an AggregateRating node in the markup as marked up and shown", () => {
+    const proof = extractSocialProof(
+      [page([{ "@graph": [BUSINESS, { "@type": "AggregateRating", ratingValue: 4.8, reviewCount: 12 }] }])],
+      SLICE
+    );
+    expect(proof.state).toBe("read");
+    const p = readOf(proof);
+    expect(String(p.markedUp)).toBe("true");
+    expect(String(p.shown)).toBe("true");
+    expect(p.evidence.join("|")).toContain("markup: AggregateRating");
+  });
+
+  it("reads a Review node in the markup as marked up and shown", () => {
+    const p = readOf(
+      extractSocialProof([page([{ "@graph": [BUSINESS, { "@type": "Review", datePublished: "2026-03-01" }] }])], SLICE)
+    );
+    expect(String(p.markedUp)).toBe("true");
+    expect(String(p.shown)).toBe("true");
+    expect(p.evidence.join("|")).toContain("markup: Review");
+  });
+
+  it("reads a review word in a heading as shown, and quotes the heading", () => {
+    const p = readOf(extractSocialProof([page([], { h2h3: ["Onze reviews", "Over ons"] })], SLICE));
+    expect(String(p.shown)).toBe("true");
+    expect(p.evidence.join("|")).toContain("heading: Onze reviews");
+    expect(String(p.markedUp)).toBe("false");
+  });
+
+  it("reads a rating pattern in the visible text as shown", () => {
+    const p = readOf(extractSocialProof([page([], { bodyText: "Wij scoren gemiddeld 4,8/5 bij onze klanten." })], SLICE));
+    expect(String(p.shown)).toBe("true");
+    expect(p.evidence.join("|")).toContain("visible text: 4,8/5");
+  });
+
+  it("does not read a plain sentence that happens to hold a number and a review word far apart as a rating", () => {
+    const p = readOf(extractSocialProof([page([], { bodyText: "Bel ons op 06 12345678. Vraag naar onze werkwijze." })], SLICE));
+    expect(String(p.shown)).toBe("false");
+  });
+
+  it("reports no reviews at all as shown false, markedUp false, count missing and recency missing", () => {
+    const proof = extractSocialProof([page([])], SLICE);
+    expect(proof.state).toBe("read");
+    const p = readOf(proof);
+    expect(String(p.shown)).toBe("false");
+    expect(String(p.markedUp)).toBe("false");
+    expect(p.count.state).toBe("missing");
+    expect(p.recency.state).toBe("missing");
+    expect(flat(p.evidence)).toBe("[]");
+    expect(flat(p.widgetHosts)).toBe("[]");
+  });
+
+  it("tells a site with markup that leaves reviews out apart from a site with no markup", () => {
+    const noMarkup = readOf(extractSocialProof([page([])], SLICE));
+    const noReviews = readOf(extractSocialProof([page([BUSINESS])], SLICE));
+    expect(JSON.stringify(noMarkup.count)).toBe('{"state":"missing","reason":"no_structured_data"}');
+    expect(JSON.stringify(noReviews.count)).toBe('{"state":"missing","reason":"not_in_markup"}');
+  });
+});
+
+describe("extractSocialProof: could not tell is not not-there", () => {
+  it("reads count unreadable, not missing, when the only JSON-LD block does not parse", () => {
+    const proof = extractSocialProof([page(["{ this is not json"])], SLICE);
+    expect(proof.state).toBe("read");
+    const p = readOf(proof);
+    expect(p.count.state).toBe("unreadable");
+    expect(p.recency.state).toBe("unreadable");
+  });
+
+  it("reads shown and markedUp as null, not false, when a block did not parse and nothing else showed reviews", () => {
+    const p = readOf(extractSocialProof([page(["{ this is not json"])], SLICE));
+    expect(String(p.shown)).toBe("null");
+    expect(String(p.markedUp)).toBe("null");
+  });
+
+  it("keeps a found signal true even when another block did not parse", () => {
+    const p = readOf(
+      extractSocialProof([page(["{ nope", { "@type": "AggregateRating", ratingValue: 5, reviewCount: 9 }])], SLICE)
+    );
+    expect(String(p.shown)).toBe("true");
+    expect(String(p.markedUp)).toBe("true");
+  });
+
+  it("reads a page that failed to harvest as could not tell for every absence, and keeps what another page found", () => {
+    const p = readOf(extractSocialProof([null, page([BUSINESS])], SLICE));
+    expect(String(p.shown)).toBe("null");
+    expect(p.count.state).toBe("unreadable");
+    const found = readOf(extractSocialProof([null, page([], { widgetHosts: ["widget.trustpilot.com"] })], SLICE));
+    expect(String(found.shown)).toBe("true");
+  });
+
+  it("reads the whole result unreadable when no page could be read", () => {
+    expect(extractSocialProof([null, null], SLICE).state).toBe("unreadable");
+    expect(extractSocialProof([], SLICE).state).toBe("unreadable");
+  });
+});
+
+describe("extractSocialProof: the count", () => {
+  const rated = (rating: Record<string, unknown>): unknown => ({
+    "@graph": [{ ...BUSINESS, aggregateRating: { "@type": "AggregateRating", ratingValue: 4.6, ...rating } }],
+  });
+
+  it("trusts reviewCount before ratingCount when the two disagree", () => {
+    const p = readOf(extractSocialProof([page([rated({ reviewCount: 42, ratingCount: 7 })])], SLICE));
+    expect(p.count.state).toBe("found");
+    expect(JSON.stringify(p.count)).toBe('{"state":"found","value":42,"source":"jsonld"}');
+  });
+
+  it("does not depend on which of the two keys the site wrote first", () => {
+    const p = readOf(extractSocialProof([page([rated({ ratingCount: 7, reviewCount: 42 })])], SLICE));
+    expect(JSON.stringify(p.count)).toBe('{"state":"found","value":42,"source":"jsonld"}');
+  });
+
+  it("falls back to ratingCount when reviewCount is absent", () => {
+    const p = readOf(extractSocialProof([page([rated({ ratingCount: 7 })])], SLICE));
+    expect(JSON.stringify(p.count)).toBe('{"state":"found","value":7,"source":"jsonld"}');
+  });
+
+  it("reads a count the site wrote as a numeric string, and a count of zero", () => {
+    const text = readOf(extractSocialProof([page([rated({ reviewCount: "1250" })])], SLICE));
+    expect(JSON.stringify(text.count)).toBe('{"state":"found","value":1250,"source":"jsonld"}');
+    const zero = readOf(extractSocialProof([page([rated({ reviewCount: 0 })])], SLICE));
+    expect(JSON.stringify(zero.count)).toBe('{"state":"found","value":0,"source":"jsonld"}');
+  });
+
+  it("does not read a negative, fractional or non-numeric count", () => {
+    for (const bad of [-3, 4.5, "many", "", null]) {
+      const p = readOf(extractSocialProof([page([rated({ reviewCount: bad })])], SLICE));
+      expect(p.count.state).toBe("missing");
+    }
+  });
+
+  it("reads the count off a microdata AggregateRating when there is no JSON-LD, recording microdata as the source", () => {
+    const item: MicrodataItem = {
+      type: "https://schema.org/LocalBusiness",
+      props: {
+        aggregateRating: [
+          { type: "https://schema.org/AggregateRating", props: { ratingValue: ["4.8"], reviewCount: ["31"] } },
+        ],
+      },
+    };
+    const p = readOf(extractSocialProof([{ ...page([]), microdata: [item], microdataCount: 2 }], SLICE));
+    expect(JSON.stringify(p.count)).toBe('{"state":"found","value":31,"source":"microdata"}');
+  });
+
+  it("does not count a rating that belongs to a product rather than the business", () => {
+    const p = readOf(
+      extractSocialProof(
+        [page([{ "@graph": [BUSINESS, { "@type": "Product", name: "Boiler", aggregateRating: { reviewCount: 99 } }] }])],
+        SLICE
+      )
+    );
+    expect(p.count.state).toBe("missing");
+    expect(String(p.markedUp)).toBe("true");
+  });
+
+  it("reads a count phrase from the visible text when no markup carries one, recording visible_text", () => {
+    const p = readOf(extractSocialProof([page([], { bodyText: "Al 128 beoordelingen van tevreden klanten." })], SLICE));
+    expect(JSON.stringify(p.count)).toBe('{"state":"found","value":128,"source":"visible_text"}');
+  });
+
+  it("lets markup win over a visible text phrase", () => {
+    const p = readOf(
+      extractSocialProof([page([rated({ reviewCount: 42 })], { bodyText: "Al 128 beoordelingen van klanten." })], SLICE)
+    );
+    expect(JSON.stringify(p.count)).toBe('{"state":"found","value":42,"source":"jsonld"}');
+  });
+
+  it("resolves two pages that disagree to the larger count, whichever page comes first", () => {
+    const a = page([rated({ reviewCount: 40 })]);
+    const b = page([rated({ reviewCount: 44 })]);
+    const forward = readOf(extractSocialProof([a, b], SLICE));
+    const backward = readOf(extractSocialProof([b, a], SLICE));
+    expect(JSON.stringify(forward.count)).toBe('{"state":"found","value":44,"source":"jsonld"}');
+    expect(flat(forward.count)).toBe(flat(backward.count));
+  });
+});
+
+describe("extractSocialProof: how recent", () => {
+  it("takes the newest datePublished among the business's reviews", () => {
+    const p = readOf(
+      extractSocialProof(
+        [
+          page([
+            {
+              "@graph": [
+                { ...BUSINESS, review: [{ "@type": "Review", datePublished: "2026-01-15" }, { "@type": "Review", datePublished: "2026-09-02" }] },
+              ],
+            },
+          ]),
+        ],
+        SLICE
+      )
+    );
+    expect(JSON.stringify(p.recency)).toBe('{"state":"found","value":"2026-09-02","source":"jsonld"}');
+  });
+
+  it("reads a standalone Review node that reviews the business", () => {
+    const p = readOf(
+      extractSocialProof(
+        [page([{ "@graph": [BUSINESS, { "@type": "Review", itemReviewed: { "@id": "https://example.test/#biz" }, datePublished: "2026-05-05" }] }])],
+        SLICE
+      )
+    );
+    expect(JSON.stringify(p.recency)).toBe('{"state":"found","value":"2026-05-05","source":"jsonld"}');
+  });
+
+  it("ignores a review date that is not a date", () => {
+    const p = readOf(
+      extractSocialProof([page([{ "@graph": [{ ...BUSINESS, review: [{ "@type": "Review", datePublished: "last week" }] }] }])], SLICE)
+    );
+    expect(p.recency.state).toBe("missing");
+  });
+});
+
+describe("extractSocialProof: stored host list", () => {
+  it("stores one entry when two pages carry the same host, and keeps the list sorted", () => {
+    const first = page([], { widgetHosts: ["widget.trustpilot.com", "widget.klantenvertellen.nl"] });
+    const second = page([], { widgetHosts: ["widget.klantenvertellen.nl"] });
+    const p = readOf(extractSocialProof([first, second], SLICE));
+    expect(p.widgetHosts.length).toBe(2);
+    expect(flat(p.widgetHosts)).toBe('["widget.klantenvertellen.nl","widget.trustpilot.com"]');
+  });
+
+  it("stores the same host list whatever order the pages arrive in", () => {
+    const first = page([], { widgetHosts: ["widget.trustpilot.com"] });
+    const second = page([], { widgetHosts: ["widget.kiyoh.com", "widget.klantenvertellen.nl"] });
+    const forward = readOf(extractSocialProof([first, second], SLICE));
+    const backward = readOf(extractSocialProof([second, first], SLICE));
+    expect(flat(forward.widgetHosts)).toBe(flat(backward.widgetHosts));
+    expect(flat(forward.widgetHosts)).toBe('["widget.kiyoh.com","widget.klantenvertellen.nl","widget.trustpilot.com"]');
   });
 });

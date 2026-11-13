@@ -4,17 +4,21 @@ import type {
   OwnSiteAddress,
   OwnSiteBusinessFacts,
   OwnSiteCertifications,
-  OwnSiteFacts,
+  OwnSiteFactsCore,
   OwnSiteHarvest,
   OwnSiteOpeningHours,
   OwnSiteOpeningHoursEntry,
   OwnSiteServiceArea,
+  OwnSiteSocialProof,
   OwnSiteTelephone,
 } from "../../types/own-site";
+import type { NicheScanSlice } from "../../types/niche-scan-slice";
 
 /**
  * own-site-facts.ts: Phase 9, ENG-01. The pure Node-side parser that turns the
- * raw material harvestOwnSite() returns into OwnSiteFacts.
+ * raw material harvestOwnSite() returns into the business facts (ENG-01), and,
+ * from plan 09-07, the social-proof and quote-readiness extractors (ENG-02,
+ * ENG-05) that read the same harvest.
  *
  * No Supabase client, no I/O, no runtime import from lib/ (D-9-13: the scanner
  * image copies types/ and exactly one file out of lib/, so a shared parser in
@@ -508,7 +512,7 @@ function pickField<T>(
 
 // ── Entry point ──────────────────────────────────────────────────────────
 
-function unreadableFacts(meta: { readAt: string; pagesRead?: number }): OwnSiteFacts {
+function unreadableFacts(meta: { readAt: string; pagesRead?: number }): OwnSiteFactsCore {
   return {
     schemaVersion: 1,
     readAt: meta.readAt,
@@ -590,14 +594,14 @@ function readStructuredData(harvest: OwnSiteHarvest): { nodes: PoolNode[]; state
 }
 
 /**
- * Turn a harvest into OwnSiteFacts. A null harvest means the harvest itself
- * failed. Never throws: a bug here must not fail the scan, so anything
- * unexpected answers "unreadable".
+ * Turn a harvest into the business facts (OwnSiteFactsCore). A null harvest
+ * means the harvest itself failed. Never throws: a bug here must not fail the
+ * scan, so anything unexpected answers "unreadable".
  */
 export function extractOwnSiteFacts(
   harvest: OwnSiteHarvest | null,
   meta: { readAt: string; pagesRead?: number }
-): OwnSiteFacts {
+): OwnSiteFactsCore {
   try {
     if (harvest === null) return unreadableFacts(meta);
 
@@ -632,4 +636,16 @@ export function extractOwnSiteFacts(
   } catch {
     return unreadableFacts(meta);
   }
+}
+
+// ── Social proof (ENG-02) ────────────────────────────────────────────────
+
+/** Skeleton: replaced by the implementation in the GREEN commit. */
+export function extractSocialProof(
+  pages: ReadonlyArray<OwnSiteHarvest | null>,
+  slice: NicheScanSlice
+): OwnSiteSocialProof {
+  void pages;
+  void slice;
+  return { state: "unreadable" };
 }

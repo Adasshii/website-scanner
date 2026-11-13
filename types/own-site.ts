@@ -17,8 +17,12 @@
  *               harvest itself failed. Never read this as missing.
  */
 
-/** Which markup carried a found value. JSON-LD wins when both exist. */
-export type FieldSource = "jsonld" | "microdata";
+/**
+ * Which part of the site carried a found value. JSON-LD wins when both markups
+ * exist. "visible_text" is a value read from a sentence the site prints for its
+ * visitors (a review count phrase), used only when no markup carried the value.
+ */
+export type FieldSource = "jsonld" | "microdata" | "visible_text";
 
 /**
  * Why a field reads missing. The two reasons mean different things to a later
@@ -153,8 +157,46 @@ export interface OwnSiteBusinessFacts {
   certifications: FieldState<OwnSiteCertifications>;
 }
 
-/** The stored shape. Plans 09-07 and 09-08 add their own members beside business. */
-export interface OwnSiteFacts {
+/**
+ * What the site shows about reviews (ENG-02). Read as a whole, across every
+ * page of the site, so the host list and the resolved count do not depend on
+ * which page was read first.
+ *
+ * Three honest states, the same discipline as FieldState:
+ *   unreadable  no page could be read at all, so nothing is claimed
+ *   read        pages were read; shown and markedUp are true when a signal was
+ *               found, false when every page was read in full and none was
+ *               found, and null when a signal was not found but something
+ *               (a JSON-LD block that did not parse, a cap, a failed page)
+ *               means it may have been there. null is "could not tell", never
+ *               "not there".
+ *
+ * count and recency are FieldState values. Their source records where the
+ * number came from: the site's own markup or its own visible text. It is what
+ * the site says about itself and is never a Google figure (D-9-R4).
+ */
+export type OwnSiteSocialProof =
+  | { state: "unreadable" }
+  | {
+      state: "read";
+      shown: boolean | null;
+      /** What matched, one short line each, sorted and deduplicated. */
+      evidence: string[];
+      /** An AggregateRating or Review node exists in the site's markup. */
+      markedUp: boolean | null;
+      /** Review count; reviewCount is trusted before ratingCount, then visible text. */
+      count: FieldState<number>;
+      /** Date of the newest review that carries a datePublished in markup. */
+      recency: FieldState<string>;
+      /** Hostnames of review widgets found, sorted and deduplicated. */
+      widgetHosts: string[];
+    };
+
+/**
+ * What one invocation of the business-fact extractor produces. The stored
+ * OwnSiteFacts adds the members other extractors own.
+ */
+export interface OwnSiteFactsCore {
   schemaVersion: 1;
   /** ISO timestamp the facts were read. Injected by the caller, never taken from a clock here. */
   readAt: string;
@@ -167,4 +209,14 @@ export interface OwnSiteFacts {
     microdataItems: number;
   };
   business: OwnSiteBusinessFacts;
+}
+
+/**
+ * The stored shape. Still awaited, so a partially populated type is not read as
+ * an oversight: `trade` arrives in plan 09-08 (trade detection), and plan 09-09
+ * owns the aggregation across pages and the persistence that assembles these
+ * members into one stored value.
+ */
+export interface OwnSiteFacts extends OwnSiteFactsCore {
+  socialProof: OwnSiteSocialProof;
 }
