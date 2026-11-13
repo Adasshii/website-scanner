@@ -27,7 +27,7 @@ export type StartScanResult =
 export async function startAtriumScan(sb: SupabaseClient, prospectId: string): Promise<StartScanResult> {
   const { data: prospect, error } = await sb
     .from("prospects")
-    .select("id, owner, domain, website_url, contact_email, latest_scan_id")
+    .select("id, owner, domain, website_url, contact_email")
     .eq("id", prospectId)
     .maybeSingle();
   if (error) throw error;
@@ -39,7 +39,7 @@ export async function startAtriumScan(sb: SupabaseClient, prospectId: string): P
   const email = (prospect.contact_email as string | null) ?? `info@${domain}`;
   if (await isSuppressed(sb, email)) return { kind: "suppressed" };
 
-  const runningScanId = await findRunningScan(sb, prospect.latest_scan_id as string | null);
+  const runningScanId = await findRunningScan(sb, prospectId);
   if (runningScanId) return { kind: "scan_running", scanId: runningScanId };
 
   const rawUrl = (prospect.website_url as string | null) ?? `https://${domain}`;
@@ -80,9 +80,10 @@ export async function startAtriumScan(sb: SupabaseClient, prospectId: string): P
     ({ accepted } = await client.fullScanBulk(url, { scanId, prospectId, userAgent: BULK_USER_AGENT }));
   } catch (err) {
     const reason = errorMessage(err);
+    const now = new Date().toISOString();
     const { error: failError } = await sb
       .from("scans")
-      .update({ status: "failed", error_message: reason, updated_at: new Date().toISOString() })
+      .update({ status: "failed", error_message: reason, completed_at: now, updated_at: now })
       .eq("id", scanId);
     if (failError) throw failError;
     return { kind: "dispatch_failed", reason };
@@ -105,17 +106,25 @@ export async function startAtriumScan(sb: SupabaseClient, prospectId: string): P
   return { kind: "started", scanId };
 }
 
-/** The latest scan's id when it is still running and started inside the window. */
-async function findRunningScan(sb: SupabaseClient, latestScanId: string | null): Promise<string | null> {
-  if (!latestScanId) return null;
-  const { data: scan, error } = await sb
+/**
+ * The newest running scan of this prospect started inside the window. Reads
+ * scans, not prospects.latest_scan_id: that column is written only after the
+ * scan service accepts the job, so it lags a scan that is still being set up.
+ */
+async function findRunningScan(sb: SupabaseClient, prospectId: string): Promise<string | null> {
+  const { data, error } = await sb
     .from("scans")
-    .select("id, status, started_at")
-    .eq("id", latestScanId)
-    .maybeSingle();
+    .select("id, started_at, created_at")
+    .eq("prospect_id", prospectId)
+    .in("status", Array.from(RUNNING_STATUSES))
+    .order("started_at", { ascending: false, nullsFirst: true })
+    .limit(1);
   if (error) throw error;
-  if (!scan || !RUNNING_STATUSES.has(scan.status as string)) return null;
-  const startedMs = Date.parse(scan.started_at as string);
+  const scan = data?.[0];
+  if (!scan) return null;
+  const startedMs = Date.parse((scan.started_at ?? scan.created_at) as string | null ?? "");
+  // No usable timestamp at all: assume it is running rather than start a duplicate.
+  if (Number.isNaN(startedMs)) return scan.id as string;
   return Date.now() - startedMs < SCAN_RUNNING_WINDOW_MS ? (scan.id as string) : null;
 }
 

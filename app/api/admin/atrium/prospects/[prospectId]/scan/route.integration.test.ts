@@ -109,7 +109,9 @@ describe("POST /api/admin/atrium/prospects/:prospectId/scan", () => {
   });
 
   it("returns 404 for an unknown prospect", async () => {
-    expect((await post(crypto.randomUUID())).status).toBe(404);
+    const res = await post(crypto.randomUUID());
+    expect(res.status).toBe(404);
+    expect(typeof (await res.json()).error).toBe("string");
   });
 
   it("returns 409 not-atrium for a scanner-owned prospect and never calls the scan service", async () => {
@@ -140,6 +142,18 @@ describe("POST /api/admin/atrium/prospects/:prospectId/scan", () => {
   it("returns 409 scan-running with the running scan's id when a scan started under 20 minutes ago", async () => {
     const id = await seedProspect(sb, { domain: freshDomain(), owner: "atrium" });
     const runningId = await linkLatestScan(id, "scanning", 5);
+
+    const res = await post(id);
+
+    expect(res.status).toBe(409);
+    expect(await res.json()).toEqual({ error: "scan-running", scanId: runningId });
+    expect(mocks.fullScanBulk).not.toHaveBeenCalled();
+  });
+
+  it("returns 409 scan-running for a running scan that latest_scan_id does not point at", async () => {
+    const id = await seedProspect(sb, { domain: freshDomain(), owner: "atrium" });
+    // In flight: dispatch accepted, prospect row not yet updated (or that update failed).
+    const runningId = await seedScan(sb, { prospectId: id, status: "scanning" });
 
     const res = await post(id);
 
@@ -222,6 +236,7 @@ describe("POST /api/admin/atrium/prospects/:prospectId/scan", () => {
     const res = await post(id);
     expect(res.status).toBe(503);
     expect(res.headers.get("retry-after")).toBe("120");
+    expect(await res.json()).toEqual({ error: "at_capacity" });
     const { data } = await sb.from("scans").select("id").eq("prospect_id", id);
     expect(data).toHaveLength(0);
   });
@@ -232,7 +247,10 @@ describe("POST /api/admin/atrium/prospects/:prospectId/scan", () => {
 
     const res = await post(id);
     expect(res.status).toBe(502);
-    const { data } = await sb.from("scans").select("status, error_message").eq("prospect_id", id);
-    expect(data).toEqual([{ status: "failed", error_message: "Scanner service error (500): down" }]);
+    expect(await res.json()).toEqual({ error: "Scan service error", detail: "Scanner service error (500): down" });
+    const { data } = await sb.from("scans").select("status, error_message, completed_at").eq("prospect_id", id);
+    expect(data).toEqual([
+      { status: "failed", error_message: "Scanner service error (500): down", completed_at: expect.any(String) },
+    ]);
   });
 });
