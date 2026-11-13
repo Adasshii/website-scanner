@@ -53,6 +53,16 @@ function flat(value: unknown): string {
   return JSON.stringify(value);
 }
 
+/**
+ * Every way a site writes the gap in a compound: the ASCII hyphen, each Unicode
+ * dash from U+2010 to U+2015, the underscore and a plain space. Built from code
+ * points so no look-alike character sits in this source file.
+ */
+const UNICODE_DASHES = [0x2010, 0x2011, 0x2012, 0x2013, 0x2014, 0x2015].map((code) => String.fromCharCode(code));
+const SEPARATORS = ["-", ...UNICODE_DASHES, "_", " "];
+const HYPHEN_U2011 = String.fromCharCode(0x2011);
+const HYPHEN_U2013 = String.fromCharCode(0x2013);
+
 const ROOFING_PREFIX: TradeSpec = { id: "roofing", terms: [{ term: "dak", match: "prefix" }] };
 const ROOFING_WORD: TradeSpec = { id: "roofing", terms: [{ term: "dak", match: "word" }] };
 const KITCHEN_PREFIX: TradeSpec = { id: "kitchen", terms: [{ term: "keuken", match: "prefix" }] };
@@ -73,7 +83,7 @@ describe("detectTrade: tracer (one zone, one match mode)", () => {
 
   it("treats every spelling of a hyphenated TERM as the same term", () => {
     const text = zones({ h1: ["Nieuwe cv ketel nodig?"] });
-    const spellings = ["cv-ketel", "cv‐ketel", "cv‑ketel", "cv‒ketel", "cv–ketel", "cv—ketel", "cv―ketel", "cv_ketel", "cv ketel"];
+    const spellings = SEPARATORS.map((separator) => `cv${separator}ketel`);
     const scores = spellings.map(
       (term) => detectTrade(text, sliceOf([{ id: "central_heating", terms: [{ term, match: "prefix" }] }])).scores.central_heating
     );
@@ -83,14 +93,14 @@ describe("detectTrade: tracer (one zone, one match mode)", () => {
 
   it("treats every spelling of a hyphenated ZONE TEXT as the same text", () => {
     const slice = sliceOf([{ id: "central_heating", terms: [{ term: "cv ketel", match: "prefix" }] }]);
-    const spellings = ["CV-ketel", "CV‐ketel", "CV‑ketel", "CV‒ketel", "CV–ketel", "CV—ketel", "CV―ketel", "CV_ketel", "CV ketel", "CV   ketel"];
+    const spellings = [...SEPARATORS, "   "].map((separator) => `CV${separator}ketel`);
     const scores = spellings.map((h1) => detectTrade(zones({ h1: [`Nieuwe ${h1} nodig?`] }), slice).scores.central_heating);
     expect(scores[0]).toBeGreaterThan(0);
     expect(new Set(scores).size).toBe(1);
   });
 
   it("normalises: lower case, every hyphen variant and underscore to a space, whitespace collapsed", () => {
-    expect(normaliseText("CV‑Ketel__Plaatsen –  Utrecht")).toBe("cv ketel plaatsen utrecht");
+    expect(normaliseText(`CV${HYPHEN_U2011}Ketel__Plaatsen ${HYPHEN_U2013}  Utrecht`)).toBe("cv ketel plaatsen utrecht");
     expect(normaliseText("  Dak-Reparatie\n\tNu ")).toBe("dak reparatie nu");
   });
 
@@ -157,6 +167,24 @@ describe("detectTrade: tracer (one zone, one match mode)", () => {
     const result = detectTrade(text, sliceOf([{ id: "t", terms: [{ term: "(a+)+$", match: "prefix" }] }]));
     expect(result.scores.t).toBe(0);
     expect(Date.now() - started).toBeLessThan(1000);
+  });
+
+  it("reads a minimum that is not a number, or a slice with no trades, as unreadable", () => {
+    const notANumber = detectTrade(zones({ h1: ["Dakreparatie"] }), sliceOf([ROOFING_PREFIX], { minTradeScore: Number.NaN }));
+    expect(notANumber.tradeId).toBeNull();
+    expect(notANumber.confidence).toBe("unreadable");
+    const noTrades = detectTrade(zones({ h1: ["Dakreparatie"] }), sliceOf([]));
+    expect(noTrades.tradeId).toBeNull();
+    expect(flat(noTrades.scores)).toBe(flat({}));
+  });
+
+  it("reads at most the first 50 terms of a trade", () => {
+    const filler = (count: number): Term[] => Array.from({ length: count }, (_, index) => ({ term: `filler${index}`, match: "prefix" as const }));
+    const text = zones({ h1: ["Dakreparatie"] });
+    const inside = detectTrade(text, sliceOf([{ id: "t", terms: [...filler(49), { term: "dak", match: "prefix" }] }]));
+    const outside = detectTrade(text, sliceOf([{ id: "t", terms: [...filler(50), { term: "dak", match: "prefix" }] }]));
+    expect(inside.scores.t).toBe(5);
+    expect(outside.scores.t).toBe(0);
   });
 
   it("ignores a blank term instead of matching everywhere", () => {
@@ -314,6 +342,13 @@ describe("detectTrade: the three match modes are not interchangeable", () => {
     for (const text of ["lucht-water warmtepomp", "lucht water warmtepomp", "lucht_water warmtepomp"]) {
       expect(scoreOf({ h1: [text] }, "lucht water", "substring")).toBe(5);
     }
+  });
+
+  it("treats a digit as a word character", () => {
+    expect(scoreOf({ h1: ["dak2"] }, "dak", "word")).toBe(0);
+    expect(scoreOf({ h1: ["2dak"] }, "dak", "prefix")).toBe(0);
+    expect(scoreOf({ h1: ["dak 2"] }, "dak", "word")).toBe(5);
+    expect(scoreOf({ h1: ["2 dak"] }, "dak", "prefix")).toBe(5);
   });
 
   it("matches on accented letters as word characters", () => {
