@@ -205,7 +205,7 @@ function prepareSite(pages: readonly TradeZones[]): PreparedSite {
     for (const text of normaliseItems(page.navTexts)) nav.add(text);
     for (const text of normaliseItems(page.internalPaths)) paths.add(text);
   }
-  return { pages: prepared, nav: [...nav], paths: [...paths] };
+  return { pages: prepared, nav: Array.from(nav), paths: Array.from(paths) };
 }
 
 function scoreTrade(site: PreparedSite, terms: readonly PreparedTerm[]): number {
