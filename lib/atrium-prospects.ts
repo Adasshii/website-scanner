@@ -12,7 +12,8 @@ export interface AtriumRegistration {
   contactEmail: string;
 }
 
-const EMAIL_RE = /^[^\s@]+@[^\s@]+$/;
+// No , ( ) " either: isSuppressed() puts the address in a PostgREST .or() filter.
+const EMAIL_RE = /^[^\s@,()"]+@[^\s@,()"]+$/;
 
 export function parseRegisterBody(
   body: unknown

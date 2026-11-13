@@ -76,6 +76,8 @@ describe("POST /api/admin/atrium/prospects", () => {
       { ...validBody(domain), country: "BE" },
       { ...validBody(domain), contactEmailType: "named-person" },
       { ...validBody(domain), contactEmail: "no-at-sign" },
+      { ...validBody(domain), contactEmail: `a,b@${domain}` },
+      { ...validBody(domain), contactEmail: `a)@${domain}` },
       { ...validBody(domain), contactEmail: "info@other-domain.nl" },
       { ...validBody(domain), website: "https://www.facebook.com/bakkerij" },
     ];
