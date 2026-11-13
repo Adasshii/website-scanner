@@ -227,32 +227,54 @@ function scoreTrade(site: PreparedSite, terms: readonly PreparedTerm[]): number 
   return score;
 }
 
+interface RankedTrade {
+  id: string;
+  score: number;
+  rank: number;
+}
+
+/**
+ * Highest score first; an exact tie goes to the lower tieBreakRank the profile
+ * supplies, and two trades that share a rank fall back to the id. Array
+ * position never decides: a tie broken by position would give the same site a
+ * different answer after an unrelated edit to the profile (D-9-07). A rank that
+ * is not a number sorts last, so the order stays total and deterministic.
+ */
+function compareRanked(a: RankedTrade, b: RankedTrade): number {
+  if (a.score !== b.score) return b.score - a.score;
+  if (a.rank !== b.rank) return a.rank - b.rank;
+  if (a.id === b.id) return 0;
+  return a.id < b.id ? -1 : 1;
+}
+
 export function detectTrade(zones: TradeZones | readonly TradeZones[], slice: TradeSlice): TradeDetectionResult {
   const pages = (Array.isArray(zones) ? zones : [zones]).slice(0, MAX_PAGES) as readonly TradeZones[];
   const site = prepareSite(pages);
   const scores: Record<string, number> = {};
-  const ranked: Array<{ id: string; score: number }> = [];
+  const ranked: RankedTrade[] = [];
   for (const trade of slice.trades.slice(0, MAX_TRADES)) {
     const score = scoreTrade(site, prepareTerms(trade));
     scores[trade.id] = score;
-    ranked.push({ id: trade.id, score });
+    ranked.push({ id: trade.id, score, rank: Number.isFinite(trade.tieBreakRank) ? trade.tieBreakRank : Number.MAX_SAFE_INTEGER });
   }
+  ranked.sort(compareRanked);
 
-  let top: { id: string; score: number } | null = null;
-  for (const entry of ranked) if (top === null || entry.score > top.score) top = entry;
-  let second: { id: string; score: number } | null = null;
-  for (const entry of ranked) {
-    if (entry !== top && (second === null || entry.score > second.score)) second = entry;
-  }
-
+  const top = ranked.length > 0 ? ranked[0] : null;
   // A minimum that is not a number makes the comparison false, so the trade reads unreadable.
   if (top === null || !(top.score > 0 && top.score >= slice.minTradeScore)) {
     return { tradeId: null, confidence: "unreadable", scores, runnerUpId: null, margin: 0 };
   }
+
+  const second = ranked.length > 1 ? ranked[1] : null;
   const runnerUpScore = second === null ? 0 : second.score;
+  // D-9-07: a winner whose margin over the runner-up is under the dominance ratio
+  // is still the trade, recorded as narrow. Whether a narrow trade earns a money
+  // line is a later phase's question and is not answered here. A ratio that is
+  // not a number makes the comparison false, so it reads narrow, never clear.
+  const clear = runnerUpScore === 0 || top.score >= runnerUpScore * slice.dominanceRatio;
   return {
     tradeId: top.id,
-    confidence: "clear",
+    confidence: clear ? "clear" : "narrow",
     scores,
     runnerUpId: second !== null && runnerUpScore > 0 ? second.id : null,
     margin: top.score - runnerUpScore,
