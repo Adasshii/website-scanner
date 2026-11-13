@@ -978,6 +978,11 @@ describe("extractSocialProof: the count", () => {
     expect(JSON.stringify(p.count)).toBe('{"state":"found","value":42,"source":"jsonld"}');
   });
 
+  it("trusts reviewCount even when it is the smaller of the two, so the order is a rule and not a maximum", () => {
+    const p = readOf(extractSocialProof([page([rated({ reviewCount: 7, ratingCount: 42 })])], SLICE));
+    expect(JSON.stringify(p.count)).toBe('{"state":"found","value":7,"source":"jsonld"}');
+  });
+
   it("does not depend on which of the two keys the site wrote first", () => {
     const p = readOf(extractSocialProof([page([rated({ ratingCount: 7, reviewCount: 42 })])], SLICE));
     expect(JSON.stringify(p.count)).toBe('{"state":"found","value":42,"source":"jsonld"}');
@@ -1075,6 +1080,30 @@ describe("extractSocialProof: how recent", () => {
       )
     );
     expect(JSON.stringify(p.recency)).toBe('{"state":"found","value":"2026-05-05","source":"jsonld"}');
+  });
+
+  it("does not claim a review that names no business, or names a product, for the business's recency", () => {
+    const noItem = readOf(
+      extractSocialProof([page([{ "@graph": [BUSINESS, { "@type": "Review", datePublished: "2026-05-05" }] }])], SLICE)
+    );
+    expect(noItem.recency.state).toBe("missing");
+    const product = readOf(
+      extractSocialProof(
+        [
+          page([
+            {
+              "@graph": [
+                BUSINESS,
+                { "@type": "Product", "@id": "https://example.test/#boiler", name: "Boiler" },
+                { "@type": "Review", itemReviewed: { "@id": "https://example.test/#boiler" }, datePublished: "2026-06-06" },
+              ],
+            },
+          ]),
+        ],
+        SLICE
+      )
+    );
+    expect(product.recency.state).toBe("missing");
   });
 
   it("ignores a review date that is not a date", () => {
@@ -1404,11 +1433,91 @@ describe("mergeQuoteReadiness: one result for the whole site", () => {
     expect(mergeQuoteReadiness([unreadable, unreadable]).state).toBe("unreadable");
   });
 
-  it("stores the same result whatever order the pages arrive in", () => {
+  it("stores the same result whatever order the pages arrive in (merge, evidence and all)", () => {
     const other = evaluateQuoteReadiness(page([], { telHrefs: ["tel:0507654321"] }), CHECKS);
     const forward = mergeQuoteReadiness([withTel, other, withForm]);
     const backward = mergeQuoteReadiness([withForm, other, withTel]);
     expect(flat(forward)).toBe(flat(backward));
     expect(evaluatedOf(forward).tapToCall.evidence).toBe("tel link: tel:0401234567");
+  });
+});
+
+// ── The three-state contract across both groups ──────────────────────────
+
+/** Every situation a field has to survive: no markup, markup without the field, markup that will not parse. */
+const SITUATIONS: Array<{ name: string; harvest: OwnSiteHarvest; countState: string; countReason: string }> = [
+  { name: "structured data absent entirely", harvest: page([]), countState: "missing", countReason: "no_structured_data" },
+  { name: "structured data present without the field", harvest: page([BUSINESS]), countState: "missing", countReason: "not_in_markup" },
+  { name: "structured data present but unparseable", harvest: page(["{ not json"]), countState: "unreadable", countReason: "" },
+];
+
+describe("three-state contract: every key is present in every situation", () => {
+  const SOCIAL_KEYS = ["count", "evidence", "markedUp", "recency", "shown", "state", "widgetHosts"];
+  const FIELD_STATE_MEMBERS = ["count", "recency"] as const;
+
+  for (const situation of SITUATIONS) {
+    it(`socialProof carries all of its keys with ${situation.name}`, () => {
+      const p = readOf(extractSocialProof([situation.harvest], SLICE));
+      expect(Object.keys(p).sort().join(",")).toBe(SOCIAL_KEYS.join(","));
+      for (const member of FIELD_STATE_MEMBERS) {
+        expect(["found", "missing", "unreadable"].includes(p[member].state)).toBe(true);
+        expect(p[member].state).toBe(situation.countState);
+        const reason = p[member].state === "missing" ? (p[member] as { reason: string }).reason : "";
+        expect(reason).toBe(situation.countReason);
+      }
+    });
+
+    it(`quoteReadiness carries all four checks, each with a boolean and a string, with ${situation.name}`, () => {
+      const q = evaluatedOf(evaluateQuoteReadiness(situation.harvest, CHECKS));
+      expect(Object.keys(q).sort().join(",")).toBe("certifications,projectPhotos,quoteForm,state,tapToCall");
+      for (const check of [q.quoteForm, q.tapToCall, q.projectPhotos, q.certifications]) {
+        expect(typeof check.passed).toBe("boolean");
+        expect(typeof check.evidence).toBe("string");
+      }
+    });
+  }
+
+  it("keeps the unreadable representation to a single state key, not four false booleans", () => {
+    expect(Object.keys(evaluateQuoteReadiness(null, CHECKS)).join(",")).toBe("state");
+    expect(Object.keys(extractSocialProof([null], SLICE)).join(",")).toBe("state");
+  });
+});
+
+describe("stored shape is stable across page order", () => {
+  const rated = (n: number, date: string): unknown => ({
+    "@graph": [
+      { ...BUSINESS, aggregateRating: { "@type": "AggregateRating", reviewCount: n }, review: [{ "@type": "Review", datePublished: date }] },
+    ],
+  });
+  const pages: OwnSiteHarvest[] = [
+    page([rated(40, "2026-02-01")], { widgetHosts: ["widget.trustpilot.com"], h2h3: ["Reviews"] }),
+    page([rated(44, "2026-08-09")], { widgetHosts: ["widget.klantenvertellen.nl", "widget.trustpilot.com"], bodyText: "9/10" }),
+    page([], { widgetHosts: ["widget.kiyoh.com"], bodyText: "Al 128 beoordelingen" }),
+  ];
+  const orderings: number[][] = [
+    [0, 1, 2],
+    [0, 2, 1],
+    [1, 0, 2],
+    [1, 2, 0],
+    [2, 0, 1],
+    [2, 1, 0],
+  ];
+
+  it("gives deeply equal social proof for every ordering of the same pages", () => {
+    const results = orderings.map((order) => flat(extractSocialProof(order.map((i) => pages[i]), SLICE)));
+    expect(new Set(results).size).toBe(1);
+    // And it is not the trivial answer: all three pages contributed.
+    const p = readOf(extractSocialProof(pages, SLICE));
+    expect(p.widgetHosts.length).toBe(3);
+    expect(JSON.stringify(p.count)).toBe('{"state":"found","value":44,"source":"jsonld"}');
+    expect(JSON.stringify(p.recency)).toBe('{"state":"found","value":"2026-08-09","source":"jsonld"}');
+  });
+
+  it("gives deeply equal quote readiness for every ordering of the same pages", () => {
+    const perPage = pages.map((p, i) =>
+      evaluateQuoteReadiness({ ...p, telHrefs: [`tel:0${i}0000000`], navTexts: i === 1 ? ["Projecten"] : [] }, CHECKS)
+    );
+    const results = orderings.map((order) => flat(mergeQuoteReadiness(order.map((i) => perPage[i]))));
+    expect(new Set(results).size).toBe(1);
   });
 });
