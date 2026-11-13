@@ -10,6 +10,9 @@
  * `profile.trades` is not load-bearing (D-9-07).
  */
 import type { NicheScanSlice } from "@/types/niche-scan-slice";
+import { COMPETITOR_RULES, OVERTURE_IMPORT_CATEGORIES, TARGET_REGIONS } from "./installers/categories";
+import { REVIEW_WIDGET_HOSTS } from "./installers/checks";
+import { INSTALLERS_COPY } from "./installers/copy";
 import { INSTALLERS_TRADES } from "./installers/trades";
 import type { NicheProfile, TradeId, TradeProfile } from "./types";
 
@@ -19,15 +22,12 @@ export const INSTALLERS_PROFILE: NicheProfile = {
   locales: ["nl", "en"],
   defaultLocale: "nl",
   currency: "EUR",
-  overtureCategories: [], // filled from installers/categories.ts in the next commit
-  regions: [],
-  competitor: { radiusKm: 25, maxCompetitors: 3 }, // tunable default (D-9-23)
+  overtureCategories: OVERTURE_IMPORT_CATEGORIES,
+  regions: TARGET_REGIONS,
+  competitor: { ...COMPETITOR_RULES }, // Phase 10 reads; Phase 9 only holds (D-9-23)
   trades: INSTALLERS_TRADES,
-  reviewWidgetHosts: [], // filled from installers/checks.ts in the next commit
-  copy: {
-    nl: { moneyLine: "", adashiFixes: {}, socialProof: "" },
-    en: { moneyLine: "", adashiFixes: {}, socialProof: "" },
-  },
+  reviewWidgetHosts: REVIEW_WIDGET_HOSTS,
+  copy: INSTALLERS_COPY,
   // Seeds from the 53-site prototype (09-RESEARCH.md Pattern 6); confirm against the real list.
   scoring: { minTradeScore: 8, dominanceRatio: 1.5 }, // tunable default
 };
@@ -67,4 +67,18 @@ export function toScannerSlice(profile: NicheProfile): NicheScanSlice {
     minTradeScore: profile.scoring.minTradeScore,
     dominanceRatio: profile.scoring.dominanceRatio,
   };
+}
+
+/**
+ * The ids of trades whose job value is due a re-check: `recheckAfter` is at
+ * or before `now` (D-9-18). Pure over an injected clock, so staleness can be
+ * surfaced on a later admin surface and never turns CI red on a calendar day
+ * with no code change. Nothing here reads the real current date.
+ *
+ * Dates are ISO `YYYY-MM-DD` strings, compared as UTC midnight.
+ */
+export function staleJobValues(profile: NicheProfile, now: Date): TradeId[] {
+  return profile.trades
+    .filter((trade) => trade.jobValue !== undefined && new Date(trade.jobValue.recheckAfter).getTime() <= now.getTime())
+    .map((trade) => trade.id);
 }
