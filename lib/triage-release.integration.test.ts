@@ -53,6 +53,12 @@ function makeTriageScore(overrides?: Partial<TriageScore>): TriageScore {
   };
 }
 
+/**
+ * Seeds a prospect that is releasable AND scoreable by default (ENG-06): an
+ * own-domain website, a street address, and exactly one Overture source above
+ * the confidence limit. A case that is about the scoreable rule overrides only
+ * the field it is about; every other case is unaffected by the rule.
+ */
 async function seedTriaged(overrides?: {
   score?: number;
   gated?: boolean;
@@ -60,12 +66,23 @@ async function seedTriaged(overrides?: {
   category?: string | null;
   reachable?: boolean;
   https?: boolean;
+  /** One prospect_sources row per entry. Default: a single 0.9 match. */
+  confidences?: number[];
+  operatingStatus?: string | null;
+  address?: string | null;
 }) {
   domainCounter += 1;
+  // Captured before the first await: callers seed in parallel with Promise.all,
+  // so reading the shared counter after an await would hand every fixture the
+  // same value and collide on prospect_sources.overture_gers_id (unique).
+  const n = domainCounter;
+  const domain = `triage-release-${n}.test`;
   const { data, error } = await sb
     .from("prospects")
     .insert({
-      domain: `triage-release-${domainCounter}.test`,
+      domain,
+      website_url: `https://${domain}`,
+      address: overrides?.address === undefined ? "Kerkstraat 1, Utrecht" : overrides.address,
       country: "NL",
       campaign_tag: CAMPAIGN_TAG,
       category: overrides?.category ?? null,
@@ -81,6 +98,19 @@ async function seedTriaged(overrides?: {
     .select("id")
     .single();
   if (error) throw error;
+
+  const confidences = overrides?.confidences ?? [0.9];
+  if (confidences.length > 0) {
+    const { error: sourceError } = await sb.from("prospect_sources").insert(
+      confidences.map((raw_confidence, i) => ({
+        prospect_id: data.id,
+        overture_gers_id: `${CAMPAIGN_TAG}-${n}-${i}`,
+        raw_confidence,
+        raw_operating_status: overrides?.operatingStatus ?? null,
+      }))
+    );
+    if (sourceError) throw sourceError;
+  }
   return data.id as string;
 }
 
@@ -184,5 +214,36 @@ describe("releaseWorstN / selectWorstN", () => {
 
     const eligible = await selectWorstN(sb, { cutoff: 50, ceiling: 20 });
     expect(eligible.some((r) => r.id === id)).toBe(true);
+  });
+});
+
+describe("ENG-06: the scoreable rule inside the single releasability predicate", () => {
+  it("a not-scoreable prospect is absent from selectWorstN while an otherwise identical scoreable one is present", async () => {
+    const scoreableId = await seedTriaged({ score: 20, confidences: [0.9] });
+    const noMatchId = await seedTriaged({ score: 20, confidences: [] }); // zero matches: no_unique_match
+
+    const eligible = await selectWorstN(sb, { cutoff: 50, ceiling: 20 });
+    expect(eligible.some((r) => r.id === scoreableId)).toBe(true);
+    expect(eligible.some((r) => r.id === noMatchId)).toBe(false);
+  });
+
+  it("a prospect whose only match is below the confidence limit is never released, even when gated", async () => {
+    const weakId = await seedTriaged({ score: 95, gated: true, https: false, confidences: [0.3] });
+
+    const released = await releaseWorstN(sb, { cutoff: 100, ceiling: 20 });
+    expect(released.some((r) => r.id === weakId)).toBe(false);
+
+    const { data, error } = await sb.from("prospects").select("scan_released_at").eq("id", weakId).single();
+    if (error) throw error;
+    expect(data.scan_released_at).toBeNull();
+  });
+
+  it("a prospect whose only match is permanently closed is not returned", async () => {
+    const closedId = await seedTriaged({ score: 20, operatingStatus: "permanently_closed" });
+    const openId = await seedTriaged({ score: 20, operatingStatus: "open" });
+
+    const eligible = await selectWorstN(sb, { cutoff: 50, ceiling: 20 });
+    expect(eligible.some((r) => r.id === closedId)).toBe(false);
+    expect(eligible.some((r) => r.id === openId)).toBe(true);
   });
 });
