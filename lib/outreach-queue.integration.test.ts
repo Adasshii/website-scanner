@@ -421,6 +421,18 @@ describe("outreach-queue integration", () => {
       expect(data![0].status).toBe("draft");
     });
 
+    it("ENG-06/D-9-17: a prospect marked not scoreable returns an error outcome and creates no row", async () => {
+      const prospectId = await seedProspect({ not_scoreable_reason: "permanently_closed" });
+      const scanId = await seedScan(prospectId);
+      await sb.from("prospects").update({ latest_scan_id: scanId }).eq("id", prospectId);
+
+      const result = await generateDraftForProspect(sb, prospectId, { generate: stubGenerate });
+
+      expect(result.ok).toBe(false);
+      const { data } = await sb.from("outreach_messages").select("id").eq("prospect_id", prospectId);
+      expect(data).toHaveLength(0);
+    });
+
     it("on a prospect that already has a row returns an error outcome rather than creating a second one", async () => {
       const prospectId = await seedProspect();
       const scanId = await seedScan(prospectId);

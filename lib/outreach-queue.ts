@@ -361,7 +361,9 @@ export async function generateDraftForProspect(
 ): Promise<OutreachCreateResult> {
   const { data: prospect, error: prospectError } = await sb
     .from("prospects")
-    .select("id, name, domain, country, contact_email, lifecycle_state, latest_scan_id")
+    .select(
+      "id, name, domain, country, contact_email, lifecycle_state, latest_scan_id, not_scoreable_reason"
+    )
     .eq("id", prospectId)
     .single();
   if (prospectError || !prospect) return { ok: false, error: prospectError?.message ?? "prospect not found" };
@@ -378,6 +380,11 @@ export async function generateDraftForProspect(
 
   if (prospect.lifecycle_state === "rejected") {
     return { ok: false, error: "prospect is rejected" };
+  }
+  // ENG-06, D-9-17, T-9-12: a prospect marked not scoreable stays undrafted on
+  // the manual route too. Kept literal and per-handler, like the check above.
+  if (prospect.not_scoreable_reason) {
+    return { ok: false, error: "prospect is not scoreable" };
   }
   if (!prospect.contact_email) {
     return { ok: false, error: "prospect has no contact email" };

@@ -7,7 +7,7 @@
  */
 import { describe, expect, it, vi } from "vitest";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { dispatchClaimedProspects } from "./bulk-scan-dispatch";
+import { dispatchClaimedProspects, type DispatchProspect } from "./bulk-scan-dispatch";
 import { BULK_USER_AGENT, BULK_DISPATCH_CONCURRENCY, BULK_SCAN_IP_HASH } from "./bulk-scan-constants";
 import type { ClaimedProspect } from "./scan-queue";
 import type { TriageResponseLike } from "./triage-fetch";
@@ -204,6 +204,45 @@ describe("dispatchClaimedProspects", () => {
       op: "update",
       payload: { scan_status: "failed", scan_status_reason: "connection reset", scan_attempts: 1 },
     });
+  });
+
+  it("T-9-12: a prospect marked not scoreable is skipped and the scanner client is never called", async () => {
+    const { sb, calls } = makeSupabaseMock();
+    const client = { fullScanBulk: vi.fn(async () => ({ accepted: true })) };
+    const fetchImpl = makeFetchImpl();
+
+    const outcomes = await dispatchClaimedProspects(
+      sb,
+      [makeProspect({ not_scoreable_reason: "no_unique_match" } as Partial<DispatchProspect>)],
+      { client, fetchImpl, sleep: async () => {}, validateUrlSafe: passthroughValidate }
+    );
+
+    expect(outcomes).toEqual([{ id: "p1", dispatched: false, reason: "not_scoreable" }]);
+    expect(client.fullScanBulk).toHaveBeenCalledTimes(0);
+    // Refused before any network call and before a scans row exists.
+    expect(fetchImpl).not.toHaveBeenCalled();
+    expect(calls.some((c) => c.table === "scans")).toBe(false);
+    // Recorded like the other pre-flight skips: reason kept, no attempt spent.
+    expect(calls).toContainEqual({
+      table: "prospects",
+      op: "update",
+      payload: { scan_status: "failed", scan_status_reason: "not_scoreable" },
+    });
+  });
+
+  it("T-9-12: a prospect with a null marker still dispatches exactly as before", async () => {
+    const { sb, calls } = makeSupabaseMock();
+    const client = { fullScanBulk: vi.fn(async () => ({ accepted: true })) };
+
+    const outcomes = await dispatchClaimedProspects(
+      sb,
+      [makeProspect({ not_scoreable_reason: null } as Partial<DispatchProspect>)],
+      { client, fetchImpl: makeFetchImpl(), sleep: async () => {}, validateUrlSafe: passthroughValidate }
+    );
+
+    expect(outcomes).toEqual([{ id: "p1", dispatched: true }]);
+    expect(client.fullScanBulk).toHaveBeenCalledTimes(1);
+    expect(calls.some((c) => c.table === "scans" && c.op === "insert")).toBe(true);
   });
 
   it("passes BULK_USER_AGENT (not any other identity) to the scanner client", async () => {

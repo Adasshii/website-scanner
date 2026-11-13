@@ -194,6 +194,26 @@ describe("maybeGenerateDraftForProspectScan integration", () => {
     expect(data).toHaveLength(0);
   });
 
+  it("ENG-06/D-9-17: a prospect marked not scoreable resolves to skipped, not failed, and produces no row", async () => {
+    const prospectId = await seedProspect({ not_scoreable_reason: "no_unique_match" });
+    const scan = await seedScan(prospectId);
+
+    const result = await maybeGenerateDraftForProspectScan(sb, scan, { generate: neverGenerate });
+
+    expect(result).toEqual({ outcome: "skipped", reason: "not-scoreable" });
+    const { data } = await sb.from("outreach_messages").select("id").eq("prospect_id", prospectId);
+    expect(data).toHaveLength(0);
+  });
+
+  it("ENG-06/D-9-17: a prospect with a null marker is drafted as before", async () => {
+    const prospectId = await seedProspect({ not_scoreable_reason: null });
+    const scan = await seedScan(prospectId);
+
+    const result = await maybeGenerateDraftForProspectScan(sb, scan, { generate: stubGenerate });
+
+    expect(result.outcome).toBe("created");
+  });
+
   it("a null prospect_id returns a skip outcome without querying prospects at all", async () => {
     const scan = await seedScan(null);
 

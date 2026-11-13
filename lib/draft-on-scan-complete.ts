@@ -24,6 +24,13 @@
  *      re-scan silently resurrects a prospect Joshua already killed. This is
  *      an editorial gate, not a compliance one: this module must not import
  *      or call anything from lib/suppression.ts.
+ *   6b. not_scoreable_reason is set (ENG-06, D-9-17, T-9-12) — the stored
+ *      marker from lib/scoreability-refresh.ts says the prospect fails the
+ *      scoreable rule. Skipped, never failed: this is a prospect that should
+ *      not have reached a draft, not a drafting error. This gate READS the
+ *      marker; it decides nothing and must not recompute any condition of
+ *      the rule (D-9-R1). Kept as its own check beside gate 6 because the two
+ *      answer different questions.
  *   7. an outreach_messages row already exists for this prospect_id — skip
  *      rather than insert or overwrite. Regenerate (06-06) is the deliberate
  *      overwrite path.
@@ -77,7 +84,9 @@ export async function maybeGenerateDraftForProspectScan(
 
     const { data: prospect, error: prospectError } = await sb
       .from("prospects")
-      .select("name, domain, country, contact_email, contact_email_type, lifecycle_state")
+      .select(
+        "name, domain, country, contact_email, contact_email_type, lifecycle_state, not_scoreable_reason"
+      )
       .eq("id", scan.prospect_id)
       .single();
 
@@ -102,6 +111,12 @@ export async function maybeGenerateDraftForProspectScan(
     // domain silently resurrects a prospect Joshua already killed.
     if (prospect.lifecycle_state === "rejected") {
       return { outcome: "skipped", reason: "prospect-rejected" };
+    }
+
+    // Gate 6b (ENG-06, D-9-17, T-9-12): a prospect marked not scoreable never
+    // gets an automatic draft. A skip, not a failure: it is not a drafting error.
+    if (prospect.not_scoreable_reason) {
+      return { outcome: "skipped", reason: "not-scoreable" };
     }
 
     // Gate 7: never clobber an existing draft/edited/approved row, and never

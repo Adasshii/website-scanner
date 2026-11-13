@@ -20,6 +20,14 @@ import { ScannerClient } from "@/lib/scanner-client";
 
 export type DispatchOutcome = { id: string; dispatched: boolean; reason?: string };
 
+/**
+ * A claimed row as dispatch sees it. claim_next_scan_batch returns `setof
+ * prospects`, so the stored marker (migration 022) is already on the row at
+ * runtime; ClaimedProspect predates it and does not name it. Optional because
+ * a row that was never refreshed carries null, and null means "no marker".
+ */
+export type DispatchProspect = ClaimedProspect & { not_scoreable_reason?: string | null };
+
 type Sleep = (ms: number) => Promise<void>;
 
 const defaultSleep: Sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -47,7 +55,7 @@ interface DispatchDeps {
  */
 export async function dispatchClaimedProspects(
   sb: SupabaseClient,
-  claimed: ClaimedProspect[],
+  claimed: DispatchProspect[],
   deps: DispatchDeps = {}
 ): Promise<DispatchOutcome[]> {
   const client = deps.client ?? new ScannerClient();
@@ -69,11 +77,24 @@ export async function dispatchClaimedProspects(
 
 async function dispatchOne(
   sb: SupabaseClient,
-  prospect: ClaimedProspect,
+  prospect: DispatchProspect,
   client: Pick<ScannerClient, "fullScanBulk">,
   fetchImpl?: TriageFetchImpl,
   validateUrlSafe: ValidateUrlSafe = defaultValidateUrlSafe
 ): Promise<DispatchOutcome> {
+  // ENG-06, D-9-17, T-9-12: a prospect marked not scoreable is never scanned,
+  // even if it was released or queued before the rule existed. Checked before
+  // any network call. Recorded the same way the robots and SSRF pre-flight
+  // skips are (no attempt spent, a reason that tells it apart from a dispatch
+  // failure): the schema has no skipped state, and returning without writing
+  // would leave the row stranded in 'scanning'. No scans row is created, so
+  // nothing the scanner's own monitoring reads is touched. This READS the
+  // marker; it recomputes no condition of the rule (D-9-R1).
+  if (prospect.not_scoreable_reason) {
+    await markScanFailed(sb, prospect.id, "not_scoreable", { attemptSpent: false });
+    return { id: prospect.id, dispatched: false, reason: "not_scoreable" };
+  }
+
   // T-04-08: a URL that passed validation at import time can have been
   // repointed since (DNS can change) — re-validate here, not assumed safe.
   let validatedUrl: string;
