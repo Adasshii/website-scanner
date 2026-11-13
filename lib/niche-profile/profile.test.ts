@@ -62,8 +62,8 @@ describe("toScannerSlice (D-9-12, T-9-03)", () => {
 
 describe("type-level guarantees (NIC-02, D-9-20, D-9-21)", () => {
   // These cases are proven by `npx tsc --noEmit`, not by the runtime. Each
-  // @ts-expect-error line would itself fail to compile ("unused directive")
-  // if the type were loosened, so a loosened type breaks the build.
+  // expect-error directive below would itself fail to compile ("unused
+  // directive") if the type were loosened, so a loosened type breaks the build.
   const baseChecks = { quoteTerms: [], projectTerms: [], certificationTerms: [] };
 
   it("rejects a trade literal that omits showMoneyLine", () => {
@@ -79,12 +79,12 @@ describe("type-level guarantees (NIC-02, D-9-20, D-9-21)", () => {
   });
 
   it("rejects a midpoint-of-range value whose citation has no note", () => {
+    // @ts-expect-error a midpoint value must explain itself in citation.note (D-9-20)
     const noNote: JobValue = {
       amountEur: 11000,
       derivation: "midpoint-of-range",
       range: [7000, 15000],
       recheckAfter: "2027-11-12",
-      // @ts-expect-error a midpoint value must explain itself in citation.note (D-9-20)
       citation: { source: "Homedeal", url: "https://example.test", readOn: "2026-11-12" },
     };
     expect(noNote.amountEur).toBe(11000);

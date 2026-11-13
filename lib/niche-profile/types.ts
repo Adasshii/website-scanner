@@ -128,6 +128,8 @@ export interface NicheProfile {
   /** Phase 10 reads these; Phase 9 only holds them (D-9-23). */
   competitor: { radiusKm: number; maxCompetitors: number };
   trades: readonly TradeProfile[];
+  /** Hostname fragments of review-widget platforms the own-site check looks for (ENG-02). */
+  reviewWidgetHosts: readonly string[];
   copy: Record<ProfileLocale, ProfileCopy>;
   /** The two trade-scoring thresholds. Code counts matches, no model is involved (D-9-06). */
   scoring: { minTradeScore: number; dominanceRatio: number };
