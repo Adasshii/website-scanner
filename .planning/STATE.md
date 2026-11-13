@@ -2,19 +2,19 @@
 gsd_state_version: "1.0"
 milestone: v2.0
 milestone_name: Renewed Scanner
-current_phase: 9
+current_phase: 09
 current_phase_name: Niche Profile & Own-Site Engine Data
 status: executing
-stopped_at: Phase 9 context gathered; six job values researched and approved
-last_updated: "2026-11-13T10:11:30.732Z"
-last_activity: 2026-11-11
-last_activity_desc: v2.0 roadmap created, 5 phases (9 to 13), 40/40 requirements mapped
-state_head: 837882f4dcce74223a9ded85c6062fd8761521bb
+stopped_at: Completed 09-01-PLAN.md
+last_updated: "2026-11-13T15:06:09.413Z"
+last_activity: 2026-11-13
+last_activity_desc: Phase 09 execution started
+state_head: 5692c246f9e2b9794a5016f7759fc35b945a6a4e
 progress:
   total_phases: 5
   completed_phases: 0
   total_plans: 9
-  completed_plans: 0
+  completed_plans: 1
   percent: 0
 ---
 
@@ -25,14 +25,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-11-11)
 
 **Core value:** Joshua opens the tool and finds businesses genuinely worth pitching, with the proof already written, so that outreach costs him minutes instead of hours.
-**Current focus:** Phase 9: Niche Profile & Own-Site Engine Data (first phase of milestone v2.0 Renewed Scanner)
+**Current focus:** Phase 09 — Niche Profile & Own-Site Engine Data
 
 ## Current Position
 
-Phase: 9 (Niche Profile & Own-Site Engine Data) — READY TO EXECUTE
-Plan: — (no plans yet)
+Phase: 09 (Niche Profile & Own-Site Engine Data) — EXECUTING
+Plan: 2 of 9
 Status: Ready to execute
-Last activity: 2026-11-11 — v2.0 roadmap created, 5 phases (9 to 13), 40/40 requirements mapped
+Last activity: 2026-11-13 — Phase 09 execution started
 
 Progress: [░░░░░░░░░░] 0% of milestone v2.0
 
@@ -121,6 +121,7 @@ v1.0's phases 1 to 8 are archived at `.planning/milestones/v1.0-phases/`, its ro
 | Phase 07 P09 | ~45min | 2 tasks | 8 files |
 | Phase 07 P10 | ~15min | 3 tasks | 3 files |
 | Phase quick P260803-lh0 | ~45min | 2 tasks | 2 files |
+| Phase 09 P01 | about 1 h | 3 tasks | 2 files |
 
 ## Accumulated Context
 
@@ -213,6 +214,8 @@ Recent decisions affecting current work:
 - [Phase ?]: RETENTION_MODE stays unset (dry-run) deliberately: 12-month window is a placeholder pending the LIA, candidates is currently 0 so there is nothing to prove by arming the writing path, and 39 integration tests already cover the write path. Daily job's first non-zero expiring figure is the trigger to revisit.
 - [Phase ?]: D-7-20 superseded (recorded, not made, by this task): retention cron moved from monthly (0 3 1 * *) to daily (0 3 * * *) after Vercel Hobby silently dropped the day-of-month cron entry on first deploy.
 - [Phase ?]: [Quick 260803-lh0]: Paginated getReportingData()'s scans read too (beyond plan's locked scope) after live local DB (1045 scans in 30-day window) reproduced the identical PostgREST 1000-row cap on a third read the plan assumed was already safe
+- [Phase 09]: 09-01: Google guard bans distinctive Places names and endpoint tokens only; name, address, rating, reviews, latitude, longitude, displayName stay legal as source tokens
+- [Phase 09]: 09-01: ALLOWED_GOOGLE_CLIENT_FILES is empty; Phase 12 adds exactly one entry, and its client must call toStorableGooglePlace
 
 ### Pending Todos
 
@@ -265,6 +268,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-11-12T13:03:34.551Z
-Stopped at: Phase 9 context gathered; six job values researched and approved
-Resume file: .planning/phases/09-niche-profile-own-site-engine-data/09-CONTEXT.md
+Last session: 2026-11-13T15:06:09.382Z
+Stopped at: Completed 09-01-PLAN.md
+Resume file: None

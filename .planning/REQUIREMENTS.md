@@ -17,7 +17,7 @@ Phase numbering continues from v1.0, which ended at Phase 8. v2.0 starts at Phas
 - [ ] **ENG-04**: Each competitor's site is scanned on the same storable signals, so the comparison is like for like
 - [ ] **ENG-05**: The scan checks whether a customer can actually request a quote: a form, a tap-to-call phone number, project photos, certifications
 - [ ] **ENG-06**: One predicate decides whether a business is scoreable at all (one place match above a confidence limit, a website on its own domain, an address or a declared work-area centre); a business that fails is skipped and never emailed
-- [ ] **ENG-07**: Nothing Google returns is written to the database, enforced in code rather than intended in prose
+- [x] **ENG-07**: Nothing Google returns is written to the database, enforced in code rather than intended in prose
 
 ### AI visibility
 
@@ -111,7 +111,7 @@ Phase 8.
 | ENG-04 | Phase 10 | Pending |
 | ENG-05 | Phase 9 | Pending |
 | ENG-06 | Phase 9 | Pending |
-| ENG-07 | Phase 9 | Pending |
+| ENG-07 | Phase 9 | Complete |
 | AIV-01 | Phase 10 | Pending |
 | AIV-02 | Phase 10 | Pending |
 | AIV-03 | Phase 10 | Pending |
