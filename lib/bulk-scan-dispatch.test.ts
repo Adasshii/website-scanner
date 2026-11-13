@@ -258,6 +258,8 @@ describe("dispatchClaimedProspects", () => {
       validateUrlSafe: passthroughValidate,
     });
 
+    // First assertion is a single-line scalar so a failure report stays parseable TAP.
+    expect(outcomes[0]?.reason).toBe("not_scoreable");
     expect(outcomes).toEqual([{ id: "p1", dispatched: false, reason: "not_scoreable" }]);
     expect(client.fullScanBulk).toHaveBeenCalledTimes(0);
     // Refused before any network call and before a scans row exists.
