@@ -53,6 +53,55 @@ export interface OwnSiteHarvest {
   jsonLdBlocks: string[];
   /** How many JSON-LD blocks the page held before the block cap was applied. */
   jsonLdBlocksFound: number;
+  /** Top-level microdata items, converted to the JSON-LD-like pool Node-side. */
+  microdata: MicrodataItem[];
+  /** Microdata items harvested in total, nested ones included, after the cap. */
+  microdataCount: number;
+}
+
+/** A microdata value is trimmed text or a nested item. */
+export type MicrodataValue = string | MicrodataItem;
+
+/** Raw microdata item as the browser reads it: itemtype plus its itemprop values. */
+export interface MicrodataItem {
+  /** The raw itemtype attribute, possibly several space-separated URLs. */
+  type: string;
+  props: Record<string, MicrodataValue[]>;
+}
+
+/** Published telephone numbers, each with at least 9 digits. */
+export interface OwnSiteTelephone {
+  numbers: string[];
+}
+
+export interface OwnSiteOpeningHoursEntry {
+  /** Lower-case full day names, e.g. "monday". */
+  days: string[];
+  opens: string | null;
+  closes: string | null;
+  /** The original string when the entry came from an openingHours string. */
+  raw: string | null;
+}
+
+export interface OwnSiteOpeningHours {
+  entries: OwnSiteOpeningHoursEntry[];
+  /**
+   * True when every day of the week spans midnight to one minute before
+   * midnight. That is a plugin placeholder seen in the real sample, not
+   * published hours. Stored rather than discarded so Phases 11 and 12 decide
+   * its weight.
+   */
+  looksDefault: boolean;
+}
+
+export interface OwnSiteServiceArea {
+  names: string[];
+  /** Set when the site gave a GeoShape or GeoCircle. */
+  geoShape: { latitude: number | null; longitude: number | null; radius: string | null } | null;
+}
+
+export interface OwnSiteCertifications {
+  names: string[];
 }
 
 /**
@@ -66,6 +115,10 @@ export type OwnSiteHarvestOutcome =
 /** The business facts ENG-01 asks for, one FieldState per field. */
 export interface OwnSiteBusinessFacts {
   address: FieldState<OwnSiteAddress>;
+  telephone: FieldState<OwnSiteTelephone>;
+  openingHours: FieldState<OwnSiteOpeningHours>;
+  serviceArea: FieldState<OwnSiteServiceArea>;
+  certifications: FieldState<OwnSiteCertifications>;
 }
 
 /** The stored shape. Plans 09-07 and 09-08 add their own members beside business. */

@@ -278,7 +278,13 @@ function unreadableFacts(meta: { readAt: string; pagesRead?: number }): OwnSiteF
     readAt: meta.readAt,
     pagesRead: meta.pagesRead ?? 0,
     structuredData: { jsonLdBlocks: 0, jsonLdInvalid: 0, microdataItems: 0 },
-    business: { address: { state: "unreadable" } },
+    business: {
+      address: { state: "unreadable" },
+      telephone: { state: "unreadable" },
+      openingHours: { state: "unreadable" },
+      serviceArea: { state: "unreadable" },
+      certifications: { state: "unreadable" },
+    },
   };
 }
 
@@ -343,6 +349,11 @@ export function extractOwnSiteFacts(
 
     const business: OwnSiteBusinessFacts = {
       address: pickField(ordered, readAddress, ctx, () => absentFor<OwnSiteAddress>(state)),
+      // RED skeleton: the four remaining fields are not extracted yet.
+      telephone: { state: "unreadable" },
+      openingHours: { state: "unreadable" },
+      serviceArea: { state: "unreadable" },
+      certifications: { state: "unreadable" },
     };
 
     return {

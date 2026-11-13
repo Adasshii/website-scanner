@@ -16,7 +16,7 @@ const META = { readAt: "2026-11-13T09:00:00.000Z" };
 /** Build a harvest from literal JSON-LD values (stringified) or raw strings. */
 function harvestOf(blocks: Array<unknown>): OwnSiteHarvest {
   const jsonLdBlocks = blocks.map((b) => (typeof b === "string" ? b : JSON.stringify(b)));
-  return { jsonLdBlocks, jsonLdBlocksFound: jsonLdBlocks.length };
+  return { jsonLdBlocks, jsonLdBlocksFound: jsonLdBlocks.length, microdata: [], microdataCount: 0 };
 }
 
 /** One-line comparison: multi-line vitest diffs corrupt the TAP report the RED gate reads. */
@@ -24,7 +24,7 @@ function flat(value: unknown): string {
   return JSON.stringify(value);
 }
 
-const NO_BLOCKS: OwnSiteHarvest = { jsonLdBlocks: [], jsonLdBlocksFound: 0 };
+const NO_BLOCKS: OwnSiteHarvest = { jsonLdBlocks: [], jsonLdBlocksFound: 0, microdata: [], microdataCount: 0 };
 
 describe("extractOwnSiteFacts: address", () => {
   it("reads a PostalAddress inside a Yoast-style @graph as found, from jsonld", () => {
@@ -219,6 +219,8 @@ describe("extractOwnSiteFacts: unreadable", () => {
         throw new Error("poisoned");
       },
       jsonLdBlocksFound: 1,
+      microdata: [],
+      microdataCount: 0,
     } as unknown as OwnSiteHarvest;
     const facts = extractOwnSiteFacts(poisoned, META);
     expect(flat(facts.business.address)).toBe(flat({ state: "unreadable" }));
@@ -325,6 +327,259 @@ describe("extractOwnSiteFacts: empty values and conflicts", () => {
     );
     expect(urlTyped.business.address.state).toBe("found");
     expect(prefixed.business.address.state).toBe("found");
+  });
+});
+
+/** Business facts for one LocalBusiness node carrying the given properties. */
+function businessOf(props: Record<string, unknown>) {
+  return extractOwnSiteFacts(harvestOf([{ "@type": "LocalBusiness", ...props }]), META).business;
+}
+
+describe("extractOwnSiteFacts: telephone", () => {
+  it("reads a plain string value as found", () => {
+    expect(businessOf({ telephone: "+31 30 123 4567" }).telephone.state).toBe("found");
+  });
+
+  it("reads an array of strings as found and keeps each number", () => {
+    const t = businessOf({ telephone: ["030 123 4567", "06 12345678"] }).telephone;
+    expect(t.state).toBe("found");
+    if (t.state === "found") expect(t.value.numbers.length).toBe(2);
+  });
+
+  it("reads a value nested in contactPoint[].telephone as found", () => {
+    const t = businessOf({
+      contactPoint: [{ "@type": "ContactPoint", contactType: "sales", telephone: "+31 20 555 0101" }],
+    }).telephone;
+    expect(t.state).toBe("found");
+    if (t.state === "found") expect(t.value.numbers[0]).toBe("+31 20 555 0101");
+  });
+
+  it("counts digits after stripping: 9 digits is found", () => {
+    expect(businessOf({ telephone: "030-123 456" }).telephone.state).toBe("found");
+  });
+
+  it("counts digits after stripping: 8 digits is missing", () => {
+    expect(flat(businessOf({ telephone: "030-12 345" }).telephone)).toBe(
+      flat({ state: "missing", reason: "not_in_markup" })
+    );
+  });
+
+  it("reads a blank telephone as missing", () => {
+    expect(businessOf({ telephone: "  " }).telephone.state).toBe("missing");
+  });
+});
+
+describe("extractOwnSiteFacts: opening hours", () => {
+  it("reads openingHoursSpecification with dayOfWeek as an array", () => {
+    const h = businessOf({
+      openingHoursSpecification: [
+        { "@type": "OpeningHoursSpecification", dayOfWeek: ["Monday", "Tuesday"], opens: "08:00", closes: "17:00" },
+      ],
+    }).openingHours;
+    expect(h.state).toBe("found");
+    if (h.state === "found") expect(h.value.entries[0].days.join(",")).toBe("monday,tuesday");
+  });
+
+  it("reads dayOfWeek given as a single value, including a schema.org URL", () => {
+    const h = businessOf({
+      openingHoursSpecification: {
+        "@type": "OpeningHoursSpecification",
+        dayOfWeek: "https://schema.org/Friday",
+        opens: "09:00",
+        closes: "16:00",
+      },
+    }).openingHours;
+    expect(h.state).toBe("found");
+    if (h.state === "found") expect(h.value.entries[0].days.join(",")).toBe("friday");
+  });
+
+  it("reads an openingHours string with a weekday range and times", () => {
+    const h = businessOf({ openingHours: "Mo-Fr 09:00-17:00" }).openingHours;
+    expect(h.state).toBe("found");
+    if (h.state === "found") {
+      expect(h.value.entries[0].days.join(",")).toBe("monday,tuesday,wednesday,thursday,friday");
+      expect(h.value.entries[0].opens).toBe("09:00");
+      expect(h.value.entries[0].closes).toBe("17:00");
+    }
+  });
+
+  it("reads an array of openingHours strings with comma separated days", () => {
+    const h = businessOf({ openingHours: ["Mo,Tu,We,Th,Fr 09:00-17:00", "Sa 10:00-14:00"] }).openingHours;
+    expect(h.state).toBe("found");
+    if (h.state === "found") expect(h.value.entries.length).toBe(2);
+  });
+
+  it("flags all seven days midnight to 23:59 as found AND looksDefault in one assertion", () => {
+    const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+    const h = businessOf({
+      openingHoursSpecification: days.map((d) => ({
+        "@type": "OpeningHoursSpecification",
+        dayOfWeek: d,
+        opens: "00:00",
+        closes: "23:59",
+      })),
+    }).openingHours;
+    expect(h.state === "found" && h.value.looksDefault === true).toBe(true);
+  });
+
+  it("does not flag ordinary published hours as looksDefault", () => {
+    const h = businessOf({ openingHours: "Mo-Su 08:00-18:00" }).openingHours;
+    expect(h.state === "found" && h.value.looksDefault === false).toBe(true);
+  });
+
+  it("does not flag midnight to 23:59 on fewer than seven days as looksDefault", () => {
+    const h = businessOf({
+      openingHoursSpecification: [
+        { "@type": "OpeningHoursSpecification", dayOfWeek: ["Monday", "Tuesday"], opens: "00:00", closes: "23:59" },
+      ],
+    }).openingHours;
+    expect(h.state === "found" && h.value.looksDefault === false).toBe(true);
+  });
+
+  it("reads a blank openingHours string and an entry with no times as missing", () => {
+    expect(businessOf({ openingHours: "   " }).openingHours.state).toBe("missing");
+    expect(
+      businessOf({ openingHoursSpecification: [{ dayOfWeek: "Monday" }] }).openingHours.state
+    ).toBe("missing");
+  });
+});
+
+describe("extractOwnSiteFacts: service area", () => {
+  it("reads areaServed given as plain text", () => {
+    const a = businessOf({ areaServed: "Utrecht en omgeving" }).serviceArea;
+    expect(a.state).toBe("found");
+    if (a.state === "found") expect(a.value.names[0]).toBe("Utrecht en omgeving");
+  });
+
+  it("reads an array of City and Place objects and keeps each name", () => {
+    const a = businessOf({
+      areaServed: [
+        { "@type": "City", name: "Utrecht" },
+        { "@type": "Place", name: "Amersfoort" },
+        { "@type": "AdministrativeArea", name: "Flevoland" },
+      ],
+    }).serviceArea;
+    expect(a.state).toBe("found");
+    if (a.state === "found") expect(a.value.names.join("|")).toBe("Utrecht|Amersfoort|Flevoland");
+  });
+
+  it("reads a GeoShape carrying a GeoCircle with a midpoint and a radius", () => {
+    const a = businessOf({
+      areaServed: {
+        "@type": "GeoShape",
+        geoMidpoint: { "@type": "GeoCoordinates", latitude: 52.09, longitude: 5.12 },
+        geoRadius: "25000",
+      },
+    }).serviceArea;
+    expect(a.state).toBe("found");
+    if (a.state === "found") {
+      expect(a.value.geoShape?.latitude).toBe(52.09);
+      expect(a.value.geoShape?.radius).toBe("25000");
+    }
+  });
+
+  it("also reads the legacy serviceArea property", () => {
+    const a = businessOf({ serviceArea: { "@type": "Place", name: "Gelderland" } }).serviceArea;
+    expect(a.state).toBe("found");
+    if (a.state === "found") expect(a.value.names[0]).toBe("Gelderland");
+  });
+
+  it("reads areaServed from a Service node rather than the business node", () => {
+    const facts = extractOwnSiteFacts(
+      harvestOf([
+        {
+          "@graph": [
+            { "@type": "LocalBusiness", "@id": "#biz", name: "Example" },
+            {
+              "@type": "Service",
+              "@id": "#svc",
+              provider: { "@id": "#biz" },
+              areaServed: [
+                { "@type": "City", name: "Apeldoorn" },
+                { "@type": "Place", name: "Deventer" },
+              ],
+            },
+          ],
+        },
+      ]),
+      META
+    );
+    const a = facts.business.serviceArea;
+    expect(a.state).toBe("found");
+    if (a.state === "found") expect(a.value.names.join("|")).toBe("Apeldoorn|Deventer");
+  });
+
+  it("prefers the business node's own areaServed over a Service node's", () => {
+    const facts = extractOwnSiteFacts(
+      harvestOf([
+        {
+          "@graph": [
+            { "@type": "Service", areaServed: "Service Stad" },
+            { "@type": "LocalBusiness", areaServed: "Bedrijf Stad" },
+          ],
+        },
+      ]),
+      META
+    );
+    const a = facts.business.serviceArea;
+    expect(a.state === "found" && a.value.names[0] === "Bedrijf Stad").toBe(true);
+  });
+
+  it("reads a blank areaServed and an unnamed Place as missing", () => {
+    expect(businessOf({ areaServed: "" }).serviceArea.state).toBe("missing");
+    expect(businessOf({ areaServed: { "@type": "Place" } }).serviceArea.state).toBe("missing");
+  });
+});
+
+describe("extractOwnSiteFacts: certifications", () => {
+  it("reads hasCredential with a name", () => {
+    const c = businessOf({
+      hasCredential: { "@type": "EducationalOccupationalCredential", name: "Erkend installateur" },
+    }).certifications;
+    expect(c.state).toBe("found");
+    if (c.state === "found") expect(c.value.names[0]).toBe("Erkend installateur");
+  });
+
+  it("reads hasCertification with a name", () => {
+    const c = businessOf({ hasCertification: [{ "@type": "Certification", name: "F-gassen" }] }).certifications;
+    expect(c.state).toBe("found");
+  });
+
+  it("reads award and memberOf too", () => {
+    expect(businessOf({ award: "Installateur van het jaar" }).certifications.state).toBe("found");
+    expect(
+      businessOf({ memberOf: { "@type": "Organization", name: "Brancheorganisatie" } }).certifications.state
+    ).toBe("found");
+  });
+
+  it("reads an entry with no name as missing", () => {
+    expect(
+      businessOf({ hasCredential: { "@type": "EducationalOccupationalCredential" } }).certifications.state
+    ).toBe("missing");
+    expect(businessOf({ award: "   " }).certifications.state).toBe("missing");
+  });
+});
+
+describe("extractOwnSiteFacts: per-field independence", () => {
+  it("returns exactly one found field and four missing ones for a site that publishes only an address", () => {
+    const b = businessOf({ address: { streetAddress: "Laan 1", addressLocality: "Ede" } });
+    expect(b.address.state).toBe("found");
+    expect(flat(b.telephone)).toBe(flat({ state: "missing", reason: "not_in_markup" }));
+    expect(flat(b.openingHours)).toBe(flat({ state: "missing", reason: "not_in_markup" }));
+    expect(flat(b.serviceArea)).toBe(flat({ state: "missing", reason: "not_in_markup" }));
+    expect(flat(b.certifications)).toBe(flat({ state: "missing", reason: "not_in_markup" }));
+  });
+
+  it("keeps all five keys present when every field is missing", () => {
+    const b = extractOwnSiteFacts(NO_BLOCKS, META).business;
+    expect(Object.keys(b).sort().join(",")).toBe("address,certifications,openingHours,serviceArea,telephone");
+    expect(flat(b.telephone)).toBe(flat({ state: "missing", reason: "no_structured_data" }));
+  });
+
+  it("keeps all five keys present when every field is unreadable", () => {
+    const b = extractOwnSiteFacts(null, META).business;
+    expect(Object.keys(b).sort().join(",")).toBe("address,certifications,openingHours,serviceArea,telephone");
+    expect(b.serviceArea.state).toBe("unreadable");
   });
 });
 

@@ -44,7 +44,7 @@ export function harvestOwnSiteInBrowser(args: HarvestArgs): OwnSiteHarvest {
   const jsonLdBlocks = scripts
     .slice(0, caps.jsonLdBlocks)
     .map((s) => (s.textContent || "").slice(0, caps.jsonLdChars));
-  return { jsonLdBlocks, jsonLdBlocksFound: scripts.length };
+  return { jsonLdBlocks, jsonLdBlocksFound: scripts.length, microdata: [], microdataCount: 0 };
 }
 
 /**
