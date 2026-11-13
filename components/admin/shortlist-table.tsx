@@ -192,14 +192,21 @@ export function ShortlistTable({ rows, cutoff, loading, secret, onRequeued }: Sh
     );
   }
 
+  // One rule, one place (ENG-06, D-9-R1): isReleasable decides, and it now
+  // includes the scoreable rule. No condition is re-implemented here.
   const eligibleCount = rows.filter((r) => !r.scan_released_at && isReleasable(r, cutoff)).length;
   const hasQueueActivity = rows.some((r) => !!r.scan_released_at || r.scan_status !== null);
+  // D-9-17: a not-scoreable business keeps its row and its reason stays
+  // readable. Raising the cutoff cannot fix it, so it must not be hidden
+  // behind the "nothing eligible, raise the cutoff" empty state.
+  const hasNotScoreable = rows.some((r) => r.not_scoreable_reason !== null);
 
   // Only collapse to the empty state when there is truly nothing to show —
-  // no eligible-to-release row AND no released/in-queue row. Once anything
-  // has been released, the table must keep rendering so in-flight and
-  // completed scans stay visible even at a cutoff with nothing eligible.
-  if (eligibleCount === 0 && !hasQueueActivity) {
+  // no eligible-to-release row AND no released/in-queue row AND no row
+  // carrying a not-scoreable reason. Once anything has been released, the
+  // table must keep rendering so in-flight and completed scans stay visible
+  // even at a cutoff with nothing eligible.
+  if (eligibleCount === 0 && !hasQueueActivity && !hasNotScoreable) {
     const unreleased = rows.filter((r) => !r.scan_released_at);
 
     return (
@@ -214,7 +221,7 @@ export function ShortlistTable({ rows, cutoff, loading, secret, onRequeued }: Sh
   }
 
   return (
-    <div className="overflow-x-auto">
+    <div className="overflow-x-auto" data-eligible-count={eligibleCount}>
       <table className="w-full text-sm">
         <thead>
           <tr className="border-b border-gray-100 text-left text-gray-400 text-xs uppercase tracking-wider">
@@ -237,6 +244,10 @@ export function ShortlistTable({ rows, cutoff, loading, secret, onRequeued }: Sh
             // not a target (UNREACHABLE, neutral/grey, no priority styling).
             const isCritical = score.reachable && !score.https;
             const isUnreachable = !score.reachable;
+            // D-9-17: neutral, non-priority. The row stays visible and the
+            // reason code stays readable (title attribute) instead of the
+            // business vanishing and returning on the next re-import.
+            const notScoreableReason = row.not_scoreable_reason;
             // NAMED-PERSON: only a contact (found via reconcileInFlightScans'
             // derivation) is a named person, not a generic/role address —
             // flags for manual review. Visibility only (CON-05); keeping
@@ -265,6 +276,14 @@ export function ShortlistTable({ rows, cutoff, loading, secret, onRequeued }: Sh
                   {isUnreachable && (
                     <span className="inline-block text-xs font-semibold px-2 py-0.5 rounded-full border bg-gray-100 text-gray-500 border-gray-200">
                       UNREACHABLE
+                    </span>
+                  )}
+                  {notScoreableReason !== null && (
+                    <span
+                      title={notScoreableReason}
+                      className="inline-block text-xs font-semibold px-2 py-0.5 rounded-full border bg-gray-100 text-gray-500 border-gray-200"
+                    >
+                      NOT SCOREABLE
                     </span>
                   )}
                   {isNamedPerson && (

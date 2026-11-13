@@ -550,6 +550,9 @@ function ShortlistTab({
   // would still count here (it's a priority signal, not a release count).
   const criticalCount = rows.filter((r) => r.triage_score.reachable && !r.triage_score.https).length;
   const releasedCount = rows.filter((r) => r.scan_released_at).length;
+  // Same rule as the release path and the Shortlist table (ENG-06, D-9-R1):
+  // isReleasable, which includes the scoreable rule, so a not-scoreable row is
+  // excluded here too and no condition is re-implemented in this file.
   const eligibleCount = rows.filter((r) => !r.scan_released_at && isReleasable(r, cutoff)).length;
   const armableCount = rows.filter((r) => r.scan_released_at && r.scan_status === null).length;
 

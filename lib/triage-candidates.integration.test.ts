@@ -62,6 +62,8 @@ async function seedProspect(overrides?: {
   lifecycleState?: string;
   scanStatus?: "queued" | "scanning" | "done" | "failed" | null;
   bookedAt?: string | null;
+  notScoreableReason?: string | null;
+  address?: string | null;
 }) {
   domainCounter += 1;
   const domain = overrides?.domain === undefined ? `triage-candidates-${domainCounter}.test` : overrides.domain;
@@ -79,6 +81,10 @@ async function seedProspect(overrides?: {
       ...(overrides?.lifecycleState !== undefined ? { lifecycle_state: overrides.lifecycleState } : {}),
       ...(overrides?.scanStatus !== undefined ? { scan_status: overrides.scanStatus } : {}),
       ...(overrides?.bookedAt !== undefined ? { booked_at: overrides.bookedAt } : {}),
+      ...(overrides?.notScoreableReason !== undefined
+        ? { not_scoreable_reason: overrides.notScoreableReason }
+        : {}),
+      ...(overrides?.address !== undefined ? { address: overrides.address } : {}),
     })
     .select("id")
     .single();
@@ -96,6 +102,17 @@ async function seedOutreachMessage(
     draft_body: "Test body",
     ...(overrides?.status !== undefined ? { status: overrides.status } : {}),
     ...(overrides?.createdAt !== undefined ? { created_at: overrides.createdAt } : {}),
+  });
+  if (error) throw error;
+}
+
+async function seedSource(prospectId: string, raw_confidence: number | null, raw_operating_status: string | null) {
+  domainCounter += 1;
+  const { error } = await sb.from("prospect_sources").insert({
+    prospect_id: prospectId,
+    overture_gers_id: `${CAMPAIGN_TAG}-source-${domainCounter}`,
+    raw_confidence,
+    raw_operating_status,
   });
   if (error) throw error;
 }
@@ -357,5 +374,50 @@ describe("getShortlist", () => {
     const targetRow = shortlist.find((r) => r.id === targetId);
     expect(targetRow?.stage).toBe("drafted");
     expect(targetRow?.has_outreach_draft).toBe(true);
+  });
+  // 09-04 (ENG-06, D-9-17): the Shortlist reads the scoreable fields so the
+  // admin client can call isReleasable, and a business that fails the rule
+  // stays visible with its reason.
+  it("returns a not-scoreable prospect (it stays visible) and carries its reason (D-9-17)", async () => {
+    const id = await seedProspect({
+      triageScore: makeTriageScore(),
+      notScoreableReason: "no_unique_match",
+    });
+
+    const shortlist = await getShortlist(sb);
+    const row = shortlist.find((r) => r.id === id);
+    expect(row).toBeDefined();
+    expect(row?.not_scoreable_reason).toBe("no_unique_match");
+  });
+
+  it("carries a null not_scoreable_reason, the address and the mapped sources for a scoreable prospect", async () => {
+    const id = await seedProspect({ triageScore: makeTriageScore(), address: "Kerkstraat 1, Utrecht" });
+    await seedSource(id, 0.7, "open");
+
+    const shortlist = await getShortlist(sb);
+    const row = shortlist.find((r) => r.id === id);
+    expect(row?.not_scoreable_reason).toBeNull();
+    expect(row?.address).toBe("Kerkstraat 1, Utrecht");
+    expect(row?.website_url).toMatch(/^https:\/\//);
+    expect(row?.latitude).toBeNull();
+    expect(row?.sources).toEqual([{ raw_confidence: 0.7, raw_operating_status: "open" }]);
+  });
+
+  it("exposes only confidence numbers and status strings from prospect_sources, never a raw source row (T-9-08)", async () => {
+    const id = await seedProspect({ triageScore: makeTriageScore() });
+    await seedSource(id, 0.9, null);
+
+    const shortlist = await getShortlist(sb);
+    const row = shortlist.find((r) => r.id === id);
+    expect(row).not.toHaveProperty("prospect_sources");
+    for (const source of row?.sources ?? []) {
+      expect(Object.keys(source).sort()).toEqual(["raw_confidence", "raw_operating_status"]);
+    }
+  });
+
+  it("maps a prospect with no prospect_sources rows to an empty sources list, which fails the rule closed", async () => {
+    const id = await seedProspect({ triageScore: makeTriageScore() });
+    const shortlist = await getShortlist(sb);
+    expect(shortlist.find((r) => r.id === id)?.sources).toEqual([]);
   });
 });

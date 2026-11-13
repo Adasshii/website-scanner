@@ -122,3 +122,42 @@ describe("ShortlistTable Stage column", () => {
     expect(pills.every(Boolean)).toBe(true);
   });
 });
+
+// D-9-17: a business that fails the scoreable rule keeps its row, with the
+// reason readable, and does not count as eligible. The eligible count is read
+// from the table's data-eligible-count hook, which is computed by the same
+// isReleasable the release path calls.
+describe("ShortlistTable NOT SCOREABLE pill (D-9-17)", () => {
+  const notScoreable = () => makeRow({ not_scoreable_reason: "no_unique_match", sources: [] });
+
+  it("renders the NOT SCOREABLE pill with the reason code readable, and the row stays visible", () => {
+    const rows = [makeRow(), notScoreable()];
+    const { container } = render(
+      <ShortlistTable rows={rows} cutoff={100} loading={false} secret="s" onRequeued={noop} />
+    );
+    const pill = screen.getByText("NOT SCOREABLE");
+    expect(pill.getAttribute("title")).toBe("no_unique_match");
+    expect(container.querySelectorAll("tbody tr").length).toBe(2);
+  });
+
+  it("does not count a not-scoreable row toward the eligible count", () => {
+    const { container } = render(
+      <ShortlistTable rows={[makeRow(), notScoreable()]} cutoff={100} loading={false} secret="s" onRequeued={noop} />
+    );
+    expect(container.querySelector("[data-eligible-count]")?.getAttribute("data-eligible-count")).toBe("1");
+  });
+
+  it("keeps a lone not-scoreable row visible instead of collapsing to the raise-the-cutoff empty state", () => {
+    const { container } = render(
+      <ShortlistTable rows={[notScoreable()]} cutoff={100} loading={false} secret="s" onRequeued={noop} />
+    );
+    expect(screen.queryByText("Nothing eligible at this cutoff.")).toBeNull();
+    expect(screen.getByText("NOT SCOREABLE")).toBeTruthy();
+    expect(container.querySelector("[data-eligible-count]")?.getAttribute("data-eligible-count")).toBe("0");
+  });
+
+  it("renders no such pill for a row with a null reason", () => {
+    render(<ShortlistTable rows={[makeRow()]} cutoff={100} loading={false} secret="s" onRequeued={noop} />);
+    expect(screen.queryByText("NOT SCOREABLE")).toBeNull();
+  });
+});
