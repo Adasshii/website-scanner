@@ -4,17 +4,17 @@ milestone: v2.0
 milestone_name: Renewed Scanner
 current_phase: 09
 current_phase_name: Niche Profile & Own-Site Engine Data
-status: executing
-stopped_at: Completed 09-08-PLAN.md
-last_updated: "2026-11-13T23:45:27.535Z"
+status: verifying
+stopped_at: Completed 09-09-PLAN.md (migration 023 applied per Joshua; deploy and checks open)
+last_updated: "2026-11-14T00:55:10.761Z"
 last_activity: 2026-11-13
 last_activity_desc: Phase 09 execution started
-state_head: f3f9869d09993dd6589773a584c12a859e64b33e
+state_head: 7184580ff8f1ba57174afe68f65630e45d8906cb
 progress:
   total_phases: 5
   completed_phases: 0
   total_plans: 9
-  completed_plans: 8
+  completed_plans: 9
   percent: 0
 ---
 
@@ -31,7 +31,7 @@ See: .planning/PROJECT.md (updated 2026-11-11)
 
 Phase: 09 (Niche Profile & Own-Site Engine Data) — EXECUTING
 Plan: 9 of 9
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-11-13 — Phase 09 execution started
 
 Progress: [░░░░░░░░░░] 0% of milestone v2.0
@@ -129,6 +129,7 @@ v1.0's phases 1 to 8 are archived at `.planning/milestones/v1.0-phases/`, its ro
 | Phase 09 P06 | 9 min | 3 tasks | 14 files |
 | Phase 09 P07 | 13 min | 3 tasks | 3 files |
 | Phase 09 P08 | 25 min | 3 tasks | 3 files |
+| Phase 09 P09 | 70 min | 3 tasks | 16 files |
 
 ## Accumulated Context
 
@@ -240,6 +241,9 @@ Recent decisions affecting current work:
 - [Phase 09]: 09-08: heading and body hit caps apply per page, hits are counted per distinct start position, and an exact tie goes to tieBreakRank then id, never array position — A stuffed page must not swamp a page that names its trade in its title; a stem and a longer stem on one word are one hit; a tie broken by position changes after an unrelated profile edit
 - [Phase 09]: 09-08: a non-numeric minimum reads unreadable, a non-numeric dominance ratio reads narrow, a non-numeric rank sorts last — Each fails toward the cautious reading, so a bad slice never produces a confident trade
 - [Phase 09]: 09-08: the regression corpus is composed from the research's measured site classes, not captured live pages — The 53-site sample is not on disk and no captures were invented; the corpus guards regression, and the first real scans are the live check
+- [Phase 09]: 09-09: with no trade detected, quote checks use the union of every trade's terms (sorted, deduplicated); the stored trade.tradeId null shows which case applied
+- [Phase 09]: 09-09: own_site_facts is a second, separately caught update with a 15s deadline, run after the in-flight timer is cleared and before the report callback
+- [Phase 09]: 09-09: slice caps apply per list (60) and the 20KB cap is measured in UTF-8 bytes; pagesRead counts pages whose harvest succeeded
 
 ### Pending Todos
 
@@ -263,6 +267,7 @@ The three prospect-quality todos were resolved by Phase 4.1 (moved to `.planning
 - **Overture data quality** is a proven risk here, not theoretical — prior research produced a 98% false-positive read before correction. Manual sample audit required in Phase 1.
 - Open follow-up: cited-number-vs-report locale match verified only against seeded fixture scans (report rendered English against a Dutch draft); confirm against a real NL crawl the first time this surface handles genuine production data
 - 07-07 Task 3 (checkpoint:decision, gate=blocking): production deploy + dashboard cron confirmation + live dry-run JSON + SQL count needed before RETENTION_MODE can be chosen (stay-dry-run / anonymize / delete)
+- 09-09 production steps open: Railway deploy, post-deploy own_site_facts check, public-form scan; migration 023 applied per Joshua's confirmation, column query not captured
 
 ### Roadmap Evolution
 
@@ -292,6 +297,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-11-13T23:45:27.506Z
-Stopped at: Completed 09-08-PLAN.md
+Last session: 2026-11-14T00:55:10.724Z
+Stopped at: Completed 09-09-PLAN.md (migration 023 applied per Joshua; deploy and checks open)
 Resume file: None
