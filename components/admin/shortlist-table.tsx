@@ -3,7 +3,7 @@
 import { useState } from "react";
 import type { ShortlistRow } from "@/lib/triage-candidates";
 import { SignalChips } from "@/components/admin/signal-chips";
-import { isReleasable } from "@/lib/triage-eligibility";
+import { isReleasable, scoreableFailureReason } from "@/lib/triage-eligibility";
 import { FUNNEL_GROUPS, type FineLifecycleState, type FunnelGroup } from "@/lib/lifecycle";
 
 interface ShortlistTableProps {
@@ -258,8 +258,14 @@ export function ShortlistTable({ rows, cutoff, loading, secret, onRequeued }: Sh
             // contact email, and no existing draft. Covers both the
             // named-person skip (D-6-06) and a silently failed automatic
             // generation (RESEARCH open question 1) with one control.
+            // ENG-06: and only for a row the scoreable rule passes now. This is
+            // the same fresh verdict the server enforces, not the stored marker,
+            // so a row released before the marker existed gets no button either.
             const canGenerateDraft =
-              row.scan_status === "done" && row.has_contact_email && !row.has_outreach_draft;
+              row.scan_status === "done" &&
+              row.has_contact_email &&
+              !row.has_outreach_draft &&
+              scoreableFailureReason(row) === null;
             return (
               <tr
                 key={row.id}

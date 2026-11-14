@@ -25,6 +25,11 @@ import { localeForCountry, type Locale } from "@/lib/draft-prompt";
 import { computeVerdict } from "@/lib/scoring";
 import { applyIssuesAlt } from "@/lib/i18n-helpers";
 import { generateDraft, buildReportUrl, type DraftDeps } from "@/lib/draft-generator";
+import {
+  scoreableFailureReason,
+  type ScoreableRow,
+  type ScoreableSource,
+} from "@/lib/triage-eligibility";
 
 // ── Filter + row shape ───────────────────────────────────────────────────
 
@@ -362,10 +367,11 @@ export async function generateDraftForProspect(
   const { data: prospect, error: prospectError } = await sb
     .from("prospects")
     .select(
-      "id, name, domain, country, contact_email, lifecycle_state, latest_scan_id, not_scoreable_reason"
+      "id, name, domain, country, contact_email, lifecycle_state, latest_scan_id, not_scoreable_reason, website_url, address, latitude, longitude, prospect_sources(raw_confidence, raw_operating_status)"
     )
     .eq("id", prospectId)
     .single();
+  // Fail closed: an unreadable row is an error outcome, never a pass.
   if (prospectError || !prospect) return { ok: false, error: prospectError?.message ?? "prospect not found" };
 
   const { data: existing, error: existingError } = await sb
@@ -384,6 +390,19 @@ export async function generateDraftForProspect(
   // ENG-06, D-9-17, T-9-12: a prospect marked not scoreable stays undrafted on
   // the manual route too. Kept literal and per-handler, like the check above.
   if (prospect.not_scoreable_reason) {
+    return { ok: false, error: "prospect is not scoreable" };
+  }
+  // ENG-06, T-olb-01: the stored marker above is only the recorded explanation.
+  // A prospect released AND scanned before migration 022 never receives one
+  // (the marker refresh skips released prospects, D-9-17) and never re-enters
+  // dispatch, so it would pass the check above while failing the rule. The
+  // manual route therefore computes the verdict fresh, as dispatch does. A
+  // missing embed becomes an empty source list, which is not one match: absent
+  // evidence is refused, not read as a pass.
+  const { prospect_sources, ...columns } = prospect as unknown as Omit<ScoreableRow, "sources"> & {
+    prospect_sources: ScoreableSource[] | null;
+  };
+  if (scoreableFailureReason({ ...columns, sources: prospect_sources ?? [] }) !== null) {
     return { ok: false, error: "prospect is not scoreable" };
   }
   if (!prospect.contact_email) {
