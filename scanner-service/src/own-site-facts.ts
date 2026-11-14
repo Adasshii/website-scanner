@@ -6,15 +6,19 @@ import type {
   OwnSiteCertifications,
   OwnSiteCheck,
   OwnSiteFactsCore,
+  OwnSiteFacts,
   OwnSiteHarvest,
+  OwnSiteHarvestOutcome,
   OwnSiteOpeningHours,
   OwnSiteOpeningHoursEntry,
   OwnSiteQuoteReadiness,
   OwnSiteServiceArea,
   OwnSiteSocialProof,
   OwnSiteTelephone,
+  OwnSiteTrade,
 } from "../../types/own-site";
 import type { NicheScanSlice } from "../../types/niche-scan-slice";
+import { detectTrade } from "./trade-detection";
 
 /**
  * own-site-facts.ts: Phase 9, ENG-01. The pure Node-side parser that turns the
@@ -1172,4 +1176,142 @@ export function mergeQuoteReadiness(pages: ReadonlyArray<OwnSiteQuoteReadiness>)
   const failedPages = pages.length - evaluated.length;
   if (failedPages > 0 && QUOTE_CHECK_KEYS.some((k) => !merged[k].passed)) return { state: "unreadable" };
   return { state: "evaluated", ...merged };
+}
+
+// ── Site-level aggregation (ENG-01, ENG-02, ENG-05; plan 09-09) ──────────
+
+const BUSINESS_KEYS = ["address", "telephone", "openingHours", "serviceArea", "certifications"] as const;
+
+/** The trade when detection could not run at all: nothing is claimed about which trade it is. */
+const UNREADABLE_TRADE: OwnSiteTrade = { tradeId: null, confidence: "unreadable", scores: {}, runnerUpId: null, margin: 0 };
+
+function compareText(a: string, b: string): number {
+  return a < b ? -1 : a > b ? 1 : 0;
+}
+
+/**
+ * Fold one field across pages. A found value wins over everything, and among
+ * several the markup source ranks first, then the serialised value, so the page
+ * order the crawl happened to use never changes what is stored. With nothing
+ * found, a page that failed or read "unreadable" may have held the field, so the
+ * site reads "unreadable": an absence is only stated when every page was read.
+ */
+function mergeField<T>(states: ReadonlyArray<FieldState<T>>, failedPages: number): FieldState<T> {
+  const found = states.filter((s): s is Extract<FieldState<T>, { state: "found" }> => s.state === "found");
+  if (found.length > 0) {
+    const ranked = found
+      .map((s) => ({ s, text: JSON.stringify(s.value) }))
+      .sort((a, b) => SOURCE_RANK[a.s.source] - SOURCE_RANK[b.s.source] || compareText(a.text, b.text));
+    return ranked[0].s;
+  }
+  if (states.length === 0 || failedPages > 0 || states.some((s) => s.state === "unreadable")) {
+    return { state: "unreadable" };
+  }
+  const markupExisted = states.some((s) => s.state === "missing" && s.reason === "not_in_markup");
+  return { state: "missing", reason: markupExisted ? "not_in_markup" : "no_structured_data" };
+}
+
+/**
+ * The checks that apply to this site. A detected trade uses its own terms. When
+ * the trade could not be read, the checks are the terms of EVERY trade in the
+ * slice, deduplicated and sorted. That keeps the two trade-independent signals
+ * (a form, a tap-to-call link) honest, and a certification or project term
+ * from any trade the niche covers still counts as something the site published.
+ * The alternative, reading the whole result as unreadable, would throw away
+ * real answers for the sake of a trade label. Which case applied is visible in
+ * the stored trade (tradeId null).
+ */
+function checksFor(slice: NicheScanSlice, tradeId: string | null): TradeChecks {
+  const trades = Array.isArray(slice?.trades) ? slice.trades : [];
+  const own = tradeId === null ? undefined : trades.find((t) => t.id === tradeId);
+  if (own) return own.checks;
+  const union = (pick: (c: TradeChecks) => unknown): string[] =>
+    Array.from(
+      new Set(trades.flatMap((t) => (Array.isArray(pick(t.checks)) ? (pick(t.checks) as unknown[]) : [])).filter((x): x is string => typeof x === "string"))
+    ).sort(compareText);
+  return {
+    quoteTerms: union((c) => c.quoteTerms),
+    projectTerms: union((c) => c.projectTerms),
+    certificationTerms: union((c) => c.certificationTerms),
+  };
+}
+
+function detectTradeSafely(harvests: readonly OwnSiteHarvest[], slice: NicheScanSlice): OwnSiteTrade {
+  try {
+    const found = detectTrade(harvests, slice);
+    return {
+      tradeId: found.tradeId,
+      confidence: found.confidence,
+      scores: { ...found.scores },
+      runnerUpId: found.runnerUpId,
+      margin: found.margin,
+    };
+  } catch {
+    return UNREADABLE_TRADE;
+  }
+}
+
+function unreadableOwnSiteFacts(readAt: string): OwnSiteFacts {
+  return {
+    ...unreadableFacts({ readAt, pagesRead: 0 }),
+    socialProof: { state: "unreadable" },
+    quoteReadiness: { state: "unreadable" },
+    trade: UNREADABLE_TRADE,
+  };
+}
+
+/**
+ * Fold what the scan harvested from each page into one site-level OwnSiteFacts
+ * (ENG-01). The three extractors it calls each read what they were built for:
+ * extractOwnSiteFacts reads ONE page, so the merge across pages and `pagesRead`
+ * are done here.
+ *
+ * `outcomes` is one entry per scanned page. A page that failed to load, whose
+ * harvest failed, or that carried no harvest is a null or an "unreadable"
+ * outcome and counts as a page we could not read: it is never an absence.
+ * `pagesRead` counts the pages whose harvest succeeded.
+ *
+ * Only scores and the chosen trade are kept from trade detection. The harvested
+ * text is never stored. Never throws: a failure here must cost the facts, never
+ * the scan, so anything unexpected yields an all-unreadable result.
+ */
+export function aggregateOwnSite(
+  outcomes: ReadonlyArray<OwnSiteHarvestOutcome | null | undefined>,
+  slice: NicheScanSlice,
+  meta: { readAt: string }
+): OwnSiteFacts {
+  try {
+    const harvests: Array<OwnSiteHarvest | null> = outcomes.map((o) => (o && o.state === "harvested" ? o.harvest : null));
+    const read = harvests.filter((h): h is OwnSiteHarvest => h !== null);
+    const failedPages = harvests.length - read.length;
+
+    const cores = read.map((h) => extractOwnSiteFacts(h, { readAt: meta.readAt, pagesRead: 1 }));
+    const business = {} as OwnSiteBusinessFacts;
+    for (const key of BUSINESS_KEYS) {
+      (business as unknown as Record<string, FieldState<unknown>>)[key] = mergeField(
+        cores.map((c) => c.business[key] as FieldState<unknown>),
+        failedPages
+      );
+    }
+
+    const trade = detectTradeSafely(read, slice);
+    const checks = checksFor(slice, trade.tradeId);
+
+    return {
+      schemaVersion: 1,
+      readAt: meta.readAt,
+      pagesRead: read.length,
+      structuredData: {
+        jsonLdBlocks: cores.reduce((n, c) => n + c.structuredData.jsonLdBlocks, 0),
+        jsonLdInvalid: cores.reduce((n, c) => n + c.structuredData.jsonLdInvalid, 0),
+        microdataItems: cores.reduce((n, c) => n + c.structuredData.microdataItems, 0),
+      },
+      business,
+      socialProof: extractSocialProof(harvests, slice),
+      quoteReadiness: mergeQuoteReadiness(harvests.map((h) => evaluateQuoteReadiness(h, checks))),
+      trade,
+    };
+  } catch {
+    return unreadableOwnSiteFacts(meta.readAt);
+  }
 }
