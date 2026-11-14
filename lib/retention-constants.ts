@@ -211,7 +211,9 @@ export const ANONYMIZED_SCAN_SENTINEL_DOMAIN = "anonymized.invalid";
  * other content column — `summary`, `screenshots`,
  * `homepage_screenshot_url`, `email`, `error_message`, `cost_estimate`,
  * `quick_wins`, `website_personality`, `sales_brief`, `design_ai_analysis`,
- * `visitor_experience`, `ai_content_alt`, `issues_alt` — goes to null.
+ * `visitor_experience`, `ai_content_alt`, `issues_alt`, `own_site_facts` —
+ * goes to null. `own_site_facts` (migration 023) holds the telephone number
+ * and postal address the prospect's own site publishes.
  *
  * Kept: `scores`, `type`, `status`, `locale`, `ip_hash`, `prospect_id`,
  * `design_ai_analyzed_at`, and every timestamp (`started_at`,
@@ -235,4 +237,8 @@ export const ANONYMIZED_SCAN_FIELDS: Record<string, unknown> = {
   visitor_experience: null,
   ai_content_alt: null,
   issues_alt: null,
+  // Phase 9 (D-9-25, CMP-13, CMP-15): the stored own-site facts hold a telephone
+  // number and a postal address read from the prospect's site, so they are
+  // personal data. Added in the same plan that created the column.
+  own_site_facts: null,
 };

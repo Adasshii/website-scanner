@@ -662,6 +662,38 @@ describe("anonymizeProspects — field lists (D-7-17, Task 1)", () => {
     }
   });
 
+  it("D-9-25: anonymise clears own_site_facts on the same scan row where scores survive", async () => {
+    // Both directions in ONE test, with a NON-NULL value seeded first: the loop
+    // above reads null for any key whose seed was never set, so it cannot catch
+    // a missing entry in the map. The stored facts hold a telephone number and a
+    // postal address read from the prospect's site.
+    const { id: prospectId } = await seedProspect(isoMonthsAgo(20));
+    const { id: scanId } = await seedScan(prospectId, isoMonthsAgo(20), {
+      scores: { overall: 61 },
+      own_site_facts: {
+        schemaVersion: 1,
+        business: {
+          telephone: { state: "found", value: { numbers: ["+31 20 123 4567"] }, source: "jsonld" },
+          address: { state: "found", value: { streetAddress: "Hoofdstraat 12", postalCode: "1234 AB" }, source: "jsonld" },
+        },
+        quoteReadiness: { state: "evaluated", tapToCall: { passed: true, evidence: "tel link: tel:+31201234567" } },
+      },
+    });
+
+    const before = await sb.from("scans").select("*").eq("id", scanId).single();
+    if (before.error) throw before.error;
+    expect(before.data.own_site_facts).not.toBeNull();
+    expect(JSON.stringify(before.data.own_site_facts)).toContain("+31 20 123 4567");
+
+    await anonymizeProspects(sb, [prospectId]);
+
+    const after = await sb.from("scans").select("*").eq("id", scanId).single();
+    if (after.error) throw after.error;
+    expect(after.data.own_site_facts).toBeNull();
+    expect(after.data.scores).toEqual(before.data.scores);
+    expect(after.data.status).toBe(before.data.status);
+  });
+
   it("a prospect inside the window is untouched by a full anonymise run wired through runRetention()", async () => {
     const { id: inWindowId } = await seedProspect(isoMonthsAgo(1), { name: "Still Live" });
     // A companion far-past fixture guarantees the scoped run below actually

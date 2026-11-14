@@ -1,0 +1,18 @@
+-- Phase 9, plan 09-09 (ENG-01, D-9-R6, D-9-25): one additive jsonb column that
+-- holds what a prospect's own site publishes and which fields are missing, so
+-- the answer is one column and one query. Nullable, no default, no index and no
+-- RLS policy (scans is already service-role-only, migration 010 and 014). This
+-- migration reads and writes no existing row.
+--
+-- Numbering: 021 belongs to the unmerged feat/atrium-routes branch, so this
+-- phase owns 022 and 023 only.
+--
+-- Deploy order (D-9-R6): apply this by hand in the production SQL Editor BEFORE
+-- the scanner is deployed. The scanner writes this column in a SECOND, separately
+-- caught update, never in the main completed-scan update, so a scanner that ships
+-- early loses the facts and logs it instead of stalling a public scan.
+--
+-- Personal data (D-9-25): the stored facts include a telephone number and a
+-- postal address read from the site. The column is cleared by anonymise through
+-- ANONYMIZED_SCAN_FIELDS in lib/retention-constants.ts, in the same change.
+alter table scans add column if not exists own_site_facts jsonb;

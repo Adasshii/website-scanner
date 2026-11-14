@@ -241,12 +241,41 @@ export interface OwnSiteFactsCore {
 }
 
 /**
- * The stored shape. Still awaited, so a partially populated type is not read as
- * an oversight: `trade` arrives in plan 09-08 (trade detection), and plan 09-09
- * owns the aggregation across pages and the persistence that assembles these
- * members into one stored value.
+ * How sure the trade read is. "narrow" is still a trade: the winner led by less
+ * than the profile's dominance ratio. "unreadable" means no trade reached the
+ * minimum score, and says nothing about which trade the business is in.
+ */
+export type OwnSiteTradeConfidence = "clear" | "narrow" | "unreadable";
+
+/**
+ * The trade read off the site's own text (ENG-01). Declared here, in the shared
+ * types directory, rather than imported from the scanner's trade-detection
+ * module: the stored shape and the detector's computation shape are versioned
+ * separately, and types/ must not depend on the service's source.
+ *
+ * The per-trade score map is kept beside the one chosen trade: six small
+ * integers, so a ranked set can be derived later without a rescan (D-9-07).
+ * The harvested text itself is never stored, only these numbers.
+ */
+export interface OwnSiteTrade {
+  /** The winning trade id, or null when no trade reached the minimum score. */
+  tradeId: string | null;
+  confidence: OwnSiteTradeConfidence;
+  /** One entry per trade in the slice, zero scores included. */
+  scores: Record<string, number>;
+  runnerUpId: string | null;
+  /** The winner's score minus the runner-up's. */
+  margin: number;
+}
+
+/**
+ * The stored shape (scans.own_site_facts, migration 023): what the prospect's
+ * site publishes and which fields are missing, in one value. Assembled by
+ * aggregateOwnSite() in the scanner. `schemaVersion` lets a later phase tell
+ * which producer wrote a row.
  */
 export interface OwnSiteFacts extends OwnSiteFactsCore {
   socialProof: OwnSiteSocialProof;
   quoteReadiness: OwnSiteQuoteReadiness;
+  trade: OwnSiteTrade;
 }
