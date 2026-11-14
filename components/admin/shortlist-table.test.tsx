@@ -161,3 +161,43 @@ describe("ShortlistTable NOT SCOREABLE pill (D-9-17)", () => {
     expect(screen.queryByText("NOT SCOREABLE")).toBeNull();
   });
 });
+
+// ENG-06: the manual Generate draft button is offered only where the server
+// would accept the click. The pill answers "is there a stored reason";
+// the button answers "does the rule pass now", so an unmarked not-scoreable
+// row (released before the marker existed) must not offer it either.
+describe("ShortlistTable Generate draft button (ENG-06)", () => {
+  const draftable = (overrides?: Partial<ShortlistRow>) =>
+    makeRow({ scan_status: "done", has_contact_email: true, has_outreach_draft: false, ...overrides });
+
+  it("offers the button for a scoreable row with a completed scan and a contact email", () => {
+    render(<ShortlistTable rows={[draftable()]} cutoff={100} loading={false} secret="s" onRequeued={noop} />);
+    expect(screen.getByText("Generate draft")).toBeTruthy();
+  });
+
+  it("offers no button for an unmarked not-scoreable row", () => {
+    render(
+      <ShortlistTable
+        rows={[draftable({ not_scoreable_reason: null, sources: [] })]}
+        cutoff={100}
+        loading={false}
+        secret="s"
+        onRequeued={noop}
+      />
+    );
+    expect(screen.queryByText("Generate draft")).toBeNull();
+  });
+
+  it("offers no button for a row carrying a stored not-scoreable reason", () => {
+    render(
+      <ShortlistTable
+        rows={[draftable({ not_scoreable_reason: "no_unique_match", sources: [] })]}
+        cutoff={100}
+        loading={false}
+        secret="s"
+        onRequeued={noop}
+      />
+    );
+    expect(screen.queryByText("Generate draft")).toBeNull();
+  });
+});

@@ -115,12 +115,30 @@ const baseSummary: ScanSummary = {
   verdict: "needs work",
 };
 
-async function seedProspect(overrides: Record<string, unknown> = {}): Promise<string> {
+// Scoreable by default (ENG-06): an own website, a street address and exactly
+// one qualifying prospect_sources row. generateDraftForProspect now computes the
+// scoreable verdict fresh from these columns, so a fixture without them would
+// make every manual-generate test fail for the wrong reason. Pass `sources` to
+// seed a different evidence set; each source needs its own overture_gers_id
+// (migration 011: not null, unique).
+interface SeedSource {
+  raw_confidence: number | null;
+  raw_operating_status: string | null;
+}
+const DEFAULT_SOURCES: SeedSource[] = [{ raw_confidence: 0.9, raw_operating_status: null }];
+
+async function seedProspect(
+  overrides: Record<string, unknown> = {},
+  sources: SeedSource[] = DEFAULT_SOURCES
+): Promise<string> {
   const suffix = crypto.randomUUID().slice(0, 8);
+  const domain = `test-outreach-queue-${suffix}.example.com`;
   const { data, error } = await sb
     .from("prospects")
     .insert({
-      domain: `test-outreach-queue-${suffix}.example.com`,
+      domain,
+      website_url: `https://${domain}`,
+      address: "Kerkstraat 1, Utrecht",
       name: "Test Prospect",
       country: "NL",
       contact_email: "info@example.com",
@@ -131,7 +149,21 @@ async function seedProspect(overrides: Record<string, unknown> = {}): Promise<st
     .select("id")
     .single();
   if (error) throw error;
-  return data!.id as string;
+  const prospectId = data!.id as string;
+
+  if (sources.length > 0) {
+    // prospect_sources cascades on the prospects delete, so afterEach needs no change.
+    const { error: sourceError } = await sb.from("prospect_sources").insert(
+      sources.map((source, i) => ({
+        prospect_id: prospectId,
+        overture_gers_id: `test-outreach-queue-${suffix}-${i}`,
+        raw_confidence: source.raw_confidence,
+        raw_operating_status: source.raw_operating_status,
+      }))
+    );
+    if (sourceError) throw sourceError;
+  }
+  return prospectId;
 }
 
 async function seedScan(prospectId: string, overrides: Record<string, unknown> = {}): Promise<string> {
@@ -423,6 +455,24 @@ describe("outreach-queue integration", () => {
 
     it("ENG-06/D-9-17: a prospect marked not scoreable returns an error outcome and creates no row", async () => {
       const prospectId = await seedProspect({ not_scoreable_reason: "permanently_closed" });
+      const scanId = await seedScan(prospectId);
+      await sb.from("prospects").update({ latest_scan_id: scanId }).eq("id", prospectId);
+
+      const result = await generateDraftForProspect(sb, prospectId, { generate: stubGenerate });
+
+      expect(result.ok).toBe(false);
+      const { data } = await sb.from("outreach_messages").select("id").eq("prospect_id", prospectId);
+      expect(data).toHaveLength(0);
+    });
+
+    it("ENG-06: a prospect released and scanned before the rule, with no stored marker, is refused and gets no row", async () => {
+      // The exact row 09-VERIFICATION.md describes: released and scanned before
+      // migration 022, so the marker refresh never touched it (D-9-17) and
+      // not_scoreable_reason is null for good, yet it fails the rule (no source).
+      const prospectId = await seedProspect(
+        { scan_released_at: "2026-01-01T00:00:00.000Z", not_scoreable_reason: null },
+        []
+      );
       const scanId = await seedScan(prospectId);
       await sb.from("prospects").update({ latest_scan_id: scanId }).eq("id", prospectId);
 
