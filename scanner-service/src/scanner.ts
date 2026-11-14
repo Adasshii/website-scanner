@@ -4,6 +4,10 @@ import { extractPageData } from "./extractor";
 import { analyzeIssues } from "./analyzer";
 import { buildOverlayData } from "./screenshots";
 import type { PageResult, ScanScores, Issue, IssueOverlay } from "../../types/scanner";
+import type { NicheScanSlice } from "../../types/niche-scan-slice";
+import type { OwnSiteHarvestOutcome } from "../../types/own-site";
+import { harvestOwnSite } from "./own-site-harvest";
+import { collectOwnSiteHarvest } from "./own-site-run";
 import { scorePage } from "./scoring";
 import { runLighthouse } from "./lighthouse";
 import { checkMobileUsability } from "./mobile";
@@ -205,6 +209,11 @@ export interface ScanPageOptions {
   timeoutMs?: number;
   /** Optional crawl identity override (e.g. bulk scan UA). Defaults to the public scanner's UA. */
   userAgent?: string;
+  /**
+   * The validated niche slice (D-9-12). Absent means no own-site work at all:
+   * nothing is harvested and the scan is identical to one before Phase 9.
+   */
+  nicheSlice?: NicheScanSlice;
 }
 
 /** Extended result with screenshot data — only used internally, not stored in DB */
@@ -213,6 +222,13 @@ export interface ScanPageResultWithScreenshot {
   screenshotBuffer: Buffer | null;
   designScreenshotBuffer: Buffer | null;
   overlays: IssueOverlay[];
+  /**
+   * What the own-site harvest read from this page, for the aggregator. Internal
+   * only, like the screenshot buffers: it is never stored, so the harvested text
+   * never reaches the database or bloats scans.pages. null when no slice was
+   * requested; { state: "unreadable" } when one was and the harvest failed.
+   */
+  ownSiteHarvest: OwnSiteHarvestOutcome | null;
 }
 
 /**
@@ -305,6 +321,10 @@ export async function scanPage(
     data.responseHeaders = responseHeaders;
     console.log(`  [scanner] Extracted: ${data.wordCount} words, ${data.images.length} images, ${data.links.length} links`);
 
+    // Step 3b: own-site harvest (Phase 9). A separate evaluate, run only when the
+    // request carried a slice, and never allowed to fail the page (D-9-R6).
+    const ownSiteHarvest = await collectOwnSiteHarvest(page, options.nicheSlice, harvestOwnSite);
+
     // Step 4a: External URL checks (Phase 3)
     console.log(`  [scanner] Checking robots.txt, sitemap, and internal links...`);
     const pageOrigin = new URL(effectiveUrl).origin;
@@ -368,6 +388,7 @@ export async function scanPage(
       screenshotBuffer,
       designScreenshotBuffer,
       overlays,
+      ownSiteHarvest,
     };
   } catch (error) {
     const loadTimeMs = Date.now() - startTime;
@@ -439,6 +460,9 @@ export async function scanPage(
       screenshotBuffer: null,
       designScreenshotBuffer: null,
       overlays: [],
+      // A page that failed to load could not be read: say so when a slice was
+      // asked for, so the site-level result never reads this page as an absence.
+      ownSiteHarvest: options.nicheSlice ? { state: "unreadable" } : null,
     };
   } finally {
     await context.close();

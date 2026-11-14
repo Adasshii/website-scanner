@@ -19,11 +19,13 @@
  * That is why the existence assertion runs first, so a rename shrinks the set
  * loudly instead of silently.
  *
- * SEQUENCING: plan 09-09 adds scanner-service/src/own-site-harvest.ts,
- * scanner-service/src/own-site-facts.ts and
- * scanner-service/src/trade-detection.ts to ENGINE_FILES in the same plan
- * that finishes wiring them. They do not exist yet, so their absence here is
- * a sequencing fact and not an oversight.
+ * The three scanner modules (own-site-harvest, own-site-facts,
+ * trade-detection) joined ENGINE_FILES in plan 09-09, the plan that finished
+ * wiring them, together with own-site-run, the module the scanner route calls
+ * to validate the slice and store the facts. All four read every term and
+ * threshold from the request-carried slice, so they carry no niche vocabulary.
+ * If one of them trips an assertion, the fix is to move the literal into the
+ * profile, never to loosen the assertion.
  *
  * Pure source assertion: node:fs only, no database, no server, no clock.
  */
@@ -39,6 +41,10 @@ import { INSTALLERS_PROFILE, toScannerSlice } from "./index";
 export const ENGINE_FILES: readonly string[] = [
   "lib/triage-eligibility.ts",
   "lib/google-content-guard.ts",
+  "scanner-service/src/own-site-harvest.ts",
+  "scanner-service/src/own-site-facts.ts",
+  "scanner-service/src/trade-detection.ts",
+  "scanner-service/src/own-site-run.ts",
 ];
 
 /**

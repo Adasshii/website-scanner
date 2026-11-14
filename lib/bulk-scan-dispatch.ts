@@ -17,6 +17,7 @@ import {
 } from "@/lib/bulk-scan-constants";
 import { markScanFailed, requeueToQueued, type ClaimedProspect } from "@/lib/scan-queue";
 import { ScannerClient } from "@/lib/scanner-client";
+import { INSTALLERS_PROFILE, toScannerSlice } from "@/lib/niche-profile";
 import {
   scoreableFailureReason,
   type ScoreableRow,
@@ -162,6 +163,10 @@ async function dispatchOne(
       scanId,
       prospectId: prospect.id,
       userAgent: BULK_USER_AGENT,
+      // Phase 9 (D-9-12): the profile slice rides the request, so the Railway
+      // scanner reads what a prospect's site publishes inside this scan. Bulk
+      // scans only: the public scanner never sends one and does no own-site work.
+      nicheSlice: toScannerSlice(INSTALLERS_PROFILE),
     });
 
     if (accepted) {

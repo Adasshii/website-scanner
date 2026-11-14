@@ -1,4 +1,5 @@
 import type { PageResult, ScanScores, ScanSummary, ScreenshotInfo, CostEstimate, QuickWin, AiContentAlt, IssuesAlt } from "@/types/scanner";
+import type { NicheScanSlice } from "@/types/niche-scan-slice";
 import { BULK_MAX_PAGES } from "@/lib/bulk-scan-constants";
 
 /** Response shape from the scanner service */
@@ -70,7 +71,18 @@ export class ScannerClient {
    */
   async fullScanBulk(
     url: string,
-    opts: { scanId: string; prospectId: string; userAgent: string; maxPages?: number }
+    opts: {
+      scanId: string;
+      prospectId: string;
+      userAgent: string;
+      maxPages?: number;
+      /**
+       * The niche profile slice (D-9-12): the only way the profile reaches the
+       * Railway scanner, which never reads it from disk. Posted only when given;
+       * a request without it performs no own-site work at all.
+       */
+      nicheSlice?: NicheScanSlice;
+    }
   ): Promise<{ accepted: boolean }> {
     const res = await fetch(`${this.baseUrl}/api/scan/full-async`, {
       method: "POST",
@@ -85,6 +97,7 @@ export class ScannerClient {
         source: "bulk",
         userAgent: opts.userAgent,
         prospectId: opts.prospectId,
+        ...(opts.nicheSlice ? { nicheSlice: opts.nicheSlice } : {}),
       }),
       signal: AbortSignal.timeout(30_000),
     });

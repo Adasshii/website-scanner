@@ -8,6 +8,8 @@
 import { describe, expect, it, vi } from "vitest";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { dispatchClaimedProspects } from "./bulk-scan-dispatch";
+import { INSTALLERS_PROFILE, toScannerSlice } from "./niche-profile";
+import type { NicheScanSlice } from "../types/niche-scan-slice";
 import { BULK_USER_AGENT, BULK_DISPATCH_CONCURRENCY, BULK_SCAN_IP_HASH } from "./bulk-scan-constants";
 import type { ClaimedProspect } from "./scan-queue";
 import type { TriageResponseLike } from "./triage-fetch";
@@ -302,6 +304,25 @@ describe("dispatchClaimedProspects", () => {
     expect(outcomes).toEqual([{ id: "p1", dispatched: true }]);
     expect(client.fullScanBulk).toHaveBeenCalledTimes(1);
     expect(calls.some((c) => c.table === "scans" && c.op === "insert")).toBe(true);
+  });
+
+  it("D-9-12: a dispatched bulk scan carries the installers profile slice in the request, built field by field", async () => {
+    const { sb } = makeSupabaseMock();
+    const client = {
+      fullScanBulk: vi.fn<(url: string, opts: { nicheSlice?: NicheScanSlice }) => Promise<{ accepted: boolean }>>(async () => ({ accepted: true })),
+    };
+
+    await dispatchClaimedProspects(sb, [makeProspect()], {
+      client,
+      fetchImpl: makeFetchImpl(),
+      sleep: async () => {},
+      validateUrlSafe: passthroughValidate,
+    });
+
+    expect(client.fullScanBulk).toHaveBeenCalledTimes(1);
+    const sent = client.fullScanBulk.mock.calls[0][1].nicheSlice;
+    expect(sent?.nicheId).toBe("installers");
+    expect(JSON.stringify(sent)).toBe(JSON.stringify(toScannerSlice(INSTALLERS_PROFILE)));
   });
 
   it("D-9-17: a stale stored marker is not trusted: a prospect that now passes the rule still dispatches", async () => {

@@ -18,6 +18,8 @@ import { uploadScreenshot } from "./screenshots";
 import type { ScanRequest, PageResult, ScanScores, ScanSummary, Issue, IssueSeverity, ScreenshotInfo } from "../../types/scanner";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { isAtCapacity, CAPACITY_RETRY_AFTER_SECONDS } from "./capacity";
+import { aggregateOwnSite } from "./own-site-facts";
+import { storeOwnSiteFacts, validateNicheSlice } from "./own-site-run";
 // Deliberately relative, not the shared-lib path alias. Path aliases are
 // compile-time only: tsc emits this specifier verbatim into dist/, and Node
 // cannot resolve it, which crashed the container on boot and failed
@@ -395,7 +397,7 @@ app.post("/api/scan/full", async (req, res) => {
 // ── Async full scan: fire-and-forget, updates DB directly ─────────
 
 app.post("/api/scan/full-async", async (req, res) => {
-  const { url, scanId, maxPages = 7, locale = "en", source, userAgent, prospectId } = req.body as {
+  const { url, scanId, maxPages = 7, locale = "en", source, userAgent, prospectId, nicheSlice: rawNicheSlice } = req.body as {
     url: string;
     scanId: string;
     maxPages?: number;
@@ -405,12 +407,26 @@ app.post("/api/scan/full-async", async (req, res) => {
     // Accepted and logged only — the service does not write to the `prospects`
     // table. Status write-back is reconciled on the Next.js side (plan 04-04).
     prospectId?: string;
+    // Phase 9 (D-9-12): the niche profile slice the own-site path needs. Typed
+    // unknown on purpose: it is untrusted input and is validated below before
+    // anything reads it. Absent on every public scan.
+    nicheSlice?: unknown;
   };
 
   if (!url || !scanId) {
     res.status(400).json({ error: "url and scanId are required" });
     return;
   }
+
+  // The slice is an untrusted enhancement, like `source` and `userAgent` below:
+  // a malformed one is ignored and logged, never answered with an error status,
+  // because refusing a whole scan over it would turn a cosmetic fault into a lost
+  // prospect (D-9-12, T-9-18). No slice means no own-site work at all.
+  const sliceCheck = validateNicheSlice(rawNicheSlice);
+  if (!sliceCheck.ok) {
+    console.warn(`[full-scan-async] nicheSlice ignored for scan ${scanId}: ${sliceCheck.reason}`);
+  }
+  const nicheSlice = sliceCheck.ok ? sliceCheck.slice : null;
 
   // Capacity guard (D-08, SCAN-02, T-04-04): refuse bulk work above the
   // reserved-headroom ceiling before it is ever registered as in-flight.
@@ -451,7 +467,7 @@ app.post("/api/scan/full-async", async (req, res) => {
     const scanResults: ScanPageResultWithScreenshot[] = [];
     for (const pageUrl of pageUrls) {
       console.log(`[full-scan-async] Scanning: ${pageUrl}`);
-      const scanResult = await scanPage({ url: pageUrl, userAgent });
+      const scanResult = await scanPage({ url: pageUrl, userAgent, nicheSlice: nicheSlice ?? undefined });
       scanResults.push(scanResult);
     }
 
@@ -642,6 +658,26 @@ app.post("/api/scan/full-async", async (req, res) => {
     clearTimeout(scanTimeout);
     activeFullScans.delete(scanId);
     console.log(`[full-scan-async] Completed: ${url} — overall ${scores.overall}`);
+
+    // Own-site facts (Phase 9, D-9-R6): a SECOND update, deliberately not part of
+    // the completed update above. That update never reads its returned error, so a
+    // scanner deployed before migration 023 is applied would never reach
+    // `completed` if it named the new column there, and public scans would stall
+    // until the fifteen-minute timeout. Here the worst case is a missing facts
+    // column. Awaited before the callback so anything reading the row downstream
+    // sees the facts. storeOwnSiteFacts never throws and is time-bounded, and it
+    // runs after the in-flight entry and timer are cleared so a slow write cannot
+    // let the timeout mark a completed scan failed. With no slice it does nothing.
+    await storeOwnSiteFacts(
+      { scanId, slice: nicheSlice, outcomes: scanResults.map((s) => s.ownSiteHarvest) },
+      {
+        aggregate: aggregateOwnSite,
+        write: async (id, facts) => {
+          const { error } = await supabase.from("scans").update({ own_site_facts: facts }).eq("id", id);
+          return { error };
+        },
+      }
+    );
 
     // Notify the Next.js app to send the report-ready email
     const callbackUrl = process.env.CALLBACK_URL;
