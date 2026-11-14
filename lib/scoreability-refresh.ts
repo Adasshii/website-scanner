@@ -9,9 +9,11 @@
 // Only un-released prospects are touched. A prospect that already carries
 // scan_released_at keeps whatever marker it had, so its history is not
 // rewritten (D-9-17). Consequence: a prospect released before migration 022
-// never receives a marker from this module, which is why the dispatch-time
-// check in lib/bulk-scan-dispatch.ts reads the stored marker and cannot, on its
-// own, catch such a prospect (see the 09-06 SUMMARY).
+// never receives a first marker from this module. That is safe because the
+// stored marker is only the readable explanation, not what the routes trust:
+// both the dispatch route (lib/bulk-scan-dispatch.ts) and the manual draft
+// route (lib/outreach-queue.ts) compute the verdict fresh, from the prospect's
+// own columns and prospect_sources, before acting.
 //
 // STALENESS: the stored reason is computed from MIN_MATCH_CONFIDENCE
 // (lib/triage-constants.ts). Changing that constant, or any input of the rule,
