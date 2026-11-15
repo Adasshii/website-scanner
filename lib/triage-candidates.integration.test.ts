@@ -169,6 +169,17 @@ describe("getTriageCandidates", () => {
     expect(candidates.some((c) => c.id === id)).toBe(true);
   });
 
+  it("excludes an Atrium-owned prospect (Atrium, 2026-11-12)", async () => {
+    const atriumId = await seedProspect();
+    const { error } = await sb.from("prospects").update({ owner: "atrium" }).eq("id", atriumId);
+    if (error) throw error;
+    const scannerId = await seedProspect();
+
+    const ids = (await getTriageCandidates(sb)).map((c) => c.id);
+    expect(ids).not.toContain(atriumId);
+    expect(ids).toContain(scannerId);
+  });
+
   it("respects limit", async () => {
     await Promise.all(Array.from({ length: 5 }, () => seedProspect()));
     const candidates = await getTriageCandidates(sb, { limit: 2 });

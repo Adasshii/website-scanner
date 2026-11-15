@@ -21,6 +21,8 @@ _Current state of the scanner: what it does, where it runs, and what's in progre
 
 **In progress:** nothing is mid-flight. The next action is choosing an outreach provider, which unblocks Phase 8.
 
+**Atrium routes, 2026-11-14.** Five admin routes under `/api/admin/atrium/` let Atrium register a prospect, start a scan at once, read its status and problems, read opt-outs and release a prospect. `prospects.owner` marks Atrium's rows (migration 021, applied by hand on 2026-11-13). The draft hook, triage, "Run batch", the Overture importer and the Reporting funnel skip them. Route 1 refuses scanner-owned and suppressed domains with 409. `UNSUBSCRIBE_TOKEN_SECRET` was added to Vercel production for this; never change it, or opt-out links in sent emails break. Live deployment: `dpl_4fKqzinrvNnuaHPLbPk9FJwzwDH3` (CLI deploy of merge `efa4396`). Note: the Vercel git integration is on, so a push to `origin/main` also deploys.
+
 ## Key Decisions
 
 _Tool choices, scope decisions, and architectural notes._

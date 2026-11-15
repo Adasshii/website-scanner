@@ -183,6 +183,17 @@ describe("maybeGenerateDraftForProspectScan integration", () => {
     expect(data).toHaveLength(0);
   });
 
+  it("Atrium (2026-11-12): an atrium-owned prospect produces no row and a skip outcome", async () => {
+    const prospectId = await seedProspect({ owner: "atrium" });
+    const scan = await seedScan(prospectId);
+
+    const result = await maybeGenerateDraftForProspectScan(sb, scan, { generate: neverGenerate });
+
+    expect(result).toEqual({ outcome: "skipped", reason: "atrium-owned" });
+    const { data } = await sb.from("outreach_messages").select("id").eq("prospect_id", prospectId);
+    expect(data).toHaveLength(0);
+  });
+
   it("D-6-15/T-06-REJ: a rejected prospect produces no row even with a generic email and completed scan", async () => {
     const prospectId = await seedProspect({ lifecycle_state: "rejected" });
     const scan = await seedScan(prospectId);

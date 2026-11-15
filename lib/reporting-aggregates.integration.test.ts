@@ -263,6 +263,17 @@ describe("getReportingData", () => {
     expect(after.funnel.Booked - before.funnel.Booked).toBe(0);
     expect(after.funnel.New - before.funnel.New).toBe(0);
   });
+
+  it("leaves Atrium-owned prospects out of the funnel (Atrium, 2026-11-13)", async () => {
+    const before = await getReportingData(sb);
+
+    await seedProspect(`${PREFIX}atrium-1`, { owner: "atrium" });
+    await seedProspect(`${PREFIX}atrium-booked-1`, { owner: "atrium", booked_at: "2026-01-01T00:00:00Z" });
+
+    const after = await getReportingData(sb);
+
+    expect(after.funnel).toEqual(before.funnel);
+  });
 });
 
 // utcDay() (Pitfall 6) — bucketing helper `days` builds on. Tested directly

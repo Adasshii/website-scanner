@@ -36,7 +36,7 @@ export async function upsertOverturePlace(
   sb: SupabaseClient,
   place: OverturePlaceRow,
   campaignTag: string | null
-): Promise<{ prospectId: string; created: boolean }> {
+): Promise<{ prospectId: string; created: boolean; skipped?: "atrium-owned" }> {
   // Aggregator/directory links (tripadvisor.com, facebook.com, ...) must
   // never become prospect identity (D-01 audit follow-up, D-11 fix) — treat
   // them as no-website: null domain, null website_url on `prospects`. The
@@ -96,10 +96,16 @@ export async function upsertOverturePlace(
   if (domain) {
     const { data: existingProspect, error: domainLookupError } = await sb
       .from("prospects")
-      .select("id, lifecycle_state, website_url, country")
+      .select("id, lifecycle_state, website_url, country, owner")
       .eq("domain", domain)
       .maybeSingle();
     if (domainLookupError) throw domainLookupError;
+
+    // Atrium owns this lead (decision 2026-11-12). The importer writes
+    // nothing to it: no source row, no website or country flags.
+    if (existingProspect && existingProspect.owner === "atrium") {
+      return { prospectId: existingProspect.id, created: false, skipped: "atrium-owned" };
+    }
 
     if (existingProspect) {
       const { error: sourceInsertError } = await sb.from("prospect_sources").insert({
