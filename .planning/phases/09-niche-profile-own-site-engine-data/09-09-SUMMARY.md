@@ -256,3 +256,15 @@ The Phase 9 code is complete. Before it carries any value in production, someone
 - FOUND commits `076f235`, `9cff89d`, `7184580` as ancestors of HEAD; the plan-head ledger count `f79e12e..HEAD` is 3.
 - The three Task 1 and 2 acceptance sets were re-checked at the final tree: the completed update has no added key, `ownSiteHarvest` is on the internal result only, `own_site_facts: null` is in the anonymise map, both builds exit 0, and the D-9-13 diff exits 0.
 - Task 3's production steps 2 to 4 are NOT done and are listed as open items, not claimed.
+
+## Production checkpoint, database half closed
+
+**2026-11-16.** Joshua ran `supabase/migrations/023_add_scans_own_site_facts.sql` by hand in the
+production Supabase SQL Editor and reported it applied, so `scans.own_site_facts` exists in
+production and the ordering hazard in Task 3 of 09-09-PLAN.md is past: the column is live before
+any scanner deploy.
+
+Still open in that same checkpoint: the scanner has NOT been deployed to Railway, so steps 4, 5 and
+6 are untouched. That means no `/health` check on a new deployment, no end-to-end bulk scan proving
+`own_site_facts is not null`, and no public-scan regression check. ENG-01, ENG-02 and ENG-05 are
+written and tested locally but have never run in production.

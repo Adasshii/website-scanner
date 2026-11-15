@@ -151,3 +151,15 @@ The columns the scoreable predicate reads exist locally and in production (the `
 - FOUND commits `86903e0` and `87cd07a` as ancestors of HEAD; ledger count `bd64b66..87cd07a` is 2.
 - `lib/retention.ts` line 247 updates from `ANONYMIZED_PROSPECT_FIELDS`, so no second column list exists.
 - Not re-measured in this closing dispatch (taken from the previous dispatch's measurements, as stated by the orchestrator): the test counts, the live dry-run output, the local migration proofs and the mutation check.
+
+## Production checkpoint closed
+
+**2026-11-16.** Joshua ran `supabase/migrations/022_add_prospect_coordinates_and_scoreable_marker.sql`
+by hand in the production Supabase SQL Editor and reported both migrations applied. Task 4 of
+09-03-PLAN.md is therefore closed.
+
+Not captured: the backfill baseline `select count(*) from prospects where latitude is null;` that
+step 5 of that checkpoint asks for. No re-import has run since, so the number is still obtainable
+and still means the same thing. It blocks nothing in Phase 9, because ENG-06's location condition
+is already satisfied by existing address text; Phase 10's competitor radius is what wants full
+coordinate coverage.
