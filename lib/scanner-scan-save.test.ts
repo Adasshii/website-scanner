@@ -24,8 +24,8 @@ const REFUSED = {
 
 function fakes(result: () => Promise<DbWriteResult>) {
   const write = vi.fn(result);
-  const markFailed = vi.fn(async (_reason: string) => {});
-  const log = vi.fn((_line: string) => {});
+  const markFailed = vi.fn<(reason: string) => Promise<void>>(async () => {});
+  const log = vi.fn<(line: string) => void>();
   return { write, markFailed, log };
 }
 
@@ -113,10 +113,10 @@ describe("markScanFailed", () => {
   const NOW = () => "2026-11-16T00:00:00.000Z";
 
   it("writes status failed, the reason and the injected timestamp, without logging", async () => {
-    const write = vi.fn(async (_values: { status: "failed"; error_message: string; updated_at: string }) => ({
-      error: null,
-    }));
-    const log = vi.fn((_line: string) => {});
+    const write = vi.fn<
+      (values: { status: "failed"; error_message: string; updated_at: string }) => Promise<DbWriteResult>
+    >(async () => ({ error: null }));
+    const log = vi.fn<(line: string) => void>();
     await markScanFailed("scan-1", "Service timeout", { write, now: NOW, log });
     expect(write).toHaveBeenCalledTimes(1);
     expect(write).toHaveBeenCalledWith({
@@ -129,7 +129,7 @@ describe("markScanFailed", () => {
 
   it("logs one [scan-recovery] line with the full error when the write is refused, and resolves", async () => {
     const write = vi.fn(async () => ({ error: REFUSED }));
-    const log = vi.fn((_line: string) => {});
+    const log = vi.fn<(line: string) => void>();
     await expect(markScanFailed("scan-9", "x", { write, now: NOW, log })).resolves.toBeUndefined();
     expect(log).toHaveBeenCalledTimes(1);
     const line = log.mock.calls[0]![0];
@@ -141,7 +141,7 @@ describe("markScanFailed", () => {
     const write = vi.fn(async () => {
       throw new Error("socket hang up");
     });
-    const log = vi.fn((_line: string) => {});
+    const log = vi.fn<(line: string) => void>();
     await expect(markScanFailed("scan-9", "x", { write, now: NOW, log })).resolves.toBeUndefined();
     expect(log).toHaveBeenCalledTimes(1);
     const line = log.mock.calls[0]![0];
