@@ -367,7 +367,7 @@ export async function scanPage(
     try {
       console.log(`  [scanner] Capturing screenshot...`);
       screenshotBuffer = await page.screenshot({ fullPage: true, type: "jpeg", quality: 80 }) as Buffer;
-      // Viewport-only, low-quality image for Gemini Vision — much smaller payload than the full-page display screenshot
+      // Viewport-only, low-quality image for Claude Vision — much smaller payload than the full-page display screenshot
       designScreenshotBuffer = await page.screenshot({ fullPage: false, type: "jpeg", quality: 50 }) as Buffer;
       overlays = await buildOverlayData(page, issues);
       console.log(`  [scanner] Screenshot captured, ${overlays.length} overlays`);

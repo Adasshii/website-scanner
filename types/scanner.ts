@@ -312,7 +312,7 @@ export interface ScanRow {
   visitor_experience: string | null;
   /** AI-generated sales brief for admin use */
   sales_brief: string | null;
-  /** Cached Gemini Vision design analysis result */
+  /** Cached Claude Vision design analysis result */
   design_ai_analysis: { overallScore: number; issues: string[] } | null;
   /** When the design AI analysis was last generated */
   design_ai_analyzed_at: string | null;
