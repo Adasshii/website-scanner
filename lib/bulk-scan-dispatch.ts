@@ -17,7 +17,7 @@ import {
 } from "@/lib/bulk-scan-constants";
 import { markScanFailed, requeueToQueued, type ClaimedProspect } from "@/lib/scan-queue";
 import { ScannerClient } from "@/lib/scanner-client";
-import { INSTALLERS_PROFILE, toScannerSlice } from "@/lib/niche-profile";
+import { getNicheProfile, toScannerSlice } from "@/lib/niche-profile";
 import {
   scoreableFailureReason,
   type ScoreableRow,
@@ -159,6 +159,7 @@ async function dispatchOne(
   if (insertError) throw insertError;
 
   try {
+    const profile = getNicheProfile("installers");
     const { accepted } = await client.fullScanBulk(validatedUrl, {
       scanId,
       prospectId: prospect.id,
@@ -166,7 +167,7 @@ async function dispatchOne(
       // Phase 9 (D-9-12): the profile slice rides the request, so the Railway
       // scanner reads what a prospect's site publishes inside this scan. Bulk
       // scans only: the public scanner never sends one and does no own-site work.
-      nicheSlice: toScannerSlice(INSTALLERS_PROFILE),
+      nicheSlice: toScannerSlice(profile),
     });
 
     if (accepted) {
