@@ -202,6 +202,11 @@ function pagesOf(count: number, over: Partial<TradeZones>): TradeZones[] {
   return Array.from({ length: count }, () => zones(over));
 }
 
+/** The same shape of page `count` times, each one made DISTINCT by its number (1 to count). */
+function distinctPages(count: number, make: (n: number) => Partial<TradeZones>): TradeZones[] {
+  return Array.from({ length: count }, (_, index) => zones(make(index + 1)));
+}
+
 /** Score of a one-trade slice for one term, so a case reads as zone text in, score out. */
 function scoreOf(over: Partial<TradeZones> | TradeZones[], term: string, match: Term["match"] = "prefix"): number {
   const input = Array.isArray(over) ? over : zones(over);
@@ -257,18 +262,20 @@ describe("detectTrade: zone weights and caps", () => {
 
 describe("detectTrade: aggregation across a 7-page scan", () => {
   it("sums body text across pages, because it differs per page", () => {
-    expect(scoreOf(pagesOf(7, { bodyText: "dakwerk" }), "dak")).toBe(7);
+    // A DISTINCT line per page: an identical line on every page is boilerplate and counts once.
+    expect(scoreOf(distinctPages(7, (n) => ({ bodyText: `dakwerk ${n}` })), "dak")).toBe(7);
   });
 
   it("sums title, h1 and h2/h3 across pages too", () => {
     expect(scoreOf(pagesOf(7, { title: "dakwerk" }), "dak")).toBe(35);
     expect(scoreOf(pagesOf(7, { h1: ["dakwerk"] }), "dak")).toBe(35);
-    expect(scoreOf(pagesOf(7, { h2h3: ["dakwerk"] }), "dak")).toBe(14);
+    expect(scoreOf(distinctPages(7, (n) => ({ h2h3: [`dakwerk ${n}`] })), "dak")).toBe(14);
   });
 
   it("applies the heading and body caps per page, then sums", () => {
-    expect(scoreOf(pagesOf(7, { h2h3: ["dak ".repeat(12)] }), "dak")).toBe(70);
-    expect(scoreOf(pagesOf(7, { bodyText: "dak ".repeat(50) }), "dak")).toBe(70);
+    // Stuffed per page with a DISTINCT tail, so nothing is repeated on every page.
+    expect(scoreOf(distinctPages(7, (n) => ({ h2h3: ["dak ".repeat(12) + n] })), "dak")).toBe(70);
+    expect(scoreOf(distinctPages(7, (n) => ({ bodyText: "dak ".repeat(50) + n })), "dak")).toBe(70);
   });
 
   it("counts a nav that repeats on every page once, not seven times", () => {
@@ -293,8 +300,13 @@ describe("detectTrade: aggregation across a 7-page scan", () => {
   });
 
   it("proves the two rules differ on one scan: the same word counts once in nav and seven times in body", () => {
-    const pages = pagesOf(7, { navTexts: ["Dakwerk"], bodyText: "dakwerk" });
+    const pages = distinctPages(7, (n) => ({ navTexts: ["Dakwerk"], bodyText: `dakwerk ${n}` }));
     expect(scoreOf(pages, "dak")).toBe(3 + 7);
+  });
+
+  it("and now a repeated body line unions too: the same word counts once in nav and once in a body line shared by all seven pages", () => {
+    const pages = pagesOf(7, { navTexts: ["Dakwerk"], bodyText: "dakwerk" });
+    expect(scoreOf(pages, "dak")).toBe(3 + 1);
   });
 
   it("accepts one page or a list of one page and answers the same", () => {

@@ -61,9 +61,26 @@ export const ZONE_HIT_CAPS = {
   body: 10, // tunable default
 } as const;
 
+/**
+ * Hits counted ONCE across the whole scan for text that sits on every page (a
+ * site-wide footer line, a repeated heading). Each union has its own cap, so one
+ * hostile repeated line cannot blow up either.
+ */
+export const BOILERPLATE_HIT_CAPS = {
+  h2h3: 5, // tunable default
+  body: 10, // tunable default
+} as const;
+
 /** Bounds on what one call will read, so a hostile page is bounded work (T-9-16). */
 const MAX_TEXT_CHARS = 20_000; // matches the harvester's body cap
 const MAX_ITEMS_PER_ZONE = 200;
+/**
+ * How many of a page's body lines are considered as boilerplate candidates, which
+ * caps how large either union can grow. It bounds the CANDIDATE set, not the text
+ * read: MAX_TEXT_CHARS already bounds the text, and clipping the candidates
+ * degrades to the old per-page summing rather than dropping real body content.
+ */
+const MAX_BODY_LINES = 200;
 const MAX_PAGES = 50;
 const MAX_TRADES = 50;
 const MAX_TERMS_PER_TRADE = 50;
@@ -90,6 +107,10 @@ interface PreparedSite {
   nav: string[];
   /** Distinct normalised internal link paths across every page. */
   paths: string[];
+  /** Distinct normalised body lines present on every page (two pages or more). */
+  bodyBoilerplate: string[];
+  /** Distinct normalised h2/h3 items present on every page (two pages or more). */
+  h2h3Boilerplate: string[];
 }
 
 /**
@@ -189,29 +210,94 @@ function normaliseItems(items: readonly string[]): string[] {
 }
 
 /**
+ * A page's body as normalised lines. The raw text is sliced to MAX_TEXT_CHARS
+ * FIRST, so that bound is untouched, then split on newlines, each line normalised
+ * so two pages' copies of a footer compare equal, and empty lines dropped.
+ */
+function bodyLines(text: string): string[] {
+  const lines: string[] = [];
+  for (const line of String(text).slice(0, MAX_TEXT_CHARS).split(/\r?\n/)) {
+    const normalised = normaliseText(line);
+    if (normalised !== "") lines.push(normalised);
+  }
+  return lines;
+}
+
+/**
+ * The distinct entries present on EVERY page, in page 0's order so the result is
+ * deterministic. Candidates are the first `candidateCap` entries of page 0. One Set
+ * per other page keeps the work linear. It counts pages, not pages-that-have-content:
+ * a page with nothing in the zone means nothing in that zone is boilerplate.
+ */
+function onEveryPage(perPage: readonly (readonly string[])[], candidateCap: number): string[] {
+  if (perPage.length < 2) return [];
+  const candidates = Array.from(new Set(perPage[0].slice(0, candidateCap)));
+  const others = perPage.slice(1).map((entries) => new Set(entries));
+  return candidates.filter((candidate) => others.every((set) => set.has(candidate)));
+}
+
+/**
+ * Body lines with every boilerplate line taken out, rejoined by single spaces. A
+ * removed line leaves a "." in its place: "." is a word boundary, so deleting a
+ * middle line cannot glue the tail of one line to the head of the next and invent
+ * a phrase match. With nothing removed no "." is added and the join is the same
+ * blob normaliseBounded gives.
+ */
+function bodyWithoutBoilerplate(lines: readonly string[], boilerplate: ReadonlySet<string>): string {
+  return lines.map((line) => (boilerplate.has(line) ? "." : line)).join(" ");
+}
+
+/**
  * Normalises every page once, ahead of the per-trade loop. Nav text and internal
- * link paths are collected as a DISTINCT UNION across pages, while title, h1,
+ * link paths are collected as a DISTINCT UNION across pages, and so is boilerplate:
+ * a body line or an h2/h3 item that sits on EVERY page. Title, h1 and the rest of
  * h2/h3 and body stay per page to be summed. The split is deliberate and is the
  * one part a later reader will be tempted to simplify: the same nav is on every
  * page, so summing it would multiply one keyword by the page count (a nav naming
  * one trade on a 7-page scan would count seven times and bury the real signal),
- * whereas the other four zones genuinely differ from page to page.
+ * and a site-wide footer is the same thing living in bodyText (or in h2h3 when it
+ * carries headings). The unique content of those zones genuinely differs from page
+ * to page; their boilerplate does not. Three rules, none of them optional:
+ *   - EVERY page, never a ratio, so signal that merely happens to repeat (a line on
+ *     2 of 3 pages) is never suppressed.
+ *   - Two pages or more. One page has nothing to repeat against, and a one-pager
+ *     must score exactly as it always did, so it takes the untouched branch.
+ *   - Each union is capped on its own (BOILERPLATE_HIT_CAPS).
  */
 function prepareSite(pages: readonly TradeZones[]): PreparedSite {
   const nav = new Set<string>();
   const paths = new Set<string>();
-  const prepared: PreparedPage[] = [];
   for (const page of pages) {
-    prepared.push({
+    for (const text of normaliseItems(page.navTexts)) nav.add(text);
+    for (const text of normaliseItems(page.internalPaths)) paths.add(text);
+  }
+  const navAndPaths = { nav: Array.from(nav), paths: Array.from(paths) };
+
+  const multi = pages.length >= 2;
+  if (!multi) {
+    // The same expressions as always, not an equivalent rewrite.
+    const prepared = pages.map((page) => ({
       title: normaliseBounded(page.title),
       h1: normaliseItems(page.h1),
       h2h3: normaliseItems(page.h2h3),
       body: normaliseBounded(page.bodyText),
-    });
-    for (const text of normaliseItems(page.navTexts)) nav.add(text);
-    for (const text of normaliseItems(page.internalPaths)) paths.add(text);
+    }));
+    return { pages: prepared, ...navAndPaths, bodyBoilerplate: [], h2h3Boilerplate: [] };
   }
-  return { pages: prepared, nav: Array.from(nav), paths: Array.from(paths) };
+
+  const lines = pages.map((page) => bodyLines(page.bodyText));
+  const headings = pages.map((page) => normaliseItems(page.h2h3));
+  const bodyBoilerplate = onEveryPage(lines, MAX_BODY_LINES);
+  const h2h3Boilerplate = onEveryPage(headings, MAX_ITEMS_PER_ZONE);
+  const bodySet = new Set(bodyBoilerplate);
+  const headingSet = new Set(h2h3Boilerplate);
+  const prepared = pages.map((page, index) => ({
+    title: normaliseBounded(page.title),
+    h1: normaliseItems(page.h1),
+    h2h3: headings[index].filter((heading) => !headingSet.has(heading)),
+    body: bodyWithoutBoilerplate(lines[index], bodySet),
+  }));
+  return { pages: prepared, ...navAndPaths, bodyBoilerplate, h2h3Boilerplate };
 }
 
 function scoreTrade(site: PreparedSite, terms: readonly PreparedTerm[]): number {
@@ -224,6 +310,8 @@ function scoreTrade(site: PreparedSite, terms: readonly PreparedTerm[]): number 
   }
   for (const text of site.nav) score += countHits(text, terms, Infinity) * ZONE_WEIGHTS.nav;
   for (const text of site.paths) score += countHits(text, terms, Infinity) * ZONE_WEIGHTS.path;
+  score += countHitsCapped(site.bodyBoilerplate, terms, BOILERPLATE_HIT_CAPS.body) * ZONE_WEIGHTS.body;
+  score += countHitsCapped(site.h2h3Boilerplate, terms, BOILERPLATE_HIT_CAPS.h2h3) * ZONE_WEIGHTS.h2h3;
   return score;
 }
 
