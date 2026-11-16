@@ -3,12 +3,14 @@
  * returned database error (2026-11-16 production symptom: the scanner logged
  * "[full-scan-async] Completed" but the scans row stayed in a running status,
  * because supabase-js returns DB errors instead of throwing them).
+ * markScanFailed() reads and logs the error from a failed-status write too.
  * Lives in the root Vitest tree like lib/scanner-capacity.test.ts.
  */
 import { describe, expect, it, vi } from "vitest";
 import {
   COMPLETED_SAVE_REASON_MAX,
   formatDbError,
+  markScanFailed,
   saveCompletedScan,
 } from "../scanner-service/src/scan-save";
 
@@ -103,5 +105,46 @@ describe("saveCompletedScan", () => {
     await expect(saveCompletedScan("scan-1", f)).rejects.toBe(boom);
     expect(f.markFailed).not.toHaveBeenCalled();
     expect(f.log).not.toHaveBeenCalled();
+  });
+});
+
+describe("markScanFailed", () => {
+  const NOW = () => "2026-11-16T00:00:00.000Z";
+
+  it("writes status failed, the reason and the injected timestamp, without logging", async () => {
+    const write = vi.fn(async (_values: { status: "failed"; error_message: string; updated_at: string }) => ({
+      error: null,
+    }));
+    const log = vi.fn((_line: string) => {});
+    await markScanFailed("scan-1", "Service timeout", { write, now: NOW, log });
+    expect(write).toHaveBeenCalledTimes(1);
+    expect(write).toHaveBeenCalledWith({
+      status: "failed",
+      error_message: "Service timeout",
+      updated_at: "2026-11-16T00:00:00.000Z",
+    });
+    expect(log).not.toHaveBeenCalled();
+  });
+
+  it("logs one [scan-recovery] line with the full error when the write is refused, and resolves", async () => {
+    const write = vi.fn(async () => ({ error: REFUSED }));
+    const log = vi.fn((_line: string) => {});
+    await expect(markScanFailed("scan-9", "x", { write, now: NOW, log })).resolves.toBeUndefined();
+    expect(log).toHaveBeenCalledTimes(1);
+    const line = log.mock.calls[0]![0];
+    expect(line.startsWith("[scan-recovery] DB update failed for scan-9:")).toBe(true);
+    expect(line).toContain(formatDbError(REFUSED));
+  });
+
+  it("logs one [scan-recovery] line with the thrown message when the write rejects, and never rejects", async () => {
+    const write = vi.fn(async () => {
+      throw new Error("socket hang up");
+    });
+    const log = vi.fn((_line: string) => {});
+    await expect(markScanFailed("scan-9", "x", { write, now: NOW, log })).resolves.toBeUndefined();
+    expect(log).toHaveBeenCalledTimes(1);
+    const line = log.mock.calls[0]![0];
+    expect(line.startsWith("[scan-recovery] DB update failed for scan-9:")).toBe(true);
+    expect(line).toContain("socket hang up");
   });
 });
