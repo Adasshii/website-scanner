@@ -12,6 +12,10 @@ export function createServerClient() {
 
   return createClient(url, key, {
     auth: { persistSession: false },
+    // no-store on every request: Next.js can otherwise serve a database read
+    // from its Data Cache. The Atrium scan-status route kept answering
+    // "running" for completed scans this way (2026-11-16).
+    global: { fetch: (input, init) => fetch(input, { ...init, cache: "no-store" }) },
   });
 }
 
