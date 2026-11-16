@@ -9,7 +9,7 @@
 - JavaScript - Configuration files and build scripts
 
 **Secondary:**
-- SQL - Database migrations and Supabase schema (`supabase/migrations/`, `supabase/schema.sql`)
+- SQL - Database migrations and Supabase schema (`supabase/migrations/`)
 
 ## Runtime
 
@@ -82,8 +82,8 @@
 
 **Database:**
 - Supabase PostgreSQL backend
-- Migrations stored in `supabase/migrations/` (9 files from Mar–Jun 2026)
-- Schema covers: `scans`, `leads`, `email_events` tables with indexes and RLS policies
+- Migrations stored in `supabase/migrations/` (23 files, Mar–Nov 2026)
+- Schema covers: `scans`, `leads`, `email_events`, `prospects`, `prospect_sources`, `outreach_messages`, `suppressions`, `lia_versions`, `legal_regimes`, `send_records` tables with indexes and RLS policies
 
 **Docker:**
 - `scanner-service/Dockerfile` - Multi-layer build using `mcr.microsoft.com/playwright:v1.58.2-noble` base image

@@ -200,7 +200,7 @@ export function OutreachRowPanel({ row, secret, onRefetch }: OutreachRowPanelPro
   const bodyPreviewRef = useRef<HTMLTextAreaElement>(null);
   // Rendered inline with role="alert", replacing the native dialogs these
   // actions used to call — the in-app browser suppresses those silently,
-  // which is exactly what hid the GEMINI_API_KEY config failure behind an
+  // which is exactly what hid the ANTHROPIC_API_KEY config failure behind an
   // apparently-dead Regenerate button. Component unmounts on collapse or
   // when a different row expands (OutreachTable renders this conditionally,
   // keyed per row), so this always starts cleared for a fresh row.

@@ -317,16 +317,9 @@ export const OWN_SITE_ZONE_CORPUS: readonly OwnSiteZoneFixture[] = [
     ],
     expected: { tradeId: null, confidence: "unreadable" },
   },
-];
-
-/**
- * Entries the detector gets wrong today. Not part of the pass or fail corpus:
- * they are here so the gap is visible, with the fix named in the note.
- */
-export const OWN_SITE_ZONE_KNOWN_GAPS: readonly OwnSiteZoneKnownGap[] = [
   {
     id: "central-heating-plurals-only",
-    note: "A boiler company that writes only the plural, 'cv ketels'. The seeded term is the whole phrase 'cv ketel', so the plural does not match, and a person would call this central heating. The fix is a profile edit (match the phrase by prefix), not an engine change, and it belongs to the keyword review.",
+    note: "A boiler company that writes only the plural, 'cv ketels'. A person would call this central heating. Held in the corpus so the prefix match on the phrase 'cv ketel' cannot be quietly reverted to a word match.",
     pages: [
       makeZones({
         title: "Mulder Installatie | CV-ketels",
@@ -337,7 +330,17 @@ export const OWN_SITE_ZONE_KNOWN_GAPS: readonly OwnSiteZoneKnownGap[] = [
         bodyText: "Wij plaatsen cv ketels.",
       }),
     ],
-    shouldBe: "central_heating",
-    currentlyResolvesTo: null,
+    expected: { tradeId: "central_heating", confidence: "clear" },
   },
 ];
+
+/**
+ * Entries the detector gets wrong today. Not part of the pass or fail corpus:
+ * they are here so the gap is visible, with the fix named in the note.
+ *
+ * Empty at present: the one gap the first corpus run found (a boiler company
+ * writing only the plural) was closed by a prefix match on the phrase terms and
+ * moved into OWN_SITE_ZONE_CORPUS. The register stays exported so the next gap
+ * has somewhere to go.
+ */
+export const OWN_SITE_ZONE_KNOWN_GAPS: readonly OwnSiteZoneKnownGap[] = [];

@@ -1,7 +1,7 @@
 // Pure, dependency-free capacity gate for the shared Railway Playwright
 // instance (D-08, SCAN-02, T-04-03). No imports at all — this lets the
 // module be unit-tested from the root Vitest suite (lib/scanner-capacity.
-// test.ts) without pulling scanner-service's Playwright/Gemini dependency
+// test.ts) without pulling scanner-service's Playwright/Anthropic SDK dependency
 // graph into the test run.
 
 // Tunable default — total concurrent full scans the single Railway

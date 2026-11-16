@@ -1,4 +1,3 @@
-import { GoogleGenerativeAI } from "@google/generative-ai";
 import type {
   ScanScores,
   Issue,
@@ -9,12 +8,11 @@ import type {
   QuickWin,
 } from "../../types/scanner";
 import { buildDesignAnalysisPrompt } from "./design-prompt";
-
-let genAI: GoogleGenerativeAI | null = null;
+import { generateContent, hasLlmKey } from "./llm";
 
 // ── Voice directive (Adashi brand voice) ──────────────────────────────
 //
-// Injected at the top of every Gemini prompt that produces user-facing
+// Injected at the top of every Claude prompt that produces user-facing
 // copy. Distilled from Adashi voice-principles.md and writing-rules.md.
 // Update both files in tandem so the brand voice stays coherent.
 
@@ -40,14 +38,6 @@ DO:
 - Reuse the same word when it's the right word. Do not rotate synonyms artificially.
 - Use rhetorical questions sparingly to keep the reader engaged.
 - Share trade-offs honestly when relevant.`;
-
-function getClient(): GoogleGenerativeAI | null {
-  if (!process.env.GEMINI_API_KEY) return null;
-  if (!genAI) {
-    genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-  }
-  return genAI;
-}
 
 // ── Types ─────────────────────────────────────────────────────────────
 
@@ -189,7 +179,7 @@ function classifyIssueEffort(
 /**
  * Generate a comprehensive analysis including executive summary,
  * cost estimate, quick wins, and website personality.
- * Falls back to null if Gemini is unavailable.
+ * Falls back to null if the AI provider is unavailable.
  */
 export async function generateComprehensiveAnalysis(
   domain: string,
@@ -198,8 +188,7 @@ export async function generateComprehensiveAnalysis(
   pages: PageResult[],
   locale: string = "en"
 ): Promise<ComprehensiveAnalysis | null> {
-  const ai = getClient();
-  if (!ai) return null;
+  if (!hasLlmKey()) return null;
 
   try {
     const topIssueList = summary.topIssues
@@ -249,17 +238,13 @@ export async function generateComprehensiveAnalysis(
       ? Math.round(pages.reduce((sum, p) => sum + p.loadTimeMs, 0) / pages.length)
       : 0;
 
-    const model = ai.getGenerativeModel({
-      model: "gemini-2.5-flash",
-      generationConfig: { responseMimeType: "application/json" },
-    });
-
     const languageDirective = locale === "nl"
       ? `LANGUAGE: Respond entirely in natural Dutch (Nederlands). Use clear, direct business Dutch — no jargon, no Anglicisms where a Dutch word fits. All field VALUES in the returned JSON must be in Dutch. JSON keys remain English. Do not translate "Adashi" or other brand names. Numbers and percentages keep their numeric form.\n\n`
       : "";
 
-    const result = await model.generateContent(
-      `${VOICE_DIRECTIVE}
+    const text = await generateContent({
+      json: true,
+      prompt: `${VOICE_DIRECTIVE}
 
 ${languageDirective}You are a senior website strategist writing a report for a business owner. The reader is not technical. Analyze the following website.
 
@@ -323,10 +308,8 @@ Effort data from the actual scan:
 ${effortContext}
 Use the estimatedTime hint as-is. Use the needsDeveloper value as-is.
 
-Return ONLY valid JSON, no other text.`
-    );
-
-    const text = result.response.text().trim();
+Return ONLY valid JSON, no other text.`,
+    });
     const parsed = JSON.parse(text) as ComprehensiveAnalysis;
 
     // Validate the response shape
@@ -566,14 +549,13 @@ export function calculateCostEstimateFallback(
 /**
  * Rewrite issue descriptions and recommendations in plain language.
  * Processes issues in a single batch call for efficiency.
- * Falls back to original descriptions if Gemini is unavailable.
+ * Falls back to original descriptions if the AI provider is unavailable.
  */
 export async function enhanceIssueDescriptions(
   issues: Issue[],
   locale: string = "en"
 ): Promise<Issue[]> {
-  const ai = getClient();
-  if (!ai || issues.length === 0) return issues;
+  if (!hasLlmKey() || issues.length === 0) return issues;
 
   // Enhance more when translating so the lower-priority bucket isn't half-English
   const toEnhance = issues.slice(0, locale === "nl" ? 25 : 15);
@@ -586,11 +568,6 @@ export async function enhanceIssueDescriptions(
       )
       .join("\n\n");
 
-    const model = ai.getGenerativeModel({
-      model: "gemini-2.5-flash",
-      generationConfig: { responseMimeType: "application/json" },
-    });
-
     const languageBlock = locale === "nl"
       ? `LANGUAGE: Rewrite the title, description, and recommendation in natural business Dutch. No Anglicisms where a Dutch word fits. Do not translate code, HTML tags, CSS selectors, file names, brand names, or quoted attribute values — leave them as-is.\n\n`
       : "";
@@ -599,8 +576,9 @@ export async function enhanceIssueDescriptions(
       ? `{"index": <number>, "title": "<short Dutch title>", "description": "<plain Dutch description>", "recommendation": "<plain Dutch recommendation>"}`
       : `{"index": <number>, "description": "<plain language description>", "recommendation": "<plain language recommendation>"}`;
 
-    const result = await model.generateContent(
-      `${VOICE_DIRECTIVE}
+    const text = await generateContent({
+      json: true,
+      prompt: `${VOICE_DIRECTIVE}
 
 ${languageBlock}You are rewriting website audit findings for a small business owner who is NOT technical.
 
@@ -608,10 +586,8 @@ For each issue below, rewrite the description and recommendation in plain langua
 
 ${issueList}
 
-Respond with ONLY a JSON array. Each element must have: ${fieldsForResponse}`
-    );
-
-    const text = result.response.text().trim();
+Respond with ONLY a JSON array. Each element must have: ${fieldsForResponse}`,
+    });
 
     // Parse the JSON response
     const enhanced: Array<{
@@ -654,8 +630,7 @@ export async function generateSalesBrief(
   summary: ScanSummary,
   pages: PageResult[]
 ): Promise<string | null> {
-  const ai = getClient();
-  if (!ai) return null;
+  if (!hasLlmKey()) return null;
 
   try {
     // Extract what we can about the business from page data
@@ -673,10 +648,8 @@ export async function generateSalesBrief(
       .map((i) => `- [${i.severity}] ${i.title}: ${i.description}`)
       .join("\n");
 
-    const model = ai.getGenerativeModel({ model: "gemini-2.5-flash" });
-
-    const result = await model.generateContent(
-      `${VOICE_DIRECTIVE}
+    const text = await generateContent({
+      prompt: `${VOICE_DIRECTIVE}
 
 You are a sales strategist preparing a brief for the Adashi agency owner before a potential client call. Based on the scan results below, write a concise brief.
 
@@ -701,10 +674,8 @@ Include:
 - Talking points for the call: what to lead with, which pain points to reference
 - Project scope estimate: small fix (1-2 days), medium project (1-2 weeks), or full rebuild (4-8 weeks)
 
-Under 300 words. Bullet points, not paragraphs. Direct, specific, no padding.`
-    );
-
-    const text = result.response.text().trim();
+Under 300 words. Bullet points, not paragraphs. Direct, specific, no padding.`,
+    });
     return text || null;
   } catch (error) {
     console.error("[ai] Sales brief generation failed:", error);
@@ -723,8 +694,7 @@ export async function generateWhyItMatters(
   issues: Issue[],
   locale: string = "en"
 ): Promise<Record<string, string>> {
-  const ai = getClient();
-  if (!ai) return {};
+  if (!hasLlmKey()) return {};
 
   // Deduplicate by id
   const unique = Array.from(new Map(issues.map((i) => [i.id, i])).values());
@@ -735,14 +705,13 @@ export async function generateWhyItMatters(
       .map((i, idx) => `${idx + 1}. id="${i.id}" title="${i.title}"`)
       .join("\n");
 
-    const model = ai.getGenerativeModel({ model: "gemini-2.5-flash" });
-
     const languageBlock = locale === "nl"
       ? `LANGUAGE: Write each one-sentence impact in natural business Dutch. No Anglicisms where a Dutch word fits.\n\n`
       : "";
 
-    const result = await model.generateContent(
-      `${VOICE_DIRECTIVE}
+    const text = await generateContent({
+      json: true,
+      prompt: `${VOICE_DIRECTIVE}
 
 ${languageBlock}You are writing plain-language business impact summaries for a website audit report shown to non-technical business owners.
 
@@ -757,10 +726,8 @@ Respond with valid JSON only — an object mapping each issue id to its one-sent
   "perf-lcp-poor": "Slow load times cause more than half of mobile visitors to leave before your page finishes loading."
 }
 
-Return only the JSON object, no other text.`
-    );
-
-    const text = result.response.text().trim();
+Return only the JSON object, no other text.`,
+    });
     const jsonMatch = text.match(/\{[\s\S]*\}/);
     if (!jsonMatch) return {};
     return JSON.parse(jsonMatch[0]) as Record<string, string>;
@@ -812,10 +779,10 @@ export function generateFallbackWebsitePersonality(scores: ScanScores, locale: s
     : `In its current state, the site creates friction for first-time visitors, especially around ${weakest}. The quick wins below make a noticeable difference in how the site is experienced.`;
 }
 
-// ── Design Analysis (Gemini Vision) ──────────────────────────────────
+// ── Design Analysis (Claude Vision) ──────────────────────────────────
 
 /**
- * Analyze a website screenshot using Gemini Vision.
+ * Analyze a website screenshot using Claude Vision.
  * Returns an overall design score (0-100) and up to 4 plain-English issue sentences.
  * Silently returns null on any error or if screenshot URL is unavailable.
  */
@@ -824,8 +791,7 @@ export async function generateDesignAnalysis(
   screenshotUrl: string,
   screenshotBuffer?: Buffer | null
 ): Promise<DesignAnalysis | null> {
-  const ai = getClient();
-  if (!ai) return null;
+  if (!hasLlmKey()) return null;
 
   try {
     let base64: string;
@@ -844,22 +810,11 @@ export async function generateDesignAnalysis(
       mimeType = response.headers.get("content-type") || "image/png";
     }
 
-    const model = ai.getGenerativeModel({
-      model: "gemini-2.5-flash",
-      generationConfig: { responseMimeType: "application/json" },
+    const text = await generateContent({
+      prompt: buildDesignAnalysisPrompt(domain),
+      json: true,
+      image: { base64, mediaType: mimeType },
     });
-
-    const result = await model.generateContent([
-      {
-        inlineData: {
-          mimeType,
-          data: base64,
-        },
-      },
-      buildDesignAnalysisPrompt(domain),
-    ]);
-
-    const text = result.response.text().trim();
     const parsed = JSON.parse(text) as {
       visualHierarchy: number;
       whitespace: number;

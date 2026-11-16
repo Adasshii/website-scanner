@@ -92,14 +92,13 @@ describe("google content guard (ENG-07, D-9-R4)", () => {
     }
   });
 
-  it("no migration and no schema.sql declares a column named after a field Google returns", () => {
+  it("no migration declares a column named after a field Google returns", () => {
     const migrationDir = "supabase/migrations";
     expect(existsSync(path.join(process.cwd(), migrationDir)), `missing dir: ${migrationDir}`).toBe(true);
     const sqlFiles = [
       ...readdirSync(path.join(process.cwd(), migrationDir))
         .filter((entry) => entry.endsWith(".sql"))
         .map((entry) => path.posix.join(migrationDir, entry)),
-      "supabase/schema.sql",
     ];
     expect(sqlFiles.length, "scanned zero SQL files").toBeGreaterThan(1);
     for (const file of sqlFiles) {

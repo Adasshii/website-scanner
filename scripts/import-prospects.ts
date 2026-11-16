@@ -20,7 +20,7 @@
 import { parseArgs } from "node:util";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { queryOverturePlaces, type OvertureQueryParams } from "@/lib/overture-client";
-import { INSTALLERS_PROFILE } from "@/lib/niche-profile";
+import { getNicheProfile } from "@/lib/niche-profile";
 import { upsertOverturePlace } from "@/lib/prospect-upsert";
 import { refreshScoreability, type ScoreabilityRefreshResult } from "@/lib/scoreability-refresh";
 import { createServerClient } from "@/lib/supabase";
@@ -111,13 +111,14 @@ export function parseImportArgs(argv: string[], random: () => number = Math.rand
     if (region === RANDOM_VALUE || category === RANDOM_VALUE) {
       // The profile's lists describe its own country only. A random region for
       // another country would fail later in resolveBbox, so refuse here.
-      if (region === RANDOM_VALUE && country.toUpperCase() !== INSTALLERS_PROFILE.country) {
+      const profile = getNicheProfile("installers");
+      if (region === RANDOM_VALUE && country.toUpperCase() !== profile.country) {
         throw new ImportArgsError(
-          `${USAGE}\n\n--region=random samples ${INSTALLERS_PROFILE.country} regions only, got --country=${country}`
+          `${USAGE}\n\n--region=random samples ${profile.country} regions only, got --country=${country}`
         );
       }
-      if (region === RANDOM_VALUE) region = pickFrom(INSTALLERS_PROFILE.regions, random);
-      if (category === RANDOM_VALUE) category = pickFrom(INSTALLERS_PROFILE.overtureCategories, random);
+      if (region === RANDOM_VALUE) region = pickFrom(profile.regions, random);
+      if (category === RANDOM_VALUE) category = pickFrom(profile.overtureCategories, random);
     }
 
     return {

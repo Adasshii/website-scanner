@@ -9,8 +9,8 @@
     "postinstall": "npx playwright install chromium"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^1.8.0",
     "@axe-core/playwright": "^4.10.0",
-    "@google/generative-ai": "^0.24.1",
     "@supabase/supabase-js": "^2.99.3",
     "axe-core": "^4.10.0",
     "chrome-launcher": "^1.2.1",

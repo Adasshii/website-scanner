@@ -1,30 +1,47 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
 import {
   generateDraft,
-  defaultGeminiGenerate,
+  defaultLlmGenerate,
   buildReportUrl,
   type DraftInput,
 } from "@/lib/draft-generator";
 import { ARTICLE_14_NOTICE_EN, ARTICLE_14_NOTICE_NL, buildDraftSubject } from "@/lib/draft-prompt";
 import type { ScanScores, ScanSummary, PageResult, PageData } from "@/types/scanner";
 
-// Controllable per-test — configured via mockGetGenerativeModel.mockReturnValueOnce(...)
-// in each defaultGeminiGenerate test below. vi.hoisted so it exists before the
-// hoisted vi.mock factory runs.
-const { mockGetGenerativeModel } = vi.hoisted(() => ({
-  mockGetGenerativeModel: vi.fn(),
-}));
-vi.mock("@google/generative-ai", () => ({
-  GoogleGenerativeAI: class {
-    getGenerativeModel = mockGetGenerativeModel;
-  },
-}));
+// Controllable per-test — configured via mockCreate.mockResolvedValueOnce(...)
+// (or mockRejectedValue / a never-resolving promise) in each defaultLlmGenerate
+// test below. vi.hoisted so it exists before the hoisted vi.mock factory runs.
+// The APIError / RateLimitError statics are here because defaultLlmGenerate
+// classifies thrown errors with instanceof, never by message text.
+const { mockCreate, MockAPIError, MockRateLimitError } = vi.hoisted(() => {
+  class MockAPIError extends Error {
+    status: number;
+    constructor(status: number, message: string) {
+      super(message);
+      this.status = status;
+    }
+  }
+  class MockRateLimitError extends MockAPIError {
+    constructor(message: string) {
+      super(429, message);
+    }
+  }
+  return { mockCreate: vi.fn(), MockAPIError, MockRateLimitError };
+});
+vi.mock("@anthropic-ai/sdk", () => {
+  class MockAnthropic {
+    static APIError = MockAPIError;
+    static RateLimitError = MockRateLimitError;
+    beta = { messages: { create: mockCreate } };
+  }
+  return { default: MockAnthropic };
+});
 
 // ── Fixture helpers ─────────────────────────────────────────────────────
 // Style mirrors lib/draft-metric-selector.test.ts / lib/contact-extraction.test.ts:
 // plain describe/it/expect, no mocking framework beyond a console.error spy,
 // base*(overrides) builders. Every test injects deps.generate — none ever
-// construct the real Gemini client or read GEMINI_API_KEY.
+// construct the real Claude client or read ANTHROPIC_API_KEY.
 
 function baseScores(overrides: Partial<ScanScores> = {}): ScanScores {
   return {
@@ -233,52 +250,101 @@ describe("generateDraft", () => {
     expect(result!.subject).toBe(buildDraftSubject("praktijkjansen.nl", "nl"));
   });
 
-  it("runs with no network access and no GEMINI_API_KEY present in the environment", () => {
-    expect(process.env.GEMINI_API_KEY).toBeUndefined();
+  it("runs with no network access and no ANTHROPIC_API_KEY present in the environment", () => {
+    expect(process.env.ANTHROPIC_API_KEY).toBeUndefined();
   });
 });
 
-// ── defaultGeminiGenerate: the three failure shapes must be distinguishable ──
-// (2026-07-28 fix) — the DraftDeps.generate seam bypasses this function
-// entirely (every test above injects its own `generate`), so this is the
-// only way to unit-test its no-key / thrown / timeout log lines directly.
-describe("defaultGeminiGenerate", () => {
+// ── defaultLlmGenerate: the four failure shapes must be distinguishable ──
+// (2026-07-28 fix, refusal branch added with the Claude move) — the
+// DraftDeps.generate seam bypasses this function entirely (every test above
+// injects its own `generate`), so this is the only way to unit-test its
+// no-key / thrown / timeout / refusal log lines directly.
+describe("defaultLlmGenerate", () => {
   afterEach(() => {
-    delete process.env.GEMINI_API_KEY;
+    delete process.env.ANTHROPIC_API_KEY;
     vi.useRealTimers();
     vi.restoreAllMocks();
+    mockCreate.mockReset();
   });
 
   it("logs the missing-key reason specifically and returns null, without calling the SDK", async () => {
     const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
-    const result = await defaultGeminiGenerate("prompt");
+    const result = await defaultLlmGenerate("prompt");
     expect(result).toBeNull();
-    expect(mockGetGenerativeModel).not.toHaveBeenCalled();
-    expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining("GEMINI_API_KEY is not set"));
+    expect(mockCreate).not.toHaveBeenCalled();
+    expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining("ANTHROPIC_API_KEY is not set"));
   });
 
   it("logs the thrown error's message (not silently swallowed) and returns null", async () => {
-    process.env.GEMINI_API_KEY = "test-key-not-a-real-secret";
+    process.env.ANTHROPIC_API_KEY = "test-key-not-a-real-secret";
     const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
-    mockGetGenerativeModel.mockReturnValueOnce({
-      generateContent: vi.fn().mockRejectedValue(new Error("quota exceeded")),
-    });
-    const result = await defaultGeminiGenerate("prompt");
+    mockCreate.mockRejectedValueOnce(new Error("quota exceeded"));
+    const result = await defaultLlmGenerate("prompt");
     expect(result).toBeNull();
-    expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining("Gemini call threw: quota exceeded"));
+    expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining("Claude call threw: quota exceeded"));
+  });
+
+  it("classifies a typed rate-limit error by instanceof and still returns null", async () => {
+    process.env.ANTHROPIC_API_KEY = "test-key-not-a-real-secret";
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    mockCreate.mockRejectedValueOnce(new MockRateLimitError("slow down"));
+    const result = await defaultLlmGenerate("prompt");
+    expect(result).toBeNull();
+    expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining("(rate limited): slow down"));
   });
 
   it("logs that it timed out, and after how long, when the call never resolves", async () => {
-    process.env.GEMINI_API_KEY = "test-key-not-a-real-secret";
+    process.env.ANTHROPIC_API_KEY = "test-key-not-a-real-secret";
     vi.useFakeTimers();
     const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
-    mockGetGenerativeModel.mockReturnValueOnce({
-      generateContent: vi.fn().mockReturnValue(new Promise(() => {})), // never resolves
-    });
-    const pending = defaultGeminiGenerate("prompt");
+    mockCreate.mockReturnValueOnce(new Promise(() => {})); // never resolves
+    const pending = defaultLlmGenerate("prompt");
     await vi.advanceTimersByTimeAsync(45000);
     const result = await pending;
     expect(result).toBeNull();
     expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining("timed out after 45000ms"));
+  });
+
+  it("logs a distinct refusal line, never the empty-content or threw line, and returns null", async () => {
+    process.env.ANTHROPIC_API_KEY = "test-key-not-a-real-secret";
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    mockCreate.mockResolvedValueOnce({ stop_reason: "refusal", content: [] });
+    const result = await defaultLlmGenerate("prompt");
+    expect(result).toBeNull();
+    const lines = errorSpy.mock.calls.map((c) => String(c[0]));
+    const draftLine = lines.find((l) => l.startsWith("[draft]"));
+    expect(draftLine).toContain("refused");
+    expect(draftLine).not.toContain("threw");
+    expect(draftLine).not.toContain("timed out");
+    expect(draftLine).not.toContain("empty");
+  });
+
+  it("returns the text block's text when a thinking block comes first (never indexes block 0)", async () => {
+    process.env.ANTHROPIC_API_KEY = "test-key-not-a-real-secret";
+    mockCreate.mockResolvedValueOnce({
+      stop_reason: "end_turn",
+      content: [
+        { type: "thinking", thinking: "considering the pitch", signature: "sig" },
+        { type: "text", text: "  SUBJECT: Hi\nBODY: Hello there  " },
+      ],
+    });
+    const result = await defaultLlmGenerate("prompt");
+    expect(result).toBe("SUBJECT: Hi\nBODY: Hello there");
+  });
+
+  it("sends one user message with the pinned model and effort and none of the rejected parameters", async () => {
+    process.env.ANTHROPIC_API_KEY = "test-key-not-a-real-secret";
+    mockCreate.mockResolvedValueOnce({ stop_reason: "end_turn", content: [{ type: "text", text: "ok" }] });
+    await defaultLlmGenerate("write the draft");
+    const args = mockCreate.mock.calls[0][0];
+    expect(args.model).toBe("claude-sonnet-5-5");
+    expect(args.output_config).toEqual({ effort: "medium" });
+    expect(args.messages).toEqual([
+      { role: "user", content: [{ type: "text", text: "write the draft" }] },
+    ]);
+    for (const banned of ["temperature", "top_p", "top_k", "thinking"]) {
+      expect(args).not.toHaveProperty(banned);
+    }
   });
 });

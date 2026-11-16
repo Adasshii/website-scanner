@@ -1,7 +1,7 @@
 // Pure, dependency-free design-analysis prompt builder. No imports at all —
 // this lets the module be unit-tested from the root Vitest suite
 // (lib/scanner-design-prompt.test.ts) without pulling scanner-service's
-// Gemini dependency graph into the test run (same rationale as capacity.ts).
+// Anthropic SDK dependency graph into the test run (same rationale as capacity.ts).
 //
 // CMP-17 / D-13: this prompt is shared by the public scanner and by bulk
 // prospect scans (D-11 keeps a single scan path), so the no-profiling
