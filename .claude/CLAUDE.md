@@ -106,8 +106,8 @@ a drafted message he is willing to send.
 - `tsconfig.json` - TypeScript compiler options (strict mode, path aliases `@/*`)
 - `scanner-service/railway.toml` - Railway deployment config, Docker build setup, health check configuration
 - Supabase PostgreSQL backend
-- Migrations stored in `supabase/migrations/` (9 files from Mar–Jun 2026)
-- Schema covers: `scans`, `leads`, `email_events` tables with indexes and RLS policies
+- Migrations stored in `supabase/migrations/` (23 files, Mar–Nov 2026)
+- Schema covers: `scans`, `leads`, `email_events`, `prospects`, `prospect_sources`, `outreach_messages`, `suppressions`, `lia_versions`, `legal_regimes`, `send_records` tables with indexes and RLS policies
 - `scanner-service/Dockerfile` - Multi-layer build using `mcr.microsoft.com/playwright:v1.58.2-noble` base image
 
 ## Platform Requirements
