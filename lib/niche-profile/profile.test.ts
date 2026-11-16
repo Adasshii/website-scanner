@@ -344,7 +344,7 @@ describe("categories, regions and competitor rules (D-9-11, D-9-23)", () => {
 describe("copy (D-9-10)", () => {
   it("both locales carry a money line template with an amount placeholder", () => {
     for (const locale of INSTALLERS_PROFILE.locales) {
-      expect(INSTALLERS_PROFILE.copy[locale].moneyLine, locale).toContain("{amount}");
+      expect(INSTALLERS_PROFILE.copy[locale].moneyLine.line, locale).toContain("{amount}");
     }
   });
 
@@ -379,6 +379,128 @@ describe("copy (D-9-10)", () => {
       asSortedLine(Object.keys(INSTALLERS_PROFILE.copy.en.adashiFixes))
     );
     expect(Object.keys(INSTALLERS_PROFILE.copy.nl.adashiFixes).length).toBeGreaterThan(0);
+  });
+});
+
+describe("copy: the approved report document carried whole (D-9-10)", () => {
+  const nl = INSTALLERS_PROFILE.copy.nl;
+  const en = INSTALLERS_PROFILE.copy.en;
+
+  /** Every key path in a value, array indices written as `[]`. */
+  const keyPaths = (value: unknown, prefix = ""): string[] => {
+    if (Array.isArray(value)) return value.flatMap((item) => keyPaths(item, `${prefix}[]`));
+    if (value !== null && typeof value === "object") {
+      return Object.entries(value).flatMap(([key, child]) => {
+        const path = prefix === "" ? key : `${prefix}.${key}`;
+        const below = keyPaths(child, path);
+        return below.length === 0 ? [path] : below;
+      });
+    }
+    return [prefix];
+  };
+
+  /** Every brace token in every string of a value. */
+  const placeholders = (value: unknown, into: Set<string>): Set<string> => {
+    if (typeof value === "string") {
+      for (const match of Array.from(value.matchAll(/\{([A-Za-z_]+)\}/g))) into.add(match[1]);
+    } else if (Array.isArray(value)) {
+      for (const item of value) placeholders(item, into);
+    } else if (value !== null && typeof value === "object") {
+      for (const child of Object.values(value)) placeholders(child, into);
+    }
+    return into;
+  };
+
+  it("both locales carry the same deep key set", () => {
+    expect(keyPaths(nl).sort()).toEqual(keyPaths(en).sort());
+    expect(keyPaths(nl).length).toBeGreaterThan(40);
+  });
+
+  it("each locale's placeholder set equals the approved set, nothing invented and nothing dropped", () => {
+    const shared = [
+      "score",
+      "gap",
+      "count",
+      "withProof",
+      "withData",
+      "rank",
+      "seconds",
+      "citation",
+      "date",
+      "question",
+      "hits",
+      "others",
+      "amount",
+      "source",
+      "n",
+      "counsel_wording",
+    ];
+    expect(Array.from(placeholders(nl, new Set())).sort()).toEqual([...shared, "bedrijf", "plaats"].sort());
+    expect(Array.from(placeholders(en, new Set())).sort()).toEqual([...shared, "business", "city"].sort());
+  });
+
+  it("each section carries its own placeholders", () => {
+    for (const [locale, copy] of [["nl", nl], ["en", en]] as const) {
+      const name = locale === "nl" ? "{bedrijf}" : "{business}";
+      expect(copy.header.eyebrow, locale).toContain(locale === "nl" ? "{plaats}" : "{city}");
+      expect(copy.header.eyebrow, locale).toContain(name);
+      expect(copy.header.scoreLine, locale).toContain("{score}");
+      expect(copy.header.scoreLine, locale).toContain("{gap}");
+      expect(copy.competitors.frame, locale).toContain("{count}");
+      for (const token of ["{count}", "{withProof}", "{withData}", "{rank}"]) {
+        expect(copy.competitors.standing, locale).toContain(token);
+      }
+      expect(copy.websiteOnPhone.loadTimeLine, locale).toContain("{seconds}");
+      expect(copy.websiteOnPhone.citationLine, locale).toContain("{citation}");
+      expect(copy.aiVisibility.frame, locale).toContain("{date}");
+      expect(copy.aiVisibility.perQuestionLine, locale).toContain("{question}");
+      expect(copy.aiVisibility.perQuestionLine, locale).toContain("{hits}");
+      expect(copy.aiVisibility.othersNamedLine, locale).toContain("{others}");
+      expect(copy.moneyLine.provenance, locale).toContain("{source}");
+      expect(copy.moneyLine.provenance, locale).toContain("{date}");
+      expect(copy.footer.provenance, locale).toContain(name);
+      expect(copy.footer.provenance, locale).toContain("{date}");
+      expect(copy.footer.article14, locale).toContain("{counsel_wording}");
+    }
+  });
+
+  it("Article 14 keeps the placeholder and no legal sentence of its own (counsel's wording is a named gap)", () => {
+    expect(nl.footer.article14).toBe("Juridische tekst volgens artikel 14 AVG: {counsel_wording}");
+    expect(en.footer.article14).toBe("Article 14 GDPR wording: {counsel_wording}");
+  });
+
+  it("adashiFixes has exactly the five keys in both locales, each non-empty", () => {
+    const keys = ["aiVisibility", "businessFacts", "quoteRequest", "socialProof", "websiteOnPhone"];
+    for (const [locale, copy] of [["nl", nl], ["en", en]] as const) {
+      expect(Object.keys(copy.adashiFixes).sort(), locale).toEqual(keys);
+      for (const key of keys) {
+        expect(copy.adashiFixes[key as keyof typeof copy.adashiFixes].length, `${locale}.${key}`).toBeGreaterThan(0);
+      }
+    }
+  });
+
+  it("tips is an empty record in both locales: the five to-do item texts are not written yet (D-9-24)", () => {
+    expect(nl.tips).toEqual({});
+    expect(en.tips).toEqual({});
+  });
+
+  it("the five values that predate the document keep their bytes", () => {
+    expect(nl.moneyLine.line).toBe("Eén extra klus is ongeveer {amount} euro waard.");
+    expect(en.moneyLine.line).toBe("One extra job is worth about {amount} euros.");
+    expect(nl.socialProof.noneHereOthersDo).toBe(
+      "{count} installateurs bij jou in de buurt tonen hun reviews op hun eigen site. Jij niet."
+    );
+    expect(en.adashiFixes.quoteRequest).toBe(
+      "Adashi puts a quote form and a tap-to-call number where a customer looks for them."
+    );
+  });
+
+  it("the money line never promises a payback and no copy string carries an em-dash", () => {
+    for (const copy of [nl, en]) {
+      expect(JSON.stringify(copy)).not.toContain("\u2014");
+    }
+    expect(JSON.stringify(nl.moneyLine)).not.toContain("betaalt zich terug");
+    expect(JSON.stringify(en.moneyLine)).not.toContain("pays for itself");
   });
 });
 

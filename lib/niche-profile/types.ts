@@ -112,14 +112,148 @@ export interface SocialProofCopy {
   visibleAndReadable: string;
 }
 
-/** Report copy the profile owns (D-9-10). The public scanner's own UI copy stays in messages/*.json. */
+/** The report header: eyebrow above the heading, the score line and the intro under it. */
+export interface HeaderCopy {
+  /** `{bedrijf}` and `{plaats}` in Dutch, `{business}` and `{city}` in English. */
+  eyebrow: string;
+  heading: string;
+  /** `{score}` and `{gap}`. */
+  scoreLine: string;
+  intro: string;
+}
+
+/** Why a cold-email recipient is reading a page about their own company. */
+export interface WhyYouGotThisCopy {
+  heading: string;
+  /** Two paragraphs in print order. A tuple, so the second cannot go missing. */
+  body: readonly [string, string];
+}
+
+export interface BusinessFactsCopy {
+  heading: string;
+  frame: string;
+  foundLabel: string;
+  notFoundLabel: string;
+}
+
+/**
+ * Competitors are described and never named (REP-05, settled decision 2).
+ * No field here holds a name; `{count}` and the others are numbers filled by code.
+ */
+export interface CompetitorsCopy {
+  heading: string;
+  /** States the no-names rule in the copy itself. `{count}`. */
+  frame: string;
+  /** `{count}`, `{withProof}`, `{withData}` and `{rank}`. */
+  standing: string;
+}
+
+export interface WebsiteOnPhoneCopy {
+  heading: string;
+  frame: string;
+  /** Label and value joined, `{seconds}`. */
+  loadTimeLine: string;
+  /** Label and value joined, `{citation}`. A citation is required, never our own assertion. */
+  citationLine: string;
+}
+
+export interface QuoteRequestCopy {
+  heading: string;
+  frame: string;
+  checklist: {
+    quoteForm: string;
+    clickToCall: string;
+    projectPhotos: string;
+    certifications: string;
+  };
+}
+
+/**
+ * AI visibility reads as a frequency band, never as a score (AIV-04).
+ * Other installers are counted and never named (REP-05).
+ */
+export interface AiVisibilityCopy {
+  heading: string;
+  /** `{date}`. */
+  frame: string;
+  /** `{question}` and `{hits}`. */
+  perQuestionLine: string;
+  /** `{others}`. A count, never a name (REP-05, settled decision 2). */
+  othersNamedLine: string;
+}
+
+/**
+ * The money-line template (D-9-21). It prints only for a trade whose
+ * `showMoneyLine` is true, so central heating prints nothing. The copy carries
+ * no price: no starting figure is anchored before the call (settled decision 3).
+ */
+export interface MoneyLineCopy {
+  /** `{amount}`. */
+  line: string;
+  /** `{source}` and `{date}`. */
+  provenance: string;
+  followUp: string;
+}
+
+export interface TodoCopy {
+  heading: string;
+  ordering: string;
+}
+
+export interface AskCopy {
+  heading: string;
+  body: string;
+  buttonLabel: string;
+}
+
+/** The footer: provenance, the one-step opt-out, and the Article 14 slot. */
+export interface FooterCopy {
+  /** `{bedrijf}` in Dutch, `{business}` in English, and `{date}`. */
+  provenance: string;
+  /** The opt-out has to be fast, free and one step (project legal constraint). */
+  optOut: string;
+  optOutLinkLabel: string;
+  /** Label plus `{counsel_wording}`. No legal sentence exists yet, so the placeholder stays. */
+  article14: string;
+}
+
+/** The report sections that carry an "Adashi fixes this" line. */
+export type AdashiFixSection =
+  | "businessFacts"
+  | "socialProof"
+  | "websiteOnPhone"
+  | "quoteRequest"
+  | "aiVisibility";
+
+/**
+ * Report copy the profile owns (D-9-10). The public scanner's own UI copy stays in messages/*.json.
+ *
+ * One field per report section, in the order of docs/report-copy.md, which is
+ * the approved source. Phase 12 owns the report and may reshape these fields;
+ * the names follow the document's sections so the mapping stays readable.
+ */
 export interface ProfileCopy {
-  /** Money-line template with a `{amount}` placeholder. */
-  moneyLine: string;
-  /** "Adashi fixes this" line, keyed by report section id. */
-  adashiFixes: Readonly<Record<string, string>>;
+  header: HeaderCopy;
+  whyYouGotThis: WhyYouGotThisCopy;
+  businessFacts: BusinessFactsCopy;
   /** The social-proof section, one required string per state. */
   socialProof: SocialProofCopy;
+  competitors: CompetitorsCopy;
+  websiteOnPhone: WebsiteOnPhoneCopy;
+  quoteRequest: QuoteRequestCopy;
+  aiVisibility: AiVisibilityCopy;
+  moneyLine: MoneyLineCopy;
+  todo: TodoCopy;
+  ask: AskCopy;
+  footer: FooterCopy;
+  /** "Adashi fixes this" line, one required key per section that carries one. */
+  adashiFixes: Readonly<Record<AdashiFixSection, string>>;
+  /**
+   * The to-do item texts (D-9-10). Empty today: the approved document gives the
+   * to-do heading and its ordering line, not the five items. An empty field is
+   * the honest state, the same call D-9-24 made for `aiQuestions`.
+   */
+  tips: Readonly<Partial<Record<AdashiFixSection, string>>>;
 }
 
 export interface TradeProfile {
