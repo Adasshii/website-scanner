@@ -89,6 +89,8 @@ export const INSTALLERS_COPY: Record<ProfileLocale, ProfileCopy> = {
     },
     // Report section 8: a frequency band, never a score (AIV-04).
     aiVisibility: {
+      // Joshua overruled the plan rule here on 2026-11-16: the heading may name
+      // ChatGPT. See docs/report-copy.md section 8. Do not "correct" it.
       heading: "Noemt ChatGPT jouw bedrijf?",
       frame:
         "Steeds meer mensen vragen een AI-assistent om een aanbeveling in plaats van te zoeken. We hebben drie vragen gesteld die jouw klanten ook stellen, elk vijf keer, op {date}.",
@@ -209,6 +211,8 @@ export const INSTALLERS_COPY: Record<ProfileLocale, ProfileCopy> = {
       },
     },
     aiVisibility: {
+      // Joshua overruled the plan rule here on 2026-11-16: the heading may name
+      // ChatGPT. See docs/report-copy.md section 8. Do not "correct" it.
       heading: "Does ChatGPT name your business?",
       frame:
         "More people ask an AI assistant for a recommendation instead of searching. We asked three questions your customers also ask, five times each, on {date}.",

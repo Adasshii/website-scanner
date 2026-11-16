@@ -146,7 +146,7 @@ question at temperature 0 against a pinned model version; store the prompt, the 
 every raw response; report a band ("named in 1 of 5 runs"), never a single score. **Check 6
 carries 0% of the total score until 50 scans show it is stable.** It is shown as evidence only.
 This needs the OpenAI API, a genuinely new vendor: the codebase uses Gemini only
-(`scanner-service/src/ai.ts`). Say "an AI assistant", not "ChatGPT", in anything a prospect reads.
+(`scanner-service/src/ai.ts`). Say "an AI assistant", not "ChatGPT", in anything a prospect reads. **Overridden for the report heading only, by Joshua on 2026-11-16**: that one line may name ChatGPT. See `docs/report-copy.md` section 8 for the reasoning. The rule stands everywhere else.
 
 After the six checks, the AI writes a **to-do list of 5 actions**, each linked to an Adashi
 service. **Every number in that list is chosen by code, never by the model** (the DRA-02 rule

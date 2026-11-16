@@ -180,6 +180,8 @@ A customer who wants a quote wants it now. Outside working hours there is nobody
 
 Reads as a frequency band, never as a score. That is requirement AIV-04.
 
+**The heading names ChatGPT, and that is a deliberate override.** The v2 plan says to write "an AI assistant" and never "ChatGPT" in anything a prospect reads, because we probe one model and naming it implies more than we measure. Joshua overruled that for the heading on 2026-11-16. The heading names what an owner recognises; the frame sentence directly under it says "AI-assistent" and states exactly what was done, three questions, five runs, on a date. So the hook is concrete and the claim stays bounded. The rule still holds everywhere else in the report.
+
 **NL**
 
 Kop: **Noemt ChatGPT jouw bedrijf?**
