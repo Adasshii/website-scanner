@@ -4,7 +4,7 @@ import helmet from "helmet";
 import cors from "cors";
 import { createClient } from "@supabase/supabase-js";
 import { authMiddleware } from "./middleware/auth";
-import { scanPage, closeBrowser } from "./scanner";
+import { scanPage, closeBrowser, withBrowser } from "./scanner";
 import type { ScanPageResultWithScreenshot } from "./scanner";
 import { discoverPages } from "./discovery";
 import {
@@ -220,7 +220,7 @@ app.post("/api/scan/quick", async (req, res) => {
 
   try {
     console.log(`[quick-scan] Starting: ${url}`);
-    const { result, screenshotBuffer, designScreenshotBuffer, overlays } = await scanPage({ url });
+    const { result, screenshotBuffer, designScreenshotBuffer, overlays } = await withBrowser(() => scanPage({ url }));
     console.log(`[quick-scan] Done: ${url} — score ${result.scores.overall}`);
 
     const summary = buildSummary([result]);
@@ -365,18 +365,21 @@ app.post("/api/scan/full", async (req, res) => {
 
   try {
     console.log(`[full-scan] Discovering pages: ${url} (max ${pageLimit})`);
-    const pageUrls = await discoverPages({
-      startUrl: url,
-      maxPages: pageLimit,
-    });
-    console.log(`[full-scan] Found ${pageUrls.length} pages`);
+    // Chrome stays open for the discovery and every page, then closes.
+    const scanResults = await withBrowser(async () => {
+      const pageUrls = await discoverPages({
+        startUrl: url,
+        maxPages: pageLimit,
+      });
+      console.log(`[full-scan] Found ${pageUrls.length} pages`);
 
-    const scanResults: ScanPageResultWithScreenshot[] = [];
-    for (const pageUrl of pageUrls) {
-      console.log(`[full-scan] Scanning: ${pageUrl}`);
-      const scanResult = await scanPage({ url: pageUrl });
-      scanResults.push(scanResult);
-    }
+      const pages: ScanPageResultWithScreenshot[] = [];
+      for (const pageUrl of pageUrls) {
+        console.log(`[full-scan] Scanning: ${pageUrl}`);
+        pages.push(await scanPage({ url: pageUrl }));
+      }
+      return pages;
+    });
 
     const results = scanResults.map((s) => s.result);
     const scores = aggregateScores(results);
@@ -461,15 +464,18 @@ app.post("/api/scan/full-async", async (req, res) => {
   try {
     console.log(`[full-scan-async] Starting: ${url} (scan ${scanId}, max ${pageLimit} pages)`);
 
-    const pageUrls = await discoverPages({ startUrl: url, maxPages: pageLimit, userAgent });
-    console.log(`[full-scan-async] Discovered ${pageUrls.length} pages`);
+    // Chrome stays open for the discovery and every page, then closes.
+    const scanResults = await withBrowser(async () => {
+      const pageUrls = await discoverPages({ startUrl: url, maxPages: pageLimit, userAgent });
+      console.log(`[full-scan-async] Discovered ${pageUrls.length} pages`);
 
-    const scanResults: ScanPageResultWithScreenshot[] = [];
-    for (const pageUrl of pageUrls) {
-      console.log(`[full-scan-async] Scanning: ${pageUrl}`);
-      const scanResult = await scanPage({ url: pageUrl, userAgent, nicheSlice: nicheSlice ?? undefined });
-      scanResults.push(scanResult);
-    }
+      const pages: ScanPageResultWithScreenshot[] = [];
+      for (const pageUrl of pageUrls) {
+        console.log(`[full-scan-async] Scanning: ${pageUrl}`);
+        pages.push(await scanPage({ url: pageUrl, userAgent, nicheSlice: nicheSlice ?? undefined }));
+      }
+      return pages;
+    });
 
     const results = scanResults.map((s) => s.result);
     const scores = aggregateScores(results);

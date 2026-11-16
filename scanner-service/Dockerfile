@@ -1,5 +1,14 @@
 FROM mcr.microsoft.com/playwright:v1.58.2-noble
 
+# tini runs as PID 1 and reaps the Chrome child processes that exit after each
+# scan. Without it, node is PID 1 and never reaps them: a local test left 33
+# zombie Chrome processes after 3 quick scans, and after ~3 months on Railway
+# (2026-11-14) the process table was full and every Chrome launch died with
+# SIGTRAP. Playwright's Docker docs ask for an init process for this reason.
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends tini \
+  && rm -rf /var/lib/apt/lists/*
+
 WORKDIR /app
 
 # Copy shared types first
@@ -26,4 +35,5 @@ COPY scanner-service/ .
 RUN npm run build
 
 EXPOSE 3001
+ENTRYPOINT ["/usr/bin/tini", "--"]
 CMD ["node", "dist/scanner-service/src/index.js"]

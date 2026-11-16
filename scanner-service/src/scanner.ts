@@ -1,4 +1,5 @@
 import { chromium, Browser, Page } from "playwright";
+import { createBrowserLease } from "./browser-lease";
 import AxeBuilder from "@axe-core/playwright";
 import { extractPageData } from "./extractor";
 import { analyzeIssues } from "./analyzer";
@@ -12,7 +13,17 @@ import { scorePage } from "./scoring";
 import { runLighthouse } from "./lighthouse";
 import { checkMobileUsability } from "./mobile";
 
-let browser: Browser | null = null;
+// Chrome lives only while a scan holds a lease (see browser-lease.ts).
+const browserLease = createBrowserLease<Browser>(() =>
+  chromium.launch({
+    args: [
+      "--no-sandbox",
+      "--disable-setuid-sandbox",
+      "--disable-dev-shm-usage",
+      "--disable-gpu",
+    ],
+  })
+);
 
 /** Fetch robots.txt and sitemap.xml existence for a given page URL */
 async function checkSiteFiles(pageUrl: string): Promise<{ hasRobotsTxt: boolean; hasSitemap: boolean }> {
@@ -181,27 +192,19 @@ async function dismissCookieBanner(page: Page): Promise<void> {
   } catch { /* ignore */ }
 }
 
-/** Get or launch a shared browser instance */
-export async function getBrowser(): Promise<Browser> {
-  if (!browser || !browser.isConnected()) {
-    browser = await chromium.launch({
-      args: [
-        "--no-sandbox",
-        "--disable-setuid-sandbox",
-        "--disable-dev-shm-usage",
-        "--disable-gpu",
-      ],
-    });
-  }
-  return browser;
+/** The browser for the scan that holds the current lease. Call it inside withBrowser. */
+export function getBrowser(): Promise<Browser> {
+  return browserLease.get();
+}
+
+/** Runs one scan with Chrome open, and closes Chrome when no other scan still uses it. */
+export function withBrowser<T>(fn: () => Promise<T>): Promise<T> {
+  return browserLease.withBrowser(fn);
 }
 
 /** Graceful shutdown */
 export async function closeBrowser(): Promise<void> {
-  if (browser) {
-    await browser.close();
-    browser = null;
-  }
+  await browserLease.close();
 }
 
 export interface ScanPageOptions {
