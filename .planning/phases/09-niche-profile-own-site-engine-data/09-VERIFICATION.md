@@ -102,12 +102,15 @@ human_verification:
   - test: "Capture the information_schema check for migration 023 in production: select column_name, data_type from information_schema.columns where table_name = 'scans' and column_name = 'own_site_facts';"
     expected: "One row, own_site_facts / jsonb. Migration 022 is applied and verified; 023 is applied on verbal confirmation only and its column check was never captured."
     why_human: "Requires the production Supabase SQL Editor. The repo cannot reach production and must not try."
+    confirmed: "2026-11-16 PASSED. Run by Joshua in the production Supabase SQL Editor: one row, own_site_facts / jsonb."
   - test: "After deploying the scanner and confirming 023, run one bulk scan against a real Dutch installer site, then read scans.own_site_facts for that scan id."
     expected: "schemaVersion 1, pagesRead > 0, business.address and business.telephone in state found or missing (never undefined), socialProof.state read, quoteReadiness present, and trade.tradeId naming the trade a person would name, with confidence clear or narrow."
     why_human: "Nothing is deployed yet. Every extractor is proven against fixtures and the storage column round-trips in the local database, but no real site has ever been harvested. The regression corpus states its own provenance: the fixtures are composed from measured site classes, not captures of named live sites, so the first real scans are the check."
+    confirmed: "2026-11-16 PASSED on two real Atrium scans. 5d70aa45 (celsiusloodgieters.nl): schemaVersion 1, pagesRead 7, address missing, telephone missing, socialProof read, quoteReadiness evaluated, trade heat_pump at confidence clear, margin 18 over runner-up central_heating. 3970e67c (jv-installatie.nl): schemaVersion 1, pagesRead 1, same four field states, trade null at confidence unreadable. pagesRead 1 is correct there, the site is a one-pager (Joshua, 2026-11-16), and Joshua judged the item passed. The null trade is carried into item 4 as evidence, not treated as a storage failure: the engine declared nothing rather than inventing a trade."
   - test: "In the same run, confirm one public quick scan at the site root is unaffected: no [own-site] log line, scans.own_site_facts null, and the report renders as before."
     expected: "No own-site work on the public path. The public scanner's scanning and email are untouched (D-9-R6)."
     why_human: "Requires the live Railway scanner and a real public scan; the no-slice short-circuit is proven in code and in tests but not against the deployed service."
+    confirmed: "2026-11-16 PASSED against the deployed service. Public quick scan of adashi.io at the site root, scan 0ac37639-d139-420f-bd31-a48b363b47a9: completed in 52s with no error, the report page renders (HTTP 200), and own_site_facts is null, confirmed by SQL in production."
   - test: "Review the six per-trade keyword lists against the first ten real scan outputs and tune."
     expected: "Trades read correctly. Two keyword gaps are already known and recorded: a repeated footer line is summed per page, so a general builder can read as a trade with clear confidence; and \"cv ketels\" (plural) does not match the seeded phrase \"cv ketel\"."
     why_human: "Judgement against real pages. Both fixes are profile edits, not engine changes, and were deliberately left untuned pending real scan output."
@@ -313,7 +316,14 @@ None. The only re-verification blocker was a carried-forward gap from pass one, 
 
 ### Human Verification Required
 
+**Three of the four are confirmed as of 2026-11-16. Item 4 remains open.** The confirmations were
+captured during the Gemini to Claude Sonnet 5.5 provider swap (quick task 261116-m9s), which is
+unrelated to this phase: the scans below predate it or exercise paths it does not touch.
+
 #### 1. Capture the migration 023 column check in production
+
+**PASSED 2026-11-16.** Run by Joshua in the production Supabase SQL Editor. One row returned:
+`own_site_facts` / `jsonb`. Migration 023 no longer rests on verbal confirmation.
 
 **Test:** In the production Supabase SQL Editor, run
 `select column_name, data_type from information_schema.columns where table_name = 'scans' and column_name = 'own_site_facts';`
@@ -322,6 +332,27 @@ None. The only re-verification blocker was a carried-forward gap from pass one, 
 applied and verified; 023 rests on verbal confirmation with no captured check.
 
 #### 2. First real own-site harvest
+
+**PASSED 2026-11-16**, on two real Atrium scans, judged by Joshua.
+
+| | 3970e67c jv-installatie.nl | 5d70aa45 celsiusloodgieters.nl |
+|---|---|---|
+| schemaVersion | 1 | 1 |
+| pagesRead | 1 | 7 |
+| business.address | missing | missing |
+| business.telephone | missing | missing |
+| socialProof.state | read | read |
+| quoteReadiness.state | evaluated | evaluated |
+| trade.tradeId | null | heat_pump |
+| trade.confidence | unreadable | clear |
+| trade.margin | 0 | 18 |
+| trade.runnerUpId | null | central_heating |
+
+`pagesRead: 1` on jv-installatie.nl is correct, not a shortfall: the site is a one-pager
+(Joshua, 2026-11-16). Its null trade at confidence `unreadable` is recorded as evidence for item 4
+rather than as a failure here: the engine declared nothing instead of inventing a trade, which is
+the behaviour the honest-states design asks for. Both sites publishing neither address nor telephone
+in machine-readable form is noted for the same item.
 
 **Test:** After deploying the scanner and confirming 023, run one bulk scan against a real Dutch
 installer site, then read `scans.own_site_facts` for that scan id.
@@ -333,6 +364,11 @@ round-trips in the local database, but no real site has ever been harvested, and
 own provenance: the fixtures are composed from measured site classes, not captures of named live sites.
 
 #### 3. The public scanner is untouched
+
+**PASSED 2026-11-16** against the deployed Railway service. A public quick scan of `adashi.io` at the
+site root, scan `0ac37639-d139-420f-bd31-a48b363b47a9`, completed in 52 seconds with no error, the
+report page renders (HTTP 200), and `select own_site_facts is null` for that scan returns `true` in
+production.
 
 **Test:** In the same session, run one public quick scan at the site root.
 **Expected:** No `[own-site]` log line, `scans.own_site_facts` null, report renders as before.
