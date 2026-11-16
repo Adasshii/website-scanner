@@ -62,7 +62,7 @@ a drafted message he is willing to send.
 
 - TypeScript 5.x - Frontend (Next.js), backend (Express scanner-service), and shared types
 - JavaScript - Configuration files and build scripts
-- SQL - Database migrations and Supabase schema (`supabase/migrations/`, `supabase/schema.sql`)
+- SQL - Database migrations and Supabase schema (`supabase/migrations/`)
 
 ## Runtime
 

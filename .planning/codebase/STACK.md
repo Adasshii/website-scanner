@@ -9,7 +9,7 @@
 - JavaScript - Configuration files and build scripts
 
 **Secondary:**
-- SQL - Database migrations and Supabase schema (`supabase/migrations/`, `supabase/schema.sql`)
+- SQL - Database migrations and Supabase schema (`supabase/migrations/`)
 
 ## Runtime
 
