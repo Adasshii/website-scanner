@@ -1,7 +1,8 @@
 ---
 phase: 09-niche-profile-own-site-engine-data
 verified: 2026-11-14T17:15:00Z
-status: human_needed
+status: passed
+human_verification_closed: 2026-11-16
 score: 5/5 must-haves verified
 covered_files:
   - ".planning/phases/09-niche-profile-own-site-engine-data/09-01-PLAN.md"
@@ -114,13 +115,15 @@ human_verification:
   - test: "Review the six per-trade keyword lists against the first ten real scan outputs and tune."
     expected: "Trades read correctly. Two keyword gaps are already known and recorded: a repeated footer line is summed per page, so a general builder can read as a trade with clear confidence; and \"cv ketels\" (plural) does not match the seeded phrase \"cv ketel\"."
     why_human: "Judgement against real pages. Both fixes are profile edits, not engine changes, and were deliberately left untuned pending real scan output."
+    confirmed: "2026-11-16 PASSED on 49 production scans (34 unique domains), judged against the keyword lists and closed by Joshua. The two known gaps were already fixed in code (quick tasks 261116-m4p and 261116-oky). The judgement found a third, larger gap and it is now fixed too: 11 of the 18 trade reads came back roofing, and most of those were Dutch loodgieter (plumber) firms, because the roofing term { term: \"dak\", match: \"prefix\" } catches dakgoot (gutter) and daklekkage (roof leak). Verified by downloading four real homepages and counting terms: willardloodgieter.nl reads dak x11 but lood x21 and lekkage x10, and scored roofing/clear. Plumbing was not one of the six trades, so plumber sites were forced into roofing, kitchen or bathroom by secondary mentions. Quick task 261116-rjk adds plumbing as a seventh trade (commits d719843, 9fc5f9b, caaa74b, 18d4ea0): job value 300 EUR approved by Joshua 2026-11-16, showMoneyLine false per D-9-21, tieBreakRank 7 appended so no existing rank renumbers, and four keywords (loodgieter, lekkage, dakgo, waterleiding). The roofing list is deliberately untouched: the plumbing terms win on their own, 72 to 22 on the plumber class. The 16 unreadable reads were judged CORRECT, not a fault: sewer, ventilation and leak-detection-only firms are genuinely not one of the trades, and the engine declared nothing rather than inventing one. Gate: tests/fixtures/own-site-zones.ts gained 30 lines and lost none, so no existing corpus expectation moved; both tsc projects are clean and the full suite is 1273 passing across 82 files."
+    residual: "Not a gap, an open judgement for Joshua. With plumbing in place the existing corpus entry plumber-multi-trade (\"Loodgieter Smit\") computes to an exact 19/19 tie between bathroom and plumbing, and stays bathroom only through tieBreakRank. Its runnerUpId changes from roofing to plumbing and its margin from 3 to 0; no test asserts either field. A person reading that site would arguably say plumbing. Moving it would mean ranking plumbing above bathroom, which is a moved expectation and Joshua's call. Left unchanged."
 ---
 
 # Phase 9: Niche Profile & Own-Site Engine Data — Verification Report
 
 **Phase Goal:** One settings file defines the niche, and for any business that is scoreable at all, the engine stores what that business's own site says about itself
 **Verified:** 2026-11-14T17:15:00Z
-**Status:** human_needed
+**Status:** passed (all four human-verification items closed 2026-11-16)
 **Re-verification:** Yes, second pass, after gap closure. The first pass (2026-11-14T13:09:16Z) returned `gaps_found`, 4/5.
 **Branch:** gsd/phase-09-niche-profile (65 commits ahead of main, 9/9 plans executed, plus quick task 261114-olb)
 
@@ -316,7 +319,8 @@ None. The only re-verification blocker was a carried-forward gap from pass one, 
 
 ### Human Verification Required
 
-**Three of the four are confirmed as of 2026-11-16. Item 4 remains open.** The confirmations were
+**All four are confirmed as of 2026-11-16.** Items 1 to 3 closed first; item 4 closed last, on 49
+production scans, and its closure added a seventh trade. The first three confirmations were
 captured during the Gemini to Claude Sonnet 5.5 provider swap (quick task 261116-m9s), which is
 unrelated to this phase: the scans below predate it or exercise paths it does not touch.
 
@@ -399,8 +403,45 @@ this item is left.**
    roofing at confidence `clear` with score 12 before the fix, and resolves to no trade at
    `unreadable` after. No existing corpus entry moved: the fixtures diff is purely additive.
 
-What remains is the original judgement pass, which still needs real outputs to judge against.
-Two exist so far (`3970e67c` and `5d70aa45`), not the ten this item asks for.
+**PASSED 2026-11-16. Closed by Joshua on 49 production scans, 34 unique domains.**
+
+The judgement pass found a third gap, larger than the two above, and it is now fixed.
+
+Of the 18 reads that named a trade, 11 came back `roofing`. Most of those were Dutch
+`loodgieter` (plumber) firms. The cause is the roofing term `{ term: "dak", match: "prefix" }`,
+which catches `dakgoot` (gutter) and `daklekkage` (roof leak), both everyday plumber work.
+Confirmed by downloading four real homepages and counting terms: `willardloodgieter.nl` reads
+`dak` x11 but also `lood` x21 and `lekkage` x10, and scored roofing at `clear`.
+`loodgieterriwa.nl` read `kitchen` at `clear` on `keuken` x9. Plumbing was not one of the six
+trades, so plumber sites had nowhere correct to land.
+
+Quick task 261116-rjk adds `plumbing` as a seventh trade (commits `d719843`, `9fc5f9b`,
+`caaa74b`, `18d4ea0`). Job value 300 EUR, approved by Joshua on 2026-11-16 from the Homedeal
+leak-detection page, with the page's three conflicting figures recorded in the citation note.
+`showMoneyLine: false` per D-9-21, because 300 does not support the one-extra-job claim.
+`tieBreakRank: 7`, appended so none of the six renumber. Four keywords: `loodgieter`,
+`lekkage`, `dakgo`, `waterleiding`. The bare metal stem `lood` is deliberately excluded, because
+`uitendaal-harmelen.nl` reads `lood` x6 and is a genuine zinc roofer.
+
+**The roofing list is untouched.** The plumbing terms win on their own, 72 to 22 on the plumber
+class, so no roofing change was needed and none was made.
+
+**The 16 unreadable reads were judged correct, not a fault.** Sewer (`hroriooltechniek.nl`),
+ventilation (`ventilatie-muis.nl`) and leak-detection-only (`fnlekdetectie.nl`) firms are
+genuinely not one of the trades. The engine declared nothing rather than inventing one, which is
+the required behaviour.
+
+Gate: `tests/fixtures/own-site-zones.ts` gained 30 lines and lost none, so no existing corpus
+expectation moved. Two entries were added: `plumber-gutters-and-leaks` reads `plumbing` and
+`zinc-roofer-lead-work` still reads `roofing`. Both tsc projects are clean and the full suite is
+1273 passing across 82 files, run on an idle machine.
+
+**One open judgement, not a gap.** With plumbing in place, the existing entry
+`plumber-multi-trade` ("Loodgieter Smit") computes to an exact 19/19 tie between `bathroom` and
+`plumbing`, and stays `bathroom` only through `tieBreakRank`. Its `runnerUpId` moves from roofing
+to plumbing and its `margin` from 3 to 0; no test asserts either field. A person reading that site
+would arguably say plumbing. Changing it would mean ranking plumbing above bathroom, which moves a
+corpus expectation, so it is Joshua's call and was left alone.
 
 
 ### Gaps Summary
@@ -418,7 +459,15 @@ None. The one gap from the first pass is closed.
 `select count(*) from prospects where scan_released_at is not null and latest_scan_id is not null and not_scoreable_reason is null;`
 It no longer matters for safety, only for curiosity.
 
-**What still stands unchanged from the first pass** (none blocks): the unwired niche registry (`getNicheProfile` and `PROFILES` have no production caller; two composition roots import `INSTALLERS_PROFILE` directly); the held-not-consumed fields (`copy`, `competitor.radiusKm`, `trades[].jobValue`, `aiQuestions`, for Phases 10 and 12); the `ProfileCopy` `tips` field absent against D-9-10; the stale `supabase/schema.sql`; nothing deployed; migration 023's column check uncaptured; `lib/atrium-scan.ts` on the unmerged branch; the footer-line false positive; the "cv ketels" plural gap. Status is `human_needed` solely because of the four human items above.
+**What still stands unchanged from the first pass** (none blocks): the unwired niche registry (`getNicheProfile` and `PROFILES` have no production caller; two composition roots import `INSTALLERS_PROFILE` directly); the held-not-consumed fields (`copy`, `competitor.radiusKm`, `trades[].jobValue`, `aiQuestions`, for Phases 10 and 12); the `ProfileCopy` `tips` field absent against D-9-10; the stale `supabase/schema.sql`; `lib/atrium-scan.ts` on the unmerged branch. Three items on that
+list are now closed: migration 023's column check is captured (human item 1), the footer-line false
+positive is fixed (quick task 261116-oky), and the "cv ketels" plural gap is fixed (quick task
+261116-m4p). "Nothing deployed" still stands and is restated below.
+Status is `passed`: all four human items are confirmed as of 2026-11-16.
+
+**Not deployed.** The seventh trade exists in the code and in the tests only. Commits `d719843`
+through `18d4ea0` sit on the local branch `fix/footer-boilerplate`, unpushed. No real scan reads
+`plumbing` until that lands and Vercel redeploys.
 
 ---
 
