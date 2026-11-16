@@ -1,9 +1,10 @@
 /**
  * lib/niche-profile/installers/trades.ts — Phase 9, D-9-03 / D-9-18 / D-9-21.
  *
- * The six installer trades with their approved job values, citations and
- * keyword terms. The numbers are copied from 09-JOB-VALUES.md (approved by
- * Joshua on 2026-11-12) and never re-derived here; when a number changes,
+ * The seven installer trades with their approved job values, citations and
+ * keyword terms. The numbers are copied from 09-JOB-VALUES.md (the first six
+ * approved by Joshua on 2026-11-12, plumbing on 2026-11-16) and never
+ * re-derived here; when a number changes,
  * that file changes first and this one follows. profile.test.ts asserts each
  * amount against a literal table written out in the test, so an edit here
  * without a matching edit there fails the build (T-9-04).
@@ -22,7 +23,17 @@
  *     before prefix matching;
  *   - central heating never carries the bare two-letter abbreviation for the
  *     boiler, because it also abbreviates a curriculum vitae on every
- *     vacancy block.
+ *     vacancy block;
+ *   - plumbing carries the full word for a plumber and never the bare
+ *     four-letter stem that also names the metal, because a measured zinc and
+ *     roof firm wrote that stem six times and is a genuine roofer;
+ *   - the plumbing gutter term is a shortened stem, because the singular and
+ *     the plural of the Dutch word for a roof gutter diverge after five
+ *     letters, the same reason the solar term is shortened;
+ *   - the plumbing leak term is shared in effect with roofing, which keeps its
+ *     own prefix term untouched: a leak word is counted for both trades and the
+ *     rest of the site decides, which is the honest reading of a word both
+ *     trades really use.
  */
 import type { TradeProfile } from "../types";
 import { INSTALLERS_SITE_CHECKS } from "./checks";
@@ -32,6 +43,9 @@ const READ_ON = "2026-11-12";
 // Re-check twelve months after the read date: the re-check 09-JOB-VALUES.md
 // asks for, so a stale number becomes visible rather than silently wrong.
 const RECHECK_AFTER = "2027-11-12"; // tunable default
+// Second read, for plumbing (quick task 261116-rjk), added after the first six.
+const PLUMBING_READ_ON = "2026-11-16";
+const PLUMBING_RECHECK_AFTER = "2027-11-16"; // tunable default
 
 export const INSTALLERS_TRADES: readonly TradeProfile[] = [
   {
@@ -187,6 +201,38 @@ export const INSTALLERS_TRADES: readonly TradeProfile[] = [
       { term: "gasketel", match: "substring" },
     ],
     siteChecks: INSTALLERS_SITE_CHECKS.central_heating,
+    aiQuestions: EMPTY_AI_QUESTIONS,
+  },
+  {
+    id: "plumbing",
+    // D-9-21: the value is known and approved, and at 300 it does not support
+    // the "pays for itself with one extra job" claim, so this trade has a value
+    // AND prints no money line. Two independent fields, never one switch.
+    // The second trade in that state, after central_heating.
+    jobValue: {
+      amountEur: 300,
+      derivation: "published",
+      recheckAfter: PLUMBING_RECHECK_AFTER,
+      citation: {
+        source: "Homedeal",
+        url: "https://www.homedeal.nl/prijsgidsen/lekkage-opsporen-kosten/",
+        readOn: PLUMBING_READ_ON,
+        note: "leak detection, taken as the page's stated average: the page header gives an average of 300 with a minimum of 150 and a maximum of 500, but the same page's body states 200 to 400 and its FAQ 300 to 500, so the page disagrees with itself and 300 was taken because the page labels it the average; the page shows a publication date of 30/12/2025 rather than a last-updated label, which is why pageUpdated is absent",
+      },
+    },
+    showMoneyLine: false,
+    // Appended rather than inserted so no existing rank is renumbered. Last is
+    // also the honest place: plumbing's vocabulary is the most likely of the
+    // seven to appear incidentally on another trade's site, so on an exact tie
+    // the other trade is the better read.
+    tieBreakRank: 7,
+    keywords: [
+      { term: "loodgieter", match: "substring" },
+      { term: "lekkage", match: "substring" },
+      { term: "dakgo", match: "prefix" },
+      { term: "waterleiding", match: "substring" },
+    ],
+    siteChecks: INSTALLERS_SITE_CHECKS.plumbing,
     aiQuestions: EMPTY_AI_QUESTIONS,
   },
 ];
