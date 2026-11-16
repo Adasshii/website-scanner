@@ -137,7 +137,20 @@ export const INSTALLERS_COPY: Record<ProfileLocale, ProfileCopy> = {
       aiVisibility:
         "Adashi zet je bedrijf online zo neer dat een AI-assistent kan zien wat je doet, waar je werkt en wat anderen van je werk vinden.",
     },
-    tips: {}, // Empty by decision (D-9-24): the five to-do item texts are not written yet.
+    // One tip per report section (D-9-10). Approved 2026-11-16.
+    tips: {
+      businessFacts:
+        "Een zoekmachine leest je openingstijden alleen als ze in de code staan. Staat het alleen in een afbeelding, dan telt het niet mee.",
+      socialProof:
+        "Je reviews staan op je Google-profiel. Een bezoeker die al op je site is, ziet ze daar niet.",
+      // Needs the same citation treatment as websiteOnPhone.citationLine.
+      websiteOnPhone:
+        "Google meet je site op een telefoon, niet op een computer. Een site die op kantoor snel voelt, kan op 4G traag zijn.",
+      quoteRequest:
+        "Een bezoeker die 's avonds op je site komt, kan niet bellen. Met een formulier kan hij wel iets achterlaten.",
+      aiVisibility:
+        "Een AI-assistent leest geen afbeeldingen en belt niemand. Alles wat hij over je weet, staat ergens als tekst.",
+    },
   },
   en: {
     header: {
@@ -235,6 +248,19 @@ export const INSTALLERS_COPY: Record<ProfileLocale, ProfileCopy> = {
       aiVisibility:
         "Adashi presents your business online so an AI assistant can see what you do, where you work and what others say about your work.",
     },
-    tips: {}, // Empty by decision (D-9-24): the five to-do item texts are not written yet.
+    // One tip per report section (D-9-10). Approved 2026-11-16.
+    tips: {
+      businessFacts:
+        "A search engine reads your opening hours only when they are in the code. If they live only in an image, they do not count.",
+      socialProof:
+        "Your reviews are on your Google profile. A visitor already on your site does not see them there.",
+      // Needs the same citation treatment as websiteOnPhone.citationLine.
+      websiteOnPhone:
+        "Google measures your site on a phone, not on a computer. A site that feels fast at the office can be slow on 4G.",
+      quoteRequest:
+        "A visitor who lands on your site in the evening cannot call. With a form, they can still leave something.",
+      aiVisibility:
+        "An AI assistant reads no images and phones nobody. Everything it knows about you exists somewhere as text.",
+    },
   },
 };

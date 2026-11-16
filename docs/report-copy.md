@@ -296,6 +296,22 @@ The opt-out has to be fast, free and one step. That is the project's own legal c
    Worth recording: wherever the money line prints at all, the claim would in fact have been true. The money line only shows for trades whose job value clears an Adashi project, which is the same rule that hides it for central heating. The arithmetic was sound. The promise was the problem.
 4. **Four social proof variants, not three.** Joshua delegated this one. Variant 1 breaks when no nearby business shows reviews either: the report would print "0 installateurs bij jou in de buurt tonen hun reviews. Jij niet." Variant 2 covers that state and turns it into the one place in the report where being first is the point. Variants 3 and 4 stand as drafted, and variant 4 is the one honest pass that keeps the page from reading as a sales letter.
 
+---
+
+## 13. Tips, one per section
+
+Approved 2026-11-16. Each tip sits under its section: a fact the owner can check, which happens to point at the fix. No promises, no outcome claims.
+
+| Section | NL | EN |
+|---|---|---|
+| Business facts | Een zoekmachine leest je openingstijden alleen als ze in de code staan. Staat het alleen in een afbeelding, dan telt het niet mee. | A search engine reads your opening hours only when they are in the code. If they live only in an image, they do not count. |
+| Social proof | Je reviews staan op je Google-profiel. Een bezoeker die al op je site is, ziet ze daar niet. | Your reviews are on your Google profile. A visitor already on your site does not see them there. |
+| Website on a phone | Google meet je site op een telefoon, niet op een computer. Een site die op kantoor snel voelt, kan op 4G traag zijn. | Google measures your site on a phone, not on a computer. A site that feels fast at the office can be slow on 4G. |
+| Quote request | Een bezoeker die 's avonds op je site komt, kan niet bellen. Met een formulier kan hij wel iets achterlaten. | A visitor who lands on your site in the evening cannot call. With a form, they can still leave something. |
+| AI visibility | Een AI-assistent leest geen afbeeldingen en belt niemand. Alles wat hij over je weet, staat ergens als tekst. | An AI assistant reads no images and phones nobody. Everything it knows about you exists somewhere as text. |
+
+The website-on-a-phone tip asserts that Google measures on mobile. It needs the same citation treatment as the load-time line in section 6: a named source read on a date, never our own assertion.
+
 ## Open decisions
 
 None. Four of four settled on 2026-11-16.
@@ -304,7 +320,8 @@ None. Four of four settled on 2026-11-16.
 
 The typed home for this copy landed on 2026-11-16 in `lib/niche-profile/types.ts` and `lib/niche-profile/installers/copy.ts`, filled for both locales from this document. Phase 12 renders it and may reshape the fields, so the field names follow the sections above and are not a contract. This document is the copy; the plan that landed it holds the mapping.
 
-Two things are still missing:
+One thing is still missing:
 
-- **The five to-do item texts.** Section 10 gives the heading and the ordering line, not the five items. The `tips` field exists and is empty in both locales until they are written.
 - **Counsel's Article 14 wording.** Section 12 carries the label and the `{counsel_wording}` placeholder. No legal sentence exists yet.
+
+The report's to-do list is not missing copy. Section 10 gives the heading and the ordering line, and that is all it needs: the five actions are written per business by the model from that business's own findings, with every number in them chosen by code. There are no five fixed sentences to write. What that list still needs is a generation rule, which belongs with Phase 11 and Phase 12 where the drafting lives.

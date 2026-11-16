@@ -479,9 +479,22 @@ describe("copy: the approved report document carried whole (D-9-10)", () => {
     }
   });
 
-  it("tips is an empty record in both locales: the five to-do item texts are not written yet (D-9-24)", () => {
-    expect(nl.tips).toEqual({});
-    expect(en.tips).toEqual({});
+  it("tips carries one line per section in both locales, and the two locales agree (D-9-10)", () => {
+    const keys = ["aiVisibility", "businessFacts", "quoteRequest", "socialProof", "websiteOnPhone"];
+    for (const [locale, copy] of [["nl", nl], ["en", en]] as const) {
+      expect(Object.keys(copy.tips).sort(), locale).toEqual(keys);
+      for (const key of keys) {
+        expect(copy.tips[key as keyof typeof copy.tips]?.length, `${locale}.${key}`).toBeGreaterThan(0);
+      }
+    }
+  });
+
+  it("a tip is its own sentence, never a copy of that section's Adashi fix line", () => {
+    for (const [locale, copy] of [["nl", nl], ["en", en]] as const) {
+      for (const key of Object.keys(copy.tips) as (keyof typeof copy.tips)[]) {
+        expect(copy.tips[key], `${locale}.${key}`).not.toBe(copy.adashiFixes[key]);
+      }
+    }
   });
 
   it("the five values that predate the document keep their bytes", () => {

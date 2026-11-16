@@ -249,9 +249,13 @@ export interface ProfileCopy {
   /** "Adashi fixes this" line, one required key per section that carries one. */
   adashiFixes: Readonly<Record<AdashiFixSection, string>>;
   /**
-   * The to-do item texts (D-9-10). Empty today: the approved document gives the
-   * to-do heading and its ordering line, not the five items. An empty field is
-   * the honest state, the same call D-9-24 made for `aiQuestions`.
+   * One tip per report section (D-9-10): a useful fact that points at the fix,
+   * shown under that section. Filled in both locales on 2026-11-16.
+   *
+   * These are NOT the report's to-do list. That list is five actions written
+   * per business by the model from that business's own findings, with every
+   * number in it chosen by code and never by the model, so it is not fixed
+   * copy and does not live in the profile.
    */
   tips: Readonly<Partial<Record<AdashiFixSection, string>>>;
 }
