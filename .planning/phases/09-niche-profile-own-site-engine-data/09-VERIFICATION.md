@@ -383,6 +383,26 @@ but not against the deployed service.
 **Expected:** Trades read correctly; the two known keyword gaps resolved or accepted.
 **Why human:** Judgement against real pages. Both fixes are profile edits, not engine changes.
 
+**PROGRESS 2026-11-16: both known gaps are now closed in code, so only the judgement half of
+this item is left.**
+
+1. The `cv ketels` plural gap was closed by quick task 261116-m4p, which moved the
+   `cv ketel` and `cv installatie` terms to prefix matching, measured rather than assumed.
+2. The repeated-footer gap was closed by quick task 261116-oky (commits c4292d5, 4f16d87).
+   `prepareSite` already collected nav text and link paths as a distinct union across pages;
+   body lines and h2/h3 items were still summed per page, so a site-wide footer scored once per
+   page. A normalised non-empty line present on EVERY page is now counted once, at its own zone
+   weight, exactly as the nav already was. Strictly every page, never a ratio, so genuine signal
+   that merely repeats is never suppressed, and a one-page scan takes the unchanged branch.
+   Proven by a new corpus entry, `general-builder-trade-word-in-footer`: a 4-page
+   Aannemersbedrijf whose footer names dakwerken, dakreparatie and daklekkage resolved to
+   roofing at confidence `clear` with score 12 before the fix, and resolves to no trade at
+   `unreadable` after. No existing corpus entry moved: the fixtures diff is purely additive.
+
+What remains is the original judgement pass, which still needs real outputs to judge against.
+Two exist so far (`3970e67c` and `5d70aa45`), not the ten this item asks for.
+
+
 ### Gaps Summary
 
 None. The one gap from the first pass is closed.
