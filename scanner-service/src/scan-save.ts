@@ -61,3 +61,35 @@ export async function saveCompletedScan(
   await deps.markFailed(reason);
   return { ok: false, reason };
 }
+
+/**
+ * Writes status failed for a scan and reads the result. A refused or thrown
+ * write is logged with the scan id and the full error; this never rejects, so
+ * the timeout, shutdown and crash loops keep running over every in-flight scan.
+ */
+export async function markScanFailed(
+  scanId: string,
+  reason: string,
+  deps: {
+    write: (values: {
+      status: "failed";
+      error_message: string;
+      updated_at: string;
+    }) => PromiseLike<DbWriteResult>;
+    now?: () => string;
+    log?: (line: string) => void;
+  }
+): Promise<void> {
+  const log = deps.log ?? ((line: string) => console.error(line));
+  const prefix = `[scan-recovery] DB update failed for ${scanId}:`;
+  try {
+    const { error } = await deps.write({
+      status: "failed",
+      error_message: reason,
+      updated_at: (deps.now ?? (() => new Date().toISOString()))(),
+    });
+    if (error) log(`${prefix} ${formatDbError(error)}`);
+  } catch (err) {
+    log(`${prefix} ${err instanceof Error ? err.message : String(err)}`);
+  }
+}

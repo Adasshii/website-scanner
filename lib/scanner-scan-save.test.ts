@@ -9,6 +9,7 @@
 import { describe, expect, it, vi } from "vitest";
 import {
   COMPLETED_SAVE_REASON_MAX,
+  type DbWriteResult,
   formatDbError,
   markScanFailed,
   saveCompletedScan,
@@ -21,7 +22,7 @@ const REFUSED = {
   hint: null,
 };
 
-function fakes(result: () => Promise<{ error: unknown }>) {
+function fakes(result: () => Promise<DbWriteResult>) {
   const write = vi.fn(result);
   const markFailed = vi.fn(async (_reason: string) => {});
   const log = vi.fn((_line: string) => {});

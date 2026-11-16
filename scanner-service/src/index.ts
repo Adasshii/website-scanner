@@ -20,7 +20,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { isAtCapacity, CAPACITY_RETRY_AFTER_SECONDS } from "./capacity";
 import { aggregateOwnSite } from "./own-site-facts";
 import { storeOwnSiteFacts, validateNicheSlice } from "./own-site-run";
-import { saveCompletedScan } from "./scan-save";
+import { saveCompletedScan, markScanFailed } from "./scan-save";
 // Deliberately relative, not the shared-lib path alias. Path aliases are
 // compile-time only: tsc emits this specifier verbatim into dist/, and Node
 // cannot resolve it, which crashed the container on boot and failed
@@ -66,14 +66,12 @@ function getSupabase() {
 const activeFullScans = new Map<string, SupabaseClient>();
 
 async function failScan(scanId: string, supabase: SupabaseClient, reason: string) {
-  try {
-    await supabase
-      .from("scans")
-      .update({ status: "failed", error_message: reason, updated_at: new Date().toISOString() })
-      .eq("id", scanId);
-  } catch (err) {
-    console.error(`[scan-recovery] DB update failed for ${scanId}:`, err);
-  }
+  await markScanFailed(scanId, reason, {
+    write: async (values) => {
+      const { error } = await supabase.from("scans").update(values).eq("id", scanId);
+      return { error };
+    },
+  });
 }
 
 const app = express();
@@ -712,14 +710,7 @@ app.post("/api/scan/full-async", async (req, res) => {
     clearTimeout(scanTimeout);
     activeFullScans.delete(scanId);
     console.error(`[full-scan-async] Failed:`, error);
-    await supabase
-      .from("scans")
-      .update({
-        status: "failed",
-        error_message: error instanceof Error ? error.message : "Full scan failed",
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", scanId);
+    await failScan(scanId, supabase, error instanceof Error ? error.message : "Full scan failed");
   }
 });
 
