@@ -27,10 +27,13 @@ const SEVERITY_IMPACT: Record<IssueSeverity, number> = {
 /**
  * Analyze a page and produce a flat list of issues.
  * Combines axe-core accessibility violations with content/SEO/performance checks.
+ * pageUrl is the URL the page actually loaded at; https is judged from it, because
+ * the axe fallback object (used when axe fails) carries no url.
  */
 export function analyzeIssues(
   axeResults: AxeResults,
-  data: PageData
+  data: PageData,
+  pageUrl: string
 ): Issue[] {
   const issues: Issue[] = [];
 
@@ -531,7 +534,6 @@ export function analyzeIssues(
   // ── Security checks ──────────────────────────────────────────────
 
   const h = data.responseHeaders;
-  const pageUrl = axeResults.url || "";
   const isHttps = pageUrl.startsWith("https://");
 
   if (!isHttps) {
@@ -806,12 +808,11 @@ export function analyzeIssues(
     });
   }
 
-  // Headline clarity: H1 must exist, have 4+ words, and not be generic
-  const genericH1Patterns = /^(welcome|home|homepage)$/i;
+  // Headline clarity: H1 must exist and not be generic
+  const genericH1Patterns = /^(welcome|welkom|home|homepage)[!.]?$/i;
   const h1Text = data.h1[0] ?? "";
-  const h1WordCount = h1Text.trim().split(/\s+/).filter(Boolean).length;
   const isGenericH1 = genericH1Patterns.test(h1Text.trim());
-  if (data.h1.length === 0 || h1WordCount < 4 || isGenericH1) {
+  if (data.h1.length === 0 || isGenericH1) {
     issues.push({
       id: "design-unclear-headline",
       category: "design",
@@ -819,7 +820,7 @@ export function analyzeIssues(
       title: "Unclear or missing main headline",
       description: data.h1.length === 0
         ? "No H1 headline found. Visitors can't quickly understand what the page is about."
-        : `The main headline "${h1Text}" is too short or generic to communicate your value.`,
+        : `The main headline "${h1Text}" is too generic to communicate your value.`,
       recommendation: "Write a clear, specific H1 that tells visitors exactly what you offer in 5-10 words.",
       impact: 10,
     });

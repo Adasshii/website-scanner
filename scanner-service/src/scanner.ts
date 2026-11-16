@@ -308,6 +308,7 @@ export async function scanPage(
     );
     if (blockReason) throw new Error(blockReason);
 
+    const loadedUrl = page.url();
     const loadTimeMs = Date.now() - startTime;
 
     // Step 2: Run axe-core accessibility audit (30s cap — can stall on complex pages)
@@ -358,7 +359,7 @@ export async function scanPage(
     console.log(`  [scanner] Lighthouse done: LCP=${cwv?.lcp ?? "n/a"}ms, CLS=${cwv?.cls ?? "n/a"}, TBT=${cwv?.tbt ?? "n/a"}ms`);
 
     // Step 4d: Analyze issues
-    const issues = analyzeIssues(axeResults, data);
+    const issues = analyzeIssues(axeResults, data, loadedUrl);
     console.log(`  [scanner] Found ${issues.length} issues`);
 
     // Step 4e: Lightweight mobile usability pass (own phone-viewport context).

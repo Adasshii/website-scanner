@@ -7,6 +7,13 @@ import type {
 } from "../../types/scanner";
 
 /**
+ * Call-to-action vocabulary: the English words exactly as before, then Dutch
+ * behind a word boundary so "privacybeleid" does not hit "bel".
+ */
+export const CTA_PATTERN =
+  /get started|contact|book|try|sign up|schedule|quote|free|demo|\b(?:offerte|afspraak|aanvra(?:ag|gen)|bel (?:ons|direct|nu)|bellen|terugbellen|mail ons|whatsapp|gratis|neem contact)/i;
+
+/**
  * Extract structured data from a loaded Playwright page.
  */
 export async function extractPageData(
@@ -15,7 +22,7 @@ export async function extractPageData(
 ): Promise<PageData> {
   const baseUrl = new URL(pageUrl);
 
-  const data = await page.evaluate((origin: string) => {
+  const data = await page.evaluate(({ origin, ctaSource, ctaFlags }: { origin: string; ctaSource: string; ctaFlags: string }) => {
     const doc = document;
 
     // Title & description
@@ -265,9 +272,9 @@ export async function extractPageData(
     const foldY = window.innerHeight || 720;
     const viewportArea = (window.innerWidth || 1280) * foldY;
 
-    // Call-to-action: an action-oriented link or button. Mirrors the analyzer's
-    // CTA vocabulary, but also looks at <button> and checks on-screen position.
-    const ctaPattern = /get started|contact|book|try|sign up|schedule|quote|free|demo/i;
+    // Call-to-action: an action-oriented link or button. The vocabulary lives in
+    // CTA_PATTERN (English and Dutch); this also looks at <button> and checks on-screen position.
+    const ctaPattern = new RegExp(ctaSource, ctaFlags);
     const ctaCandidates = Array.from(
       doc.querySelectorAll('a, button, [role="button"], input[type="submit"]')
     ).filter((el) => {
@@ -372,7 +379,7 @@ export async function extractPageData(
       pageSize,
       contactExtraction,
     };
-  }, baseUrl.origin);
+  }, { origin: baseUrl.origin, ctaSource: CTA_PATTERN.source, ctaFlags: CTA_PATTERN.flags });
 
   return data as PageData;
 }
