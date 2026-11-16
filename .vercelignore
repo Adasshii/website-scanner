@@ -1,1 +1,12 @@
+# The scanner service is deployed to Railway, never to Vercel.
 scanner-service
+
+# Tests and fixtures are not part of the Next.js app, and some of them import
+# from scanner-service/ on purpose (the root Vitest tree runs the scanner's
+# modules). Because `scanner-service` is excluded above, those imports cannot
+# resolve on Vercel and the production type check fails, even though the same
+# build passes locally where the folder exists. Keeping tests out of the upload
+# fixes that and keeps test code out of the production bundle.
+tests
+**/*.test.ts
+**/*.test.tsx
