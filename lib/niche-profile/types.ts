@@ -88,14 +88,38 @@ export interface TradeSiteChecks {
   certificationTerms: readonly string[];
 }
 
+/**
+ * The social-proof section of the report (D-9-10, docs/report-copy.md section 4).
+ * Every field is required and there is no index signature: a free-form record
+ * would let a state go missing at runtime instead of at build time.
+ */
+export interface SocialProofCopy {
+  heading: string;
+  /** The sentence under the heading. */
+  frame: string;
+  /** No reviews on the prospect's site, and nearby installers show theirs. `{count}` is how many. */
+  noneHereOthersDo: string;
+  /**
+   * No reviews on the prospect's site, and none of the nearby installers show
+   * theirs either. This state exists because without it the report prints a
+   * zero-count sentence claiming nearby businesses show reviews when none do
+   * (settled decision 4). `{count}` is how many businesses were looked at.
+   */
+  noneHereNoneThere: string;
+  /** Reviews are visible on the site but not in a form search engines can read. */
+  visibleNotReadable: string;
+  /** Reviews are visible and machine readable. `{n}` is how many. */
+  visibleAndReadable: string;
+}
+
 /** Report copy the profile owns (D-9-10). The public scanner's own UI copy stays in messages/*.json. */
 export interface ProfileCopy {
   /** Money-line template with a `{amount}` placeholder. */
   moneyLine: string;
   /** "Adashi fixes this" line, keyed by report section id. */
   adashiFixes: Readonly<Record<string, string>>;
-  /** The social-proof line about installers near the prospect. */
-  socialProof: string;
+  /** The social-proof section, one required string per state. */
+  socialProof: SocialProofCopy;
 }
 
 export interface TradeProfile {

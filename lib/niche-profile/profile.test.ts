@@ -14,7 +14,7 @@ import { describe, expect, it } from "vitest";
 import { resolveBbox } from "@/lib/overture-bboxes";
 import { EXCLUDED_CATEGORIES } from "@/lib/triage-constants";
 import { INSTALLERS_PROFILE, getTrade, staleJobValues, toScannerSlice } from "./index";
-import type { JobValue, TradeId, TradeProfile } from "./types";
+import type { JobValue, ProfileCopy, TradeId, TradeProfile } from "./types";
 
 /**
  * The six approved amounts (09-JOB-VALUES.md, approved by Joshua 2026-11-12),
@@ -78,6 +78,28 @@ describe("toScannerSlice (D-9-12, T-9-03)", () => {
     expect(Array.isArray(slice.reviewWidgetHosts)).toBe(true);
     expect(typeof slice.minTradeScore).toBe("number");
     expect(typeof slice.dominanceRatio).toBe("number");
+  });
+
+  it("shares no object key with ProfileCopy (T-9-03)", () => {
+    // Keys, not substrings: short copy keys would collide with unrelated text.
+    const collectKeys = (value: unknown, into: Set<string>): Set<string> => {
+      if (Array.isArray(value)) {
+        for (const item of value) collectKeys(item, into);
+      } else if (value !== null && typeof value === "object") {
+        for (const [key, child] of Object.entries(value)) {
+          into.add(key);
+          collectKeys(child, into);
+        }
+      }
+      return into;
+    };
+    const sliceKeys = collectKeys(slice, new Set());
+    expect(sliceKeys.size).toBeGreaterThan(0);
+    for (const locale of INSTALLERS_PROFILE.locales) {
+      const copyKeys = collectKeys(INSTALLERS_PROFILE.copy[locale], new Set());
+      expect(copyKeys.size, locale).toBeGreaterThan(0);
+      expect(Array.from(sliceKeys).filter((key) => copyKeys.has(key)), locale).toEqual([]);
+    }
   });
 
   it("carries no job value, no citation and no copy", () => {
@@ -323,8 +345,33 @@ describe("copy (D-9-10)", () => {
   it("both locales carry a money line template with an amount placeholder", () => {
     for (const locale of INSTALLERS_PROFILE.locales) {
       expect(INSTALLERS_PROFILE.copy[locale].moneyLine, locale).toContain("{amount}");
-      expect(INSTALLERS_PROFILE.copy[locale].socialProof.length, locale).toBeGreaterThan(0);
     }
+  });
+
+  it("both locales carry all four social-proof states, each non-empty (settled decision 4)", () => {
+    const states = ["noneHereOthersDo", "noneHereNoneThere", "visibleNotReadable", "visibleAndReadable"] as const;
+    for (const locale of INSTALLERS_PROFILE.locales) {
+      const proof = INSTALLERS_PROFILE.copy[locale].socialProof;
+      for (const state of states) {
+        expect(typeof proof[state], `${locale}.${state}`).toBe("string");
+        expect(proof[state].length, `${locale}.${state}`).toBeGreaterThan(0);
+      }
+      expect(proof.noneHereOthersDo, locale).toContain("{count}");
+      expect(proof.noneHereNoneThere, locale).toContain("{count}");
+      expect(proof.visibleAndReadable, locale).toContain("{n}");
+    }
+  });
+
+  it("rejects a social-proof literal that omits a state", () => {
+    // @ts-expect-error a missing social-proof state is a build error (settled decision 4)
+    const missingState: ProfileCopy["socialProof"] = {
+      heading: "h",
+      frame: "f",
+      noneHereOthersDo: "a",
+      noneHereNoneThere: "b",
+      visibleNotReadable: "c",
+    };
+    expect(missingState.heading).toBe("h");
   });
 
   it("both locales carry the same set of Adashi-fixes keys", () => {

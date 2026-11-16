@@ -36,7 +36,16 @@ export const INSTALLERS_COPY: Record<ProfileLocale, ProfileCopy> = {
       quoteRequest:
         "Adashi zet een offerteformulier en een aanklikbaar telefoonnummer op de plekken waar een klant ze zoekt.",
     },
-    socialProof: "{count} installateurs bij jou in de buurt tonen hun reviews op hun eigen site. Jij niet.",
+    socialProof: {
+      heading: "Wat een klant ziet van je reviews",
+      frame:
+        "Een klant die twijfelt zoekt bewijs van eerder werk. Niet op Google, maar op de pagina waar hij al staat.",
+      noneHereOthersDo: "{count} installateurs bij jou in de buurt tonen hun reviews op hun eigen site. Jij niet.",
+      noneHereNoneThere:
+        "Geen van de {count} bedrijven die we bekeken toont reviews op de eigen site. Hier kun je het verschil maken.",
+      visibleNotReadable: "Je reviews staan op je site, maar niet in een vorm die zoekmachines kunnen lezen.",
+      visibleAndReadable: "Dit staat goed. {n} reviews op je eigen site, en zoekmachines kunnen ze lezen.",
+    },
   },
   en: {
     moneyLine: "One extra job is worth about {amount} euros.",
@@ -49,6 +58,15 @@ export const INSTALLERS_COPY: Record<ProfileLocale, ProfileCopy> = {
       quoteRequest:
         "Adashi puts a quote form and a tap-to-call number where a customer looks for them.",
     },
-    socialProof: "{count} installers near you show their reviews on their own site. You do not.",
+    socialProof: {
+      heading: "What a customer sees of your reviews",
+      frame:
+        "A customer who is unsure looks for proof of earlier work, on the page they are already on rather than back on Google.",
+      noneHereOthersDo: "{count} installers near you show their reviews on their own site. You do not.",
+      noneHereNoneThere:
+        "None of the {count} businesses we looked at show reviews on their own site. This is where you can be different.",
+      visibleNotReadable: "Your reviews are on your site, but not in a form search engines can read.",
+      visibleAndReadable: "This one is fine. {n} reviews on your own site, and search engines can read them.",
+    },
   },
 };
