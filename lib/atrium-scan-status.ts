@@ -1,6 +1,8 @@
 // Route 3 of the Atrium contract: what a scan says, in the contract's shape.
-// Problems come from scans.pages[].issues[], not summary.topIssues: the
-// full-async path in scanner-service overwrites topIssues with the first 10
+// Problems come from the homepage's issues only (scans.pages[0].issues), because
+// every approved Atrium line says "op je homepage". pages[0] is the start URL:
+// discovery.ts returns it first and index.ts scans in order. Not summary.topIssues:
+// the full-async path in scanner-service overwrites topIssues with the first 10
 // issues in page order, unsorted and not deduplicated.
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Issue, IssuesAlt, PageResult, ScanScores } from "@/types/scanner";
@@ -25,12 +27,10 @@ const SEVERITY_RANK: Record<string, number> = { critical: 0, major: 1 };
 
 export function deriveProblems(pages: PageResult[] | null, issuesAlt: IssuesAlt | null): AtriumProblem[] {
   const byId = new Map<string, Issue>();
-  for (const p of pages ?? []) {
-    for (const found of p.issues ?? []) {
-      if (!(found.severity in SEVERITY_RANK)) continue;
-      const kept = byId.get(found.id);
-      if (!kept || found.impact > kept.impact) byId.set(found.id, found);
-    }
+  for (const found of pages?.[0]?.issues ?? []) {
+    if (!(found.severity in SEVERITY_RANK)) continue;
+    const kept = byId.get(found.id);
+    if (!kept || found.impact > kept.impact) byId.set(found.id, found);
   }
 
   // fullScanBulk sends no locale, so the service writes Dutch into issues_alt.
@@ -89,10 +89,15 @@ export async function getAtriumScanStatus(sb: SupabaseClient, scanId: string): P
   // used for an email, so report it as failed rather than break the shape.
   if (!scores) return { status: "failed" };
 
+  // A blocked or unreachable homepage leaves nothing true to say; "failed" makes
+  // Atrium retry the next day and then skip the lead.
+  const pages = scan.pages as PageResult[] | null;
+  if (pages?.[0]?.issues?.some((i) => i.id === "scan-error")) return { status: "failed" };
+
   return {
     status,
     score: scores.overall,
-    problems: deriveProblems(scan.pages as PageResult[] | null, scan.issues_alt as IssuesAlt | null),
+    problems: deriveProblems(pages, scan.issues_alt as IssuesAlt | null),
     reportUrl: buildReportUrl(scan.id as string),
   };
 }

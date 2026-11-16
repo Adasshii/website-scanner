@@ -3,6 +3,7 @@ import { createBrowserLease } from "./browser-lease";
 import AxeBuilder from "@axe-core/playwright";
 import { extractPageData } from "./extractor";
 import { analyzeIssues } from "./analyzer";
+import { detectBlockedPage } from "./block-page";
 import { buildOverlayData } from "./screenshots";
 import type { PageResult, ScanScores, Issue, IssueOverlay } from "../../types/scanner";
 import type { NicheScanSlice } from "../../types/niche-scan-slice";
@@ -298,6 +299,14 @@ export async function scanPage(
         );
       }
     }
+
+    // A block page is not the site: fail the page here so nothing below analyses it.
+    const blockReason = detectBlockedPage(
+      statusCode,
+      await page.title(),
+      await page.evaluate(() => document.body?.innerText ?? "")
+    );
+    if (blockReason) throw new Error(blockReason);
 
     const loadTimeMs = Date.now() - startTime;
 
