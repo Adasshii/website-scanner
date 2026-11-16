@@ -12,7 +12,7 @@
   },
   "layout": {
     "header": {
-      "tagline": "Website Performance & Conversie Audit"
+      "tagline": "Wij zorgen dat je klopt op het moment dat iemand je vergelijkt"
     },
     "footer": {
       "rights": "© {year} Adashi. Alle rechten voorbehouden.",
@@ -252,7 +252,7 @@
   },
   "report": {
     "header": {
-      "title": "Website-rapport",
+      "title": "Wat een klant van je ziet voordat hij belt",
       "pagesScanned": "{count} pagina's gescand",
       "copyLink": "Rapportlink kopiëren",
       "copied": "Link gekopieerd"

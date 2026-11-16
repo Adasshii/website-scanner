@@ -12,7 +12,7 @@
   },
   "layout": {
     "header": {
-      "tagline": "Website Performance & Conversion Audit"
+      "tagline": "We make sure you hold up when someone compares you"
     },
     "footer": {
       "rights": "© {year} Adashi. All rights reserved.",
@@ -252,7 +252,7 @@
   },
   "report": {
     "header": {
-      "title": "Website Report",
+      "title": "What a customer sees before they call",
       "pagesScanned": "{count} pages scanned",
       "copyLink": "Copy report link",
       "copied": "Link copied"
