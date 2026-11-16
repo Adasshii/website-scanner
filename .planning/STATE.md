@@ -6,10 +6,10 @@ current_phase: 09
 current_phase_name: Niche Profile & Own-Site Engine Data
 status: verifying
 stopped_at: Completed 09-09-PLAN.md (migration 023 applied per Joshua; deploy and checks open)
-last_updated: "2026-11-16T02:03:47.795Z"
-last_activity: 2026-11-13
+last_updated: "2026-11-16T10:15:15.135Z"
+last_activity: 2026-11-16
 last_activity_desc: Phase 09 execution started
-state_head: 954d94e493bd505c9c962c95e8fa522b3f2606d5
+state_head: 4e5b03e9669ac1a97d2d42e5ca596f70c35c2213
 progress:
   total_phases: 5
   completed_phases: 0
@@ -32,7 +32,7 @@ See: .planning/PROJECT.md (updated 2026-11-11)
 Phase: 09 (Niche Profile & Own-Site Engine Data) — EXECUTING
 Plan: 9 of 9
 Status: Phase complete — ready for verification
-Last activity: 2026-11-16 - Completed quick task 261116-419: Scanner: log the completed-save error and fail the scan when the save fails
+Last activity: 2026-11-16 - Completed quick task 261116-fmp: Atrium status route: read scans with no-store
 
 Progress: [░░░░░░░░░░] 0% of milestone v2.0
 
@@ -297,6 +297,7 @@ Items acknowledged and carried forward from previous milestone close:
 | 8 | 261114-olb-close-the-eng-06-manual-draft-scoreability-gap · Outcome: Closed the ENG-06 hole `09-VERIFICATION.md` found. `generateDraftForProspect` gated only on the stored `not_scoreable_reason`, and the marker refresh never writes a first marker onto a released prospect (D-9-17), so a prospect released and scanned before migration 022 passed the manual gate while failing the rule, and the Shortlist offered its Generate draft button. The manual route now reads `website_url`, `address`, `latitude`, `longitude` and the `prospect_sources` embed and refuses on a fresh `scoreableFailureReason`, keeping the stored-marker check alongside it; the button condition calls the same wrapper. `scoreableVerdict(` still has exactly one production caller. The `scan_released_at` filter in `scoreability-refresh.ts` was deliberately not widened; only its stale header was corrected. Tests written first and seen red: one integration case (released and scanned, no marker, refused, zero rows) and three button cases. Commits `825af03`, `911058b`, `eec1129`. Open for Joshua: `select count(*) from prospects where scan_released_at is not null and latest_scan_id is not null and not_scoreable_reason is null;` on production, then check those rows against the four conditions. | 2026-11-14 | — | — | — |
 | 9 | fix(atrium): send the niche slice when Atrium starts a scan | 2026-11-16 | f555ac5 | — | — |
 | 261116-419 | Scanner: log the completed-save error and fail the scan when the save fails | 2026-11-16 | 954d94e | — | [261116-419-scanner-log-the-completed-save-error-and](./quick/261116-419-scanner-log-the-completed-save-error-and/) |
+| 261116-fmp | Atrium status route: read scans with no-store | 2026-11-16 | 4e5b03e | — | [261116-fmp-atrium-status-route-read-scans-with-no-s](./quick/261116-fmp-atrium-status-route-read-scans-with-no-s/) |
 
 ## Session Continuity
 
