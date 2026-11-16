@@ -20,6 +20,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { isAtCapacity, CAPACITY_RETRY_AFTER_SECONDS } from "./capacity";
 import { aggregateOwnSite } from "./own-site-facts";
 import { storeOwnSiteFacts, validateNicheSlice } from "./own-site-run";
+import { saveCompletedScan, markScanFailed } from "./scan-save";
 // Deliberately relative, not the shared-lib path alias. Path aliases are
 // compile-time only: tsc emits this specifier verbatim into dist/, and Node
 // cannot resolve it, which crashed the container on boot and failed
@@ -65,14 +66,12 @@ function getSupabase() {
 const activeFullScans = new Map<string, SupabaseClient>();
 
 async function failScan(scanId: string, supabase: SupabaseClient, reason: string) {
-  try {
-    await supabase
-      .from("scans")
-      .update({ status: "failed", error_message: reason, updated_at: new Date().toISOString() })
-      .eq("id", scanId);
-  } catch (err) {
-    console.error(`[scan-recovery] DB update failed for ${scanId}:`, err);
-  }
+  await markScanFailed(scanId, reason, {
+    write: async (values) => {
+      const { error } = await supabase.from("scans").update(values).eq("id", scanId);
+      return { error };
+    },
+  });
 }
 
 const app = express();
@@ -639,38 +638,44 @@ app.post("/api/scan/full-async", async (req, res) => {
 
     console.log(`[full-scan-async] AI enhanced: ${url} (primary=${locale}, alt=${altLocale})`);
 
-    await supabase
-      .from("scans")
-      .update({
-        status: "completed",
-        scores,
-        summary,
-        pages: enhancedResults,
-        screenshots,
-        cost_estimate: costEstimate,
-        quick_wins: quickWins,
-        website_personality: websitePersonality,
-        visitor_experience: visitorExperience,
-        ai_content_alt: aiContentAlt,
-        issues_alt: issuesAlt,
-        sales_brief: salesBrief,
-        design_ai_analysis: designAnalysis,
-        design_ai_analyzed_at: designAnalysis ? new Date().toISOString() : null,
-        completed_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", scanId);
+    const saved = await saveCompletedScan(scanId, {
+      write: async () => {
+        const { error } = await supabase
+          .from("scans")
+          .update({
+            status: "completed",
+            scores,
+            summary,
+            pages: enhancedResults,
+            screenshots,
+            cost_estimate: costEstimate,
+            quick_wins: quickWins,
+            website_personality: websitePersonality,
+            visitor_experience: visitorExperience,
+            ai_content_alt: aiContentAlt,
+            issues_alt: issuesAlt,
+            sales_brief: salesBrief,
+            design_ai_analysis: designAnalysis,
+            design_ai_analyzed_at: designAnalysis ? new Date().toISOString() : null,
+            completed_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", scanId);
+        return { error };
+      },
+      markFailed: (reason) => failScan(scanId, supabase, reason),
+    });
 
     clearTimeout(scanTimeout);
     activeFullScans.delete(scanId);
+    if (!saved.ok) return;
     console.log(`[full-scan-async] Completed: ${url} — overall ${scores.overall}`);
 
     // Own-site facts (Phase 9, D-9-R6): a SECOND update, deliberately not part of
-    // the completed update above. That update never reads its returned error, so a
-    // scanner deployed before migration 023 is applied would never reach
-    // `completed` if it named the new column there, and public scans would stall
-    // until the fifteen-minute timeout. Here the worst case is a missing facts
-    // column. Awaited before the callback so anything reading the row downstream
+    // the completed update above. That update now fails the scan when the database
+    // refuses it, so naming the new column there would turn every public scan on a
+    // database without migration 023 into a failed scan. Here the worst case is a
+    // missing facts column. Awaited before the callback so anything reading the row downstream
     // sees the facts. storeOwnSiteFacts never throws and is time-bounded, and it
     // runs after the in-flight entry and timer are cleared so a slow write cannot
     // let the timeout mark a completed scan failed. With no slice it does nothing.
@@ -705,14 +710,7 @@ app.post("/api/scan/full-async", async (req, res) => {
     clearTimeout(scanTimeout);
     activeFullScans.delete(scanId);
     console.error(`[full-scan-async] Failed:`, error);
-    await supabase
-      .from("scans")
-      .update({
-        status: "failed",
-        error_message: error instanceof Error ? error.message : "Full scan failed",
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", scanId);
+    await failScan(scanId, supabase, error instanceof Error ? error.message : "Full scan failed");
   }
 });
 
