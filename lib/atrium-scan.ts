@@ -9,6 +9,7 @@ import { BULK_SCAN_IP_HASH, BULK_USER_AGENT } from "@/lib/bulk-scan-constants";
 import { ScannerClient } from "@/lib/scanner-client";
 import { isSuppressed } from "@/lib/suppression";
 import { errorMessage } from "@/lib/atrium-admin";
+import { INSTALLERS_PROFILE, toScannerSlice } from "@/lib/niche-profile";
 
 /** The scan service fails its own scans after 15 minutes; 20 covers any live scan. */
 export const SCAN_RUNNING_WINDOW_MS = 20 * 60 * 1000;
@@ -77,7 +78,17 @@ export async function startAtriumScan(sb: SupabaseClient, prospectId: string): P
     // Built only here, right before dispatch, so the earlier refusals never
     // need SCANNER_SERVICE_URL or SCANNER_API_KEY.
     const client = new ScannerClient();
-    ({ accepted } = await client.fullScanBulk(url, { scanId, prospectId, userAgent: BULK_USER_AGENT }));
+    ({ accepted } = await client.fullScanBulk(url, {
+      scanId,
+      prospectId,
+      userAgent: BULK_USER_AGENT,
+      // Phase 9 (D-9-12): the slice rides the request, exactly as
+      // lib/bulk-scan-dispatch.ts sends it. Without it the scanner's
+      // storeOwnSiteFacts returns "skipped" and scans.own_site_facts stays null,
+      // so an Atrium-started scan would yield a thinner report than a
+      // scanner-started one for the same business.
+      nicheSlice: toScannerSlice(INSTALLERS_PROFILE),
+    }));
   } catch (err) {
     const reason = errorMessage(err);
     const now = new Date().toISOString();

@@ -23,6 +23,7 @@ vi.mock("@/lib/triage-fetch", () => ({ isHomepageDisallowed: mocks.isHomepageDis
 
 import { createServerClient } from "@/lib/supabase";
 import { BULK_SCAN_IP_HASH, BULK_USER_AGENT } from "@/lib/bulk-scan-constants";
+import { INSTALLERS_PROFILE, toScannerSlice } from "@/lib/niche-profile";
 import {
   cleanupProspectsByDomainPrefix,
   seedProspect,
@@ -192,6 +193,7 @@ describe("POST /api/admin/atrium/prospects/:prospectId/scan", () => {
       scanId: json.scanId,
       prospectId: id,
       userAgent: BULK_USER_AGENT,
+      nicheSlice: toScannerSlice(INSTALLERS_PROFILE),
     });
     expect(await scanRow(json.scanId)).toMatchObject({
       status: "scanning",
@@ -200,6 +202,23 @@ describe("POST /api/admin/atrium/prospects/:prospectId/scan", () => {
       url: `https://${domain}`,
     });
     expect(await prospectRow(id)).toEqual({ latest_scan_id: json.scanId, scan_status: "scanning", scan_status_reason: null });
+  });
+
+  // Regression, 2026-11-16: this route shipped on a branch cut before Phase 9, so it
+  // called fullScanBulk with no nicheSlice. lib/bulk-scan-dispatch.ts sent one and this
+  // route did not, and storeOwnSiteFacts returns "skipped" before doing any work when the
+  // slice is missing. Every Atrium-started scan therefore left scans.own_site_facts null,
+  // which is how it was found in production: 28 prospect scans, all owner 'atrium', all null.
+  // An exact-object assertion above would catch a removal, but only this test says WHY.
+  it("sends the niche slice, so an Atrium-started scan reads the prospect's own site", async () => {
+    const id = await seedProspect(sb, { domain: freshDomain(), owner: "atrium" });
+
+    expect((await post(id)).status).toBe(202);
+
+    const slice = mocks.fullScanBulk.mock.calls[0][1].nicheSlice;
+    expect(slice).toBeDefined();
+    expect(slice.nicheId).toBe(INSTALLERS_PROFILE.id);
+    expect(slice.trades.length).toBe(INSTALLERS_PROFILE.trades.length);
   });
 
   it("records a failed scan and returns 202 when robots.txt disallows the homepage", async () => {
