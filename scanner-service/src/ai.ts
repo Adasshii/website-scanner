@@ -9,6 +9,7 @@ import type {
   QuickWin,
 } from "../../types/scanner";
 import { buildDesignAnalysisPrompt } from "./design-prompt";
+import { generateContent, hasLlmKey } from "./llm";
 
 let genAI: GoogleGenerativeAI | null = null;
 
@@ -824,8 +825,7 @@ export async function generateDesignAnalysis(
   screenshotUrl: string,
   screenshotBuffer?: Buffer | null
 ): Promise<DesignAnalysis | null> {
-  const ai = getClient();
-  if (!ai) return null;
+  if (!hasLlmKey()) return null;
 
   try {
     let base64: string;
@@ -844,22 +844,11 @@ export async function generateDesignAnalysis(
       mimeType = response.headers.get("content-type") || "image/png";
     }
 
-    const model = ai.getGenerativeModel({
-      model: "gemini-2.5-flash",
-      generationConfig: { responseMimeType: "application/json" },
+    const text = await generateContent({
+      prompt: buildDesignAnalysisPrompt(domain),
+      json: true,
+      image: { base64, mediaType: mimeType },
     });
-
-    const result = await model.generateContent([
-      {
-        inlineData: {
-          mimeType,
-          data: base64,
-        },
-      },
-      buildDesignAnalysisPrompt(domain),
-    ]);
-
-    const text = result.response.text().trim();
     const parsed = JSON.parse(text) as {
       visualHierarchy: number;
       whitespace: number;
