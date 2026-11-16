@@ -6,10 +6,10 @@ current_phase: 09
 current_phase_name: Niche Profile & Own-Site Engine Data
 status: verifying
 stopped_at: Completed 09-09-PLAN.md (migration 023 applied per Joshua; deploy and checks open)
-last_updated: "2026-11-16T00:46:36.166Z"
+last_updated: "2026-11-16T02:03:47.795Z"
 last_activity: 2026-11-13
 last_activity_desc: Phase 09 execution started
-state_head: f555ac5ab7946ae49856bf2e96521d14d8044d82
+state_head: 954d94e493bd505c9c962c95e8fa522b3f2606d5
 progress:
   total_phases: 5
   completed_phases: 0
@@ -32,7 +32,7 @@ See: .planning/PROJECT.md (updated 2026-11-11)
 Phase: 09 (Niche Profile & Own-Site Engine Data) — EXECUTING
 Plan: 9 of 9
 Status: Phase complete — ready for verification
-Last activity: 2026-11-13 — Phase 09 execution started
+Last activity: 2026-11-16 - Completed quick task 261116-419: Scanner: log the completed-save error and fail the scan when the save fails
 
 Progress: [░░░░░░░░░░] 0% of milestone v2.0
 
@@ -296,6 +296,7 @@ Items acknowledged and carried forward from previous milestone close:
 | 7 | category-autocomplete-on-the-import-form · Outcome: Closed the footgun 260806-ntm shipped and flagged in the same breath: the Import form's Category field was free text, and Joshua typed the Dutch word `tandarts` three times against Overture's English category slugs, getting zero rows each time. The zero-row panel was accurate but could not say what to type instead. `npm run overture-categories` now probes S3 for one region's category vocabulary and writes it to the committed `data/overture-categories.json`, keyed `"<ISO2>:<region-slug>"` to match `REGION_BBOXES`; seeded for noord-holland, zuid-holland, utrecht and noord-brabant at 300 categories each. A dev-only GET route serves one region's list from disk (never bundled, never queried per keystroke) and the form filters as you type, showing each category's with-a-website count rather than its raw place count, because that is the number that decides whether a category is worth importing at all: `bridge` has 662 places and 125 websites. A region with no cached entry degrades to exactly the plain free-text field it was before, and no category list is hardcoded anywhere, keeping the Geography constraint intact. The guard test table now covers four routes (three POST, one GET) at 24 tests, with the same load-bearing assertion: a production-`NODE_ENV` request carrying the CORRECT secret still gets a bare 404. Suite 608/608, lint and tsc clean, build clean with no duckdb in the output. The executor was terminated mid-run by a monthly spend limit after two of three tasks were committed; the orchestrator verified and committed the third directly rather than inheriting any unverified claim. Commits `0a489e3`, `93b4f32`, `35955e3`. Still unverified: the live click-through of the dropdown, carried forward as the same open `human_judgment` item 260806-ntm recorded as `D7`. | 2026-08-06 | — | — | — |
 | 8 | 261114-olb-close-the-eng-06-manual-draft-scoreability-gap · Outcome: Closed the ENG-06 hole `09-VERIFICATION.md` found. `generateDraftForProspect` gated only on the stored `not_scoreable_reason`, and the marker refresh never writes a first marker onto a released prospect (D-9-17), so a prospect released and scanned before migration 022 passed the manual gate while failing the rule, and the Shortlist offered its Generate draft button. The manual route now reads `website_url`, `address`, `latitude`, `longitude` and the `prospect_sources` embed and refuses on a fresh `scoreableFailureReason`, keeping the stored-marker check alongside it; the button condition calls the same wrapper. `scoreableVerdict(` still has exactly one production caller. The `scan_released_at` filter in `scoreability-refresh.ts` was deliberately not widened; only its stale header was corrected. Tests written first and seen red: one integration case (released and scanned, no marker, refused, zero rows) and three button cases. Commits `825af03`, `911058b`, `eec1129`. Open for Joshua: `select count(*) from prospects where scan_released_at is not null and latest_scan_id is not null and not_scoreable_reason is null;` on production, then check those rows against the four conditions. | 2026-11-14 | — | — | — |
 | 9 | fix(atrium): send the niche slice when Atrium starts a scan | 2026-11-16 | f555ac5 | — | — |
+| 261116-419 | Scanner: log the completed-save error and fail the scan when the save fails | 2026-11-16 | 954d94e | — | [261116-419-scanner-log-the-completed-save-error-and](./quick/261116-419-scanner-log-the-completed-save-error-and/) |
 
 ## Session Continuity
 
