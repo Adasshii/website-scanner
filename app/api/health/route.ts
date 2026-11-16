@@ -10,7 +10,7 @@ export const runtime = "nodejs";
  * ping into the build output. A health check that reports build-time state is
  * actively misleading: it answers "was this set when we built" when the caller
  * is asking "can the running app see this now". Found 2026-07-30, when a
- * prerendered /api/health reported GEMINI_API_KEY absent and could not
+ * prerendered /api/health reported ANTHROPIC_API_KEY absent and could not
  * distinguish a genuinely unset variable from a stale build snapshot.
  */
 export const dynamic = "force-dynamic";
@@ -23,7 +23,7 @@ const REQUIRED_VARS = [
   "SCANNER_SERVICE_URL",
   "SCANNER_API_KEY",
   "RESEND_API_KEY",
-  "GEMINI_API_KEY",
+  "ANTHROPIC_API_KEY",
 ];
 
 export async function GET() {

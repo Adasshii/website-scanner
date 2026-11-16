@@ -3,7 +3,7 @@
  * whether a completed prospect scan produces an automatic outreach draft.
  * Sits between app/api/internal/scan-complete/route.ts (which fetches the
  * scan row) and lib/draft-generator.ts's generateDraft() (which turns an
- * eligible scan into copy) — this module never calls Gemini itself and never
+ * eligible scan into copy) — this module never calls Claude itself and never
  * reimplements generation.
  *
  * Runs BEFORE the existing public-lead email-readiness guard in the route:

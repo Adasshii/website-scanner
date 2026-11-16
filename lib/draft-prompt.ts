@@ -25,7 +25,7 @@
  * record.
  *
  * Pure module: no Supabase client, no fetch, no environment reads. The
- * builder here composes text only — it never calls Gemini itself
+ * builder here composes text only — it never calls Claude itself
  * (that is lib/draft-generator.ts, 06-04).
  */
 import type { CitableMetric } from "@/lib/draft-metric-selector";

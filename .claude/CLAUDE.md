@@ -21,7 +21,7 @@ a drafted message he is willing to send.
 
 ### Constraints
 
-- **Tech stack**: Vercel, Railway, Supabase, Resend, Gemini, Playwright only — no new
+- **Tech stack**: Vercel, Railway, Supabase, Resend, Anthropic (Claude), Playwright only — no new
   infrastructure. Everything is already paid for and already understood.
 
 - **Budget**: costs stay near zero. This is what rules out Places at scale, and what makes
@@ -90,7 +90,7 @@ a drafted message he is willing to send.
 - @axe-core/playwright 4.10.0 - Playwright integration for axe (scanner-service)
 - playwright 1.58.2 - Headless browser control for website scanning (scanner-service)
 - chrome-launcher 1.2.1 - Chrome browser launch utility (scanner-service)
-- @google/generative-ai 0.24.1 - Google Gemini API for AI-driven design and content analysis (scanner-service)
+- @anthropic-ai/sdk 1.8.0 - Claude Sonnet 5.5 for AI-driven design and content analysis (scanner-service, and lib/ for outreach drafting)
 - helmet 8.0.0 - HTTP headers security (scanner-service)
 - cors 2.8.5 - Cross-Origin Resource Sharing (scanner-service)
 - dotenv 17.3.1 - Environment variable loading (scanner-service)
@@ -99,7 +99,7 @@ a drafted message he is willing to send.
 ## Configuration
 
 - Environment variables defined in `.env`, `.env.local` (not readable due to permissions, but referenced throughout codebase)
-- Required vars: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `RESEND_API_KEY`, `RESEND_WEBHOOK_SECRET`, `FILLOUT_WEBHOOK_SECRET`, `SCANNER_SERVICE_URL`, `SCANNER_API_KEY`, `CRON_SECRET`, `GOOGLE_API_KEY`
+- Required vars: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `RESEND_API_KEY`, `RESEND_WEBHOOK_SECRET`, `FILLOUT_WEBHOOK_SECRET`, `SCANNER_SERVICE_URL`, `SCANNER_API_KEY`, `CRON_SECRET`, `ANTHROPIC_API_KEY`
 - `vercel.json` - Vercel deployment config with cron jobs (three scheduled tasks)
 - `next.config.mjs` - Next.js configuration
 - `tailwind.config.ts` - Tailwind CSS customization
@@ -118,7 +118,7 @@ a drafted message he is willing to send.
 - Railway - Express scanner-service hosting
 - Supabase - PostgreSQL database hosting
 - Resend - Email delivery service
-- Google Generative AI API - Gemini access for analysis
+- Anthropic API - Claude access for analysis
 
 <!-- GSD:stack-end -->
 

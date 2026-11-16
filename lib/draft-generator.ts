@@ -1,8 +1,8 @@
 /**
  * lib/draft-generator.ts — D-6-R5 / DRA-01 / DRA-02 / DRA-03 / DRA-05: turns
  * one completed scan into a reviewable cold-outreach draft. This is the
- * first Gemini call made from the Next.js/Vercel side of this codebase —
- * every other Gemini call lives in the always-on scanner-service on
+ * first Claude call made from the Next.js/Vercel side of this codebase —
+ * every other Claude call lives in the always-on scanner-service on
  * Railway (scanner-service/src/ai.ts) — so no browser is involved (D-6-R5).
  *
  * Composes 06-01/06-03's pure modules and never reimplements their logic:
@@ -18,13 +18,14 @@
  *   - lib/i18n-helpers.ts's applyIssuesAlt() so a Dutch draft never quotes
  *     English issue titles (RESEARCH Pitfall 7).
  *
- * Never throws to its caller: a Gemini failure, timeout, or guard failure
+ * Never throws to its caller: a Claude failure, timeout, or guard failure
  * all resolve to null, matching every other AI call site in this codebase.
  * This module is always awaited by its caller — nothing here is scheduled
  * to run after a response has been sent, since Vercel's execution
  * environment can freeze between the response and a deferred callback.
  */
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import Anthropic from "@anthropic-ai/sdk";
+import { generateContent, hasLlmKey, LlmRefusalError } from "@/lib/llm";
 import type { ScanScores, ScanSummary, PageResult, IssuesAlt } from "@/types/scanner";
 import { selectCitableMetric } from "@/lib/draft-metric-selector";
 import {
@@ -55,7 +56,7 @@ export interface DraftInput {
   };
 }
 
-/** DI seam mirroring lib/bulk-scan-dispatch.ts's DispatchDeps convention — deterministic tests, no live Gemini call. */
+/** DI seam mirroring lib/bulk-scan-dispatch.ts's DispatchDeps convention — deterministic tests, no live Claude call. */
 export interface DraftDeps {
   generate?: (prompt: string) => Promise<string | null>;
 }
@@ -72,8 +73,8 @@ export interface GeneratedDraft {
  * which blocked the cited-number check (06-07 Task 3, check 4) locally.
  *
  * This is the site's own public URL, not a credential — the client-exposed-env
- * concern this module guards against is the Gemini key (T-06-KEY), which is
- * read only via the server-only GEMINI_API_KEY below.
+ * concern this module guards against is the Claude key (T-06-KEY), which is
+ * read only via the server-only ANTHROPIC_API_KEY inside lib/llm.ts.
  */
 const REPORT_BASE_URL =
   process.env.NEXT_PUBLIC_SITE_URL || "https://scan.adashi.io";
@@ -83,67 +84,68 @@ export function buildReportUrl(scanId: string): string {
   return `${REPORT_BASE_URL}/report/${scanId}`;
 }
 
-// ── Gemini call: lazy client, plain Promise.race timeout, never throws ──
-
-let genAI: GoogleGenerativeAI | null = null;
-
-function getClient(): GoogleGenerativeAI | null {
-  if (!process.env.GEMINI_API_KEY) return null;
-  if (!genAI) {
-    genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-  }
-  return genAI;
-}
+// ── Claude call: plain Promise.race timeout, never throws ──────────────
 
 const GENERATE_TIMEOUT_MS = 45000;
-const MODEL_NAME = "gemini-2.5-flash";
 
 /**
- * Default Gemini call. Follows scanner-service/src/ai.ts's withTimeoutLocal
+ * Default Claude call. Follows scanner-service/src/ai.ts's withTimeoutLocal
  * convention exactly (plain Promise.race), not the SDK's own request-timeout
  * option, so failure behaviour matches every other AI call site in this
- * codebase — but unlike a bare .catch(() => fallback), each of the three
- * failure shapes (no key, timeout, thrown error) logs its own distinct line
- * before returning null, so a config problem (missing GEMINI_API_KEY) is
- * never indistinguishable from a live API failure in the server log again
- * (found during 06 manual verification: all three collapsed into the same
- * "empty generation result" line).
+ * codebase — but unlike a bare .catch(() => fallback), each of the four
+ * failure shapes (no key, timeout, thrown error, refusal) logs its own
+ * distinct line before returning null, so a config problem (missing
+ * ANTHROPIC_API_KEY) is never indistinguishable from a live API failure in
+ * the server log again (found during 06 manual verification: all three
+ * original shapes collapsed into the same "empty generation result" line),
+ * and a safety refusal is never read as empty content.
  *
- * Exported (only) so its three failure branches are directly unit-testable
- * against a mocked @google/generative-ai — the DraftDeps.generate seam
- * bypasses this function entirely, so it's the only way to test them.
+ * Exported (only) so its four failure branches are directly unit-testable
+ * against a mocked @anthropic-ai/sdk — the DraftDeps.generate seam bypasses
+ * this function entirely, so it's the only way to test them.
  */
-export async function defaultGeminiGenerate(prompt: string): Promise<string | null> {
-  const ai = getClient();
-  if (!ai) {
+export async function defaultLlmGenerate(prompt: string): Promise<string | null> {
+  if (!hasLlmKey()) {
     console.error(
-      `[draft] GEMINI_API_KEY is not set in this runtime, so no draft can be generated`
+      `[draft] ANTHROPIC_API_KEY is not set in this runtime, so no draft can be generated`
     );
     return null;
   }
 
-  const model = ai.getGenerativeModel({ model: MODEL_NAME });
   const TIMED_OUT = Symbol("draft-generate-timeout");
 
-  let raced: Awaited<ReturnType<typeof model.generateContent>> | typeof TIMED_OUT;
+  let raced: string | typeof TIMED_OUT;
   try {
     raced = await Promise.race([
-      model.generateContent(prompt),
+      generateContent({ prompt }),
       new Promise<typeof TIMED_OUT>((resolve) =>
         setTimeout(() => resolve(TIMED_OUT), GENERATE_TIMEOUT_MS)
       ),
     ]);
   } catch (err) {
-    console.error(`[draft] Gemini call threw: ${err instanceof Error ? err.message : String(err)}`);
+    if (err instanceof LlmRefusalError) {
+      console.error(
+        `[draft] Claude refused to write this draft (refusal stop reason), so no draft was generated`
+      );
+      return null;
+    }
+    const message = err instanceof Error ? err.message : String(err);
+    if (err instanceof Anthropic.RateLimitError) {
+      console.error(`[draft] Claude call threw (rate limited): ${message}`);
+    } else if (err instanceof Anthropic.APIError) {
+      console.error(`[draft] Claude call threw (API error ${err.status}): ${message}`);
+    } else {
+      console.error(`[draft] Claude call threw: ${message}`);
+    }
     return null;
   }
 
   if (raced === TIMED_OUT) {
-    console.error(`[draft] Gemini call timed out after ${GENERATE_TIMEOUT_MS}ms`);
+    console.error(`[draft] Claude call timed out after ${GENERATE_TIMEOUT_MS}ms`);
     return null;
   }
 
-  return raced.response.text().trim();
+  return raced;
 }
 
 // ── Locale-correct top issue titles (RESEARCH Pitfall 7) ────────────────
@@ -186,7 +188,7 @@ export async function generateDraft(
   input: DraftInput,
   deps: DraftDeps = {}
 ): Promise<GeneratedDraft | null> {
-  const generate = deps.generate ?? defaultGeminiGenerate;
+  const generate = deps.generate ?? defaultLlmGenerate;
   const { prospect, scan } = input;
 
   const locale = localeForCountry(prospect.country);
