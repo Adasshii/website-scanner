@@ -332,6 +332,25 @@ export const OWN_SITE_ZONE_CORPUS: readonly OwnSiteZoneFixture[] = [
     ],
     expected: { tradeId: "central_heating", confidence: "clear" },
   },
+  {
+    id: "general-builder-trade-word-in-footer",
+    note: "A 4-page general builder whose footer, repeated on every page, names a trade (roofing) in passing. A person reads a general builder, not a roofer. The footer counts once, the way the nav does (see roofer-seven-pages-solar-in-nav), so it cannot outweigh the per-page content that names no trade.",
+    pages: [
+      "Verbouwingen en uitbouwen",
+      "Onderhoud aan woningen",
+      "Nieuwbouw en renovatie",
+      "Contact en werkwijze",
+    ].map((heading, index) =>
+      makeZones({
+        title: `Aannemersbedrijf Jansen | ${heading}`,
+        h1: [heading],
+        navTexts: ["Home", "Diensten", "Projecten", "Over ons", "Contact"],
+        internalPaths: ["/diensten", "/projecten", "/over-ons", "/contact"],
+        bodyText: `Wij verzorgen werk in heel de regio, pagina ${index + 1}.\nAannemersbedrijf Jansen, ook dakwerken, dakreparatie en daklekkage`,
+      })
+    ),
+    expected: { tradeId: null, confidence: "unreadable" },
+  },
 ];
 
 /**

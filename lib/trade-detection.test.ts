@@ -311,6 +311,72 @@ describe("detectTrade: aggregation across a 7-page scan", () => {
   });
 });
 
+describe("detectTrade: boilerplate repeated on every page counts once", () => {
+  // The nav rule above has a twin: a footer line that sits on EVERY page is site-wide
+  // boilerplate, and counting it once per page would let a general builder whose footer
+  // names a trade win that trade. Cases marked RED fail before the fix and carry the
+  // value the old code reported; cases marked ROT-PIN pass before AND after, and a red
+  // one is a real regression, not a bug-proof to "fix".
+
+  it("counts a body line present on every page once, not once per page (RED: reported 9 before the fix)", () => {
+    const footer = "Dakwerken Mulder, dakreparatie en daklekkage";
+    const pages = ["een", "twee", "drie"].map((n) => zones({ bodyText: n + "\n" + footer }));
+    expect(scoreOf(pages, "dak")).toBe(3);
+  });
+
+  it("counts an h2/h3 item present on every page once, at the heading weight (RED: reported 12 before the fix)", () => {
+    const pages = ["een", "twee", "drie"].map((n) => zones({ h2h3: ["dakwerk " + n, "Dakreparatie"] }));
+    // Three distinct headings (3 x 2) plus the repeated one counted once (2).
+    expect(scoreOf(pages, "dak")).toBe(8);
+  });
+
+  it("caps the body union on its own, so one hostile repeated line cannot blow it up (RED: reported 20 before the fix)", () => {
+    const pages = pagesOf(2, { bodyText: "dak ".repeat(50) });
+    expect(scoreOf(pages, "dak")).toBe(10);
+  });
+
+  it("caps the h2/h3 union on its own (RED: reported 20 before the fix)", () => {
+    const pages = pagesOf(2, { h2h3: ["dak ".repeat(12)] });
+    expect(scoreOf(pages, "dak")).toBe(10);
+  });
+
+  it("ROT-PIN: a one-page scan sums its own repeated lines exactly as before", () => {
+    // One page has nothing to repeat against. This stops the two-pages-or-more guard
+    // rotting into a within-page dedupe, which would score every one-pager lower.
+    expect(scoreOf({ bodyText: "dakwerk\ndakwerk\ndakwerk" }, "dak")).toBe(3);
+    expect(scoreOf([zones({ bodyText: "dakwerk\ndakwerk\ndakwerk" })], "dak")).toBe(3);
+  });
+
+  it("ROT-PIN: a line on 2 of 3 pages is NOT boilerplate and still sums, because the rule is every page and never a ratio", () => {
+    const pages = [
+      zones({ bodyText: "dakwerk een\ndakwerk gedeeld" }),
+      zones({ bodyText: "dakwerk twee\ndakwerk gedeeld" }),
+      zones({ bodyText: "dakwerk drie" }),
+    ];
+    expect(scoreOf(pages, "dak")).toBe(5);
+  });
+
+  it("ROT-PIN: a trade word past the candidate cap is never boilerplate and still sums per page", () => {
+    // The cap bounds the boilerplate CANDIDATE set, not the text read. Clipping therefore
+    // degrades to today's summing instead of dropping body content from a long page.
+    const filler = Array.from({ length: 250 }, (_, index) => `regel ${index}`);
+    const body = [...filler.slice(0, 249), "dakwerk"].join("\n");
+    expect(scoreOf(pagesOf(2, { bodyText: body }), "dak")).toBe(2);
+  });
+
+  it("ROT-PIN: removing a boilerplate line from the middle does not glue its neighbours into a phrase", () => {
+    // The footer is the same on both pages, so it is lifted out. The lines around it differ
+    // per page and stay. Without a placeholder where the footer was, "cv" and "ketel" would
+    // sit side by side and a "cv ketel" term would invent a match.
+    const footer = "Openingstijden maandag tot vrijdag";
+    const pages = [
+      zones({ bodyText: "nieuwe cv\n" + footer + "\nketel vervangen" }),
+      zones({ bodyText: "tweede cv\n" + footer + "\nketel plaatsen" }),
+    ];
+    expect(scoreOf(pages, "cv ketel", "word")).toBe(0);
+  });
+});
+
 describe("detectTrade: the three match modes are not interchangeable", () => {
   const MODES: Term["match"][] = ["substring", "prefix", "word"];
   const hitsByMode = (text: string, term: string): number[] => MODES.map((mode) => scoreOf({ h1: [text] }, term, mode) / 5);
