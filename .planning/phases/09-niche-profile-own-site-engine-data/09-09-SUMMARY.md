@@ -268,3 +268,30 @@ Still open in that same checkpoint: the scanner has NOT been deployed to Railway
 6 are untouched. That means no `/health` check on a new deployment, no end-to-end bulk scan proving
 `own_site_facts is not null`, and no public-scan regression check. ENG-01, ENG-02 and ENG-05 are
 written and tested locally but have never run in production.
+
+## Scanner deployed, 2026-11-16
+
+**Corrects the section above**, which said the scanner had not been deployed. It has.
+
+The push of `main` to GitHub triggered Railway on its own: `scanner-service/**`, `types/**` and
+`lib/**` are all in `watchPatterns` in `scanner-service/railway.toml`. No manual deploy was run.
+
+- Deployment `2bd948ea-e641-49e5-b40e-9027c97e8d6d`, status SUCCESS, 2026-11-16 00:45 +01:00
+- Branch `main`, commit `2962573`, which is the head of main, so the running image is not stale
+- `/health` returns 200 on three consecutive calls, about 0.2s each
+- `/api/scan` without a key returns 401, so auth still holds
+
+Step 6, the public-scan regression check and the D-9-R6 blast-radius guard, PASSES. One real public
+scan of `https://adashi.io` through `https://scan.adashi.io/api/scan` returned HTTP 200 in 29s,
+scan `f48d3aec-a7e3-406a-b220-4b0ef86c467a`, status `quick_done`, overall 87 with all six category
+scores present, and `designReady: true` on the status endpoint, so the async design step completed
+too. The report page and the scan page both render 200.
+
+Step 5, the end-to-end proof that `own_site_facts` is written, is NOT yet closed. Joshua ran the
+check query and the three most recent scans all returned `has_facts = false`. That is not evidence
+of a fault: `storeOwnSiteFacts` in `scanner-service/src/index.ts` runs only in the full-async path
+and does nothing without a niche slice, and only `lib/bulk-scan-dispatch.ts` sends one. A public
+scan is therefore expected to show `has_facts = false` for ever. The check needs a row with
+`prospect_id is not null` and `type = 'full'` and `status = 'completed'`, created after the
+2026-11-16 00:45 deployment. Until such a row exists, ENG-01, ENG-02 and ENG-05 have never run in
+production and nothing about them is proven there.
