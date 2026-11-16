@@ -180,8 +180,8 @@ export const INSTALLERS_TRADES: readonly TradeProfile[] = [
     showMoneyLine: false,
     tieBreakRank: 6,
     keywords: [
-      { term: "cv ketel", match: "word" },
-      { term: "cv installatie", match: "word" },
+      { term: "cv ketel", match: "prefix" },
+      { term: "cv installatie", match: "prefix" },
       { term: "centrale verwarming", match: "substring" },
       { term: "hr ketel", match: "word" },
       { term: "gasketel", match: "substring" },
