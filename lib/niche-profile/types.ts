@@ -20,14 +20,19 @@
  * Type-only file: no runtime statement, so importing it costs nothing.
  */
 
-/** The six installer trades Phase 9 ships (D-9-03). A typo is a build error. */
+/**
+ * The seven installer trades the profile ships. Phase 9 shipped six under
+ * D-9-03; plumbing was added by quick task 261116-rjk after 49 production scans
+ * showed Dutch plumber sites resolving to roofing. A typo is a build error.
+ */
 export type TradeId =
   | "heat_pump"
   | "solar"
   | "bathroom"
   | "kitchen"
   | "roofing"
-  | "central_heating";
+  | "central_heating"
+  | "plumbing";
 
 /**
  * Locales a profile carries copy for. No exported `Locale` type exists in

@@ -631,7 +631,7 @@ describe("detectTrade: unreadable survives the full scorer", () => {
     const result = detectTrade(generic, toScannerSlice(INSTALLERS_PROFILE));
     expect(result.tradeId).toBeNull();
     expect(result.confidence).toBe("unreadable");
-    expect(flat(Object.values(result.scores))).toBe(flat([0, 0, 0, 0, 0, 0]));
+    expect(flat(Object.values(result.scores))).toBe(flat([0, 0, 0, 0, 0, 0, 0]));
   });
 
   it("a lone passing mention is unreadable and keeps its score for the record", () => {
