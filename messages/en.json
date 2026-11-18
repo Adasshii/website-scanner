@@ -1,6 +1,6 @@
 {
   "metadata": {
-    "title": "Free Website Audit, Performance & Conversion | Adashi",
+    "title": "Free website audit: what a customer sees | Adashi",
     "description": "A free audit of your website's performance, accessibility, SEO, and conversion. Detailed report with concrete fixes you can act on this week.",
     "ogDescription": "A free audit of your website's performance, accessibility, SEO, and conversion.",
     "siteName": "Adashi Website Audit",
@@ -77,15 +77,15 @@
   "home": {
     "badge": "100% free, no signup required",
     "hero": {
-      "title": "How does your website",
-      "titleHighlight": "really",
-      "titleSuffix": "perform?",
-      "subtitle": "An instant scan of your website's accessibility, SEO, content quality, and performance. See what's holding you back, in plain language.",
+      "title": "What does a customer see",
+      "titleHighlight": "before",
+      "titleSuffix": "they get in touch?",
+      "subtitle": "We look at your site the way a visitor does: how fast it loads, whether your message is clear, whether Google finds you, and whether everyone can use it. In plain language.",
       "subnote": "Takes about 15 seconds. We scan your homepage and show you the results instantly."
     },
     "features": {
-      "heading": "What you'll discover",
-      "subheading": "We check the things that matter most for your business's online presence.",
+      "heading": "What a visitor runs into",
+      "subheading": "We check the four things a visitor hits first.",
       "weightLabel": "{weight} of score",
       "accessibility": {
         "title": "Accessibility",
@@ -124,8 +124,8 @@
       }
     },
     "bottomCta": {
-      "heading": "Ready to see how your site stacks up?",
-      "subheading": "Free, takes 15 seconds, and likely surfaces issues you've never noticed."
+      "heading": "Look through your customer's eyes",
+      "subheading": "Free, takes 15 seconds, and you see what they see before they choose."
     }
   },
   "start": {
