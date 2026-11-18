@@ -2,7 +2,7 @@
  * lib/niche-profile/profile.test.ts — Phase 9, plan 09-02 (NIC-01, NIC-02).
  *
  * Pins what the installers profile holds and the shape of what leaves it for
- * the Railway scanner. The six job values are asserted against a literal
+ * the Railway scanner. The seven job values are asserted against a literal
  * table written out in this file, NOT read back off the profile: a number
  * edited in trades.ts without a matching edit here (and in 09-JOB-VALUES.md)
  * fails the build (T-9-04).
@@ -17,8 +17,9 @@ import { INSTALLERS_PROFILE, getTrade, staleJobValues, toScannerSlice } from "./
 import type { JobValue, ProfileCopy, TradeId, TradeProfile } from "./types";
 
 /**
- * The six approved amounts (09-JOB-VALUES.md, approved by Joshua 2026-11-12),
- * written out here rather than derived from the profile (T-9-04).
+ * The seven approved amounts and the two read dates (09-JOB-VALUES.md: the
+ * first six approved by Joshua 2026-11-12, plumbing 2026-11-16), written out
+ * here rather than derived from the profile (T-9-04).
  */
 const EXPECTED_AMOUNTS: Readonly<Record<TradeId, number>> = {
   heat_pump: 12000,
@@ -27,7 +28,25 @@ const EXPECTED_AMOUNTS: Readonly<Record<TradeId, number>> = {
   kitchen: 11000,
   roofing: 5700,
   central_heating: 2100,
+  plumbing: 300,
 };
+const EXPECTED_READ_ON: Readonly<Record<TradeId, string>> = {
+  heat_pump: "2026-11-12",
+  solar: "2026-11-12",
+  bathroom: "2026-11-12",
+  kitchen: "2026-11-12",
+  roofing: "2026-11-12",
+  central_heating: "2026-11-12",
+  plumbing: "2026-11-16",
+};
+const ORIGINAL_SIX: readonly TradeId[] = [
+  "heat_pump",
+  "solar",
+  "bathroom",
+  "kitchen",
+  "roofing",
+  "central_heating",
+];
 /**
  * Compares two string sets as one line each, so a failure prints a single-line
  * message (a multi-line diff would break the TAP report the RED gate parses).
@@ -40,6 +59,7 @@ const ALL_TRADE_IDS: readonly TradeId[] = [
   "kitchen",
   "roofing",
   "central_heating",
+  "plumbing",
 ];
 
 describe("installers profile: identity (NIC-01, NIC-03)", () => {
@@ -154,26 +174,26 @@ describe("type-level guarantees (NIC-02, D-9-20, D-9-21)", () => {
   });
 });
 
-describe("all six trades (NIC-01, NIC-02, D-9-03)", () => {
+describe("all seven trades (NIC-01, NIC-02, D-9-03)", () => {
   it("holds every TradeId exactly once, asserted exhaustively", () => {
     const ids = INSTALLERS_PROFILE.trades.map((t) => t.id);
-    expect(ids).toHaveLength(6);
+    expect(ids).toHaveLength(7);
     expect(asSortedLine(ids)).toBe(asSortedLine(ALL_TRADE_IDS));
-    expect(new Set(ids).size).toBe(6);
+    expect(new Set(ids).size).toBe(7);
   });
 
-  it("carries the six approved amounts from the literal table", () => {
+  it("carries the seven approved amounts from the literal table", () => {
     for (const id of ALL_TRADE_IDS) {
       expect(getTrade(INSTALLERS_PROFILE, id)?.jobValue?.amountEur, id).toBe(EXPECTED_AMOUNTS[id]);
     }
   });
 
-  it("every value carries an https citation read on 2026-11-12 and a later recheck date", () => {
+  it("every value carries an https citation read on its approved date and a later recheck date", () => {
     for (const id of ALL_TRADE_IDS) {
       const value = getTrade(INSTALLERS_PROFILE, id)?.jobValue;
       expect(value, id).toBeDefined();
       expect(value?.citation.url.startsWith("https://"), id).toBe(true);
-      expect(value?.citation.readOn, id).toBe("2026-11-12");
+      expect(value?.citation.readOn, id).toBe(EXPECTED_READ_ON[id]);
       expect(value!.recheckAfter > value!.citation.readOn, id).toBe(true);
     }
   });
@@ -195,10 +215,36 @@ describe("all six trades (NIC-01, NIC-02, D-9-03)", () => {
     expect(trade?.jobValue?.amountEur).toBe(2100);
   });
 
+  it("plumbing has a value AND shows no money line (D-9-21)", () => {
+    const trade = getTrade(INSTALLERS_PROFILE, "plumbing");
+    // Same shape as the central heating case: two independent fields, both must hold at once.
+    expect(trade?.jobValue !== undefined && trade?.showMoneyLine === false).toBe(true);
+    expect(trade?.jobValue?.amountEur).toBe(300);
+  });
+
+  it("exactly two trades show no money line, central heating and plumbing, so a third cannot appear unnoticed", () => {
+    const noMoneyLine = INSTALLERS_PROFILE.trades.filter((t) => !t.showMoneyLine).map((t) => t.id);
+    expect(asSortedLine(noMoneyLine)).toBe(asSortedLine(["central_heating", "plumbing"]));
+  });
+
   it("every other trade shows its money line", () => {
-    for (const id of ALL_TRADE_IDS.filter((t) => t !== "central_heating")) {
+    for (const id of ALL_TRADE_IDS.filter((t) => t !== "central_heating" && t !== "plumbing")) {
       expect(getTrade(INSTALLERS_PROFILE, id)?.showMoneyLine, id).toBe(true);
     }
+  });
+
+  it("plumbing cites Homedeal read on 2026-11-16, carries no pageUpdated, and records all three conflicting figures", () => {
+    const citation = getTrade(INSTALLERS_PROFILE, "plumbing")?.jobValue?.citation;
+    expect(citation?.source).toBe("Homedeal");
+    expect(citation?.url.startsWith("https://")).toBe(true);
+    expect(citation?.readOn).toBe("2026-11-16");
+    expect(citation?.pageUpdated).toBeUndefined();
+    const note = citation?.note ?? "";
+    // Header average with its min and max, the body range, and the FAQ range.
+    for (const figure of ["300", "150", "500", "200 to 400", "300 to 500", "30/12/2025"]) {
+      expect(note, figure).toContain(figure);
+    }
+    expect(note).toContain("disagrees with itself");
   });
 
   it("solar carries the copy obligation naming the 8-panel basis (D-9-20)", () => {
@@ -214,6 +260,22 @@ describe("all six trades (NIC-01, NIC-02, D-9-03)", () => {
     expect(heatPump).toBeLessThan(centralHeating);
     const ranks = INSTALLERS_PROFILE.trades.map((t) => t.tieBreakRank);
     expect(new Set(ranks).size).toBe(ranks.length);
+    expect(ranks).toHaveLength(7);
+  });
+
+  it("plumbing ranks 7, appended so none of the existing six is renumbered", () => {
+    expect(getTrade(INSTALLERS_PROFILE, "plumbing")!.tieBreakRank).toBe(7);
+    const expectedRanks: Readonly<Record<string, number>> = {
+      heat_pump: 1,
+      solar: 2,
+      bathroom: 3,
+      kitchen: 4,
+      roofing: 5,
+      central_heating: 6,
+    };
+    for (const [id, rank] of Object.entries(expectedRanks)) {
+      expect(getTrade(INSTALLERS_PROFILE, id as TradeId)!.tieBreakRank, id).toBe(rank);
+    }
   });
 });
 
@@ -233,6 +295,13 @@ describe("keyword terms carry the measured corrections (D-9-06)", () => {
     expect(terms("roofing")).toContainEqual({ term: "dak", match: "prefix" });
   });
 
+  it("plumbing carries the full word for a plumber and never the bare metal-name stem", () => {
+    expect(terms("plumbing")).toContainEqual({ term: "loodgieter", match: "substring" });
+    // A bare "lood" term would take a genuine zinc and lead roofer (loodwerk, loodslabben).
+    expect(terms("plumbing").some((k) => k.term.trim().toLowerCase() === "lood")).toBe(false);
+    expect(terms("plumbing")).toHaveLength(4);
+  });
+
   it("every trade has at least one term", () => {
     for (const id of ALL_TRADE_IDS) expect(terms(id).length, id).toBeGreaterThan(0);
   });
@@ -246,11 +315,11 @@ describe("certification and review seeds (ENG-05, ENG-02)", () => {
     }
   });
 
-  it("energy trades carry installq, the other three only generic terms", () => {
+  it("energy trades carry installq, the other four only generic terms", () => {
     for (const id of ["heat_pump", "solar", "central_heating"] as const) {
       expect(getTrade(INSTALLERS_PROFILE, id)!.siteChecks.certificationTerms, id).toContain("installq");
     }
-    for (const id of ["roofing", "bathroom", "kitchen"] as const) {
+    for (const id of ["roofing", "bathroom", "kitchen", "plumbing"] as const) {
       expect(asSortedLine(getTrade(INSTALLERS_PROFILE, id)!.siteChecks.certificationTerms), id).toBe(
         asSortedLine(["keurmerk", "gecertificeerd", "gecertificeerde"])
       );
@@ -522,13 +591,17 @@ describe("staleJobValues is a pure function over an injected clock (D-9-18)", ()
     expect(staleJobValues(INSTALLERS_PROFILE, new Date("2026-11-13"))).toEqual([]);
   });
 
-  it("returns all six trade ids long after the recheck date", () => {
+  it("returns all seven trade ids long after the recheck date", () => {
     expect(asSortedLine(staleJobValues(INSTALLERS_PROFILE, new Date("2030-01-01")))).toBe(
       asSortedLine(ALL_TRADE_IDS)
     );
   });
 
   it("treats the recheck date itself as stale (at or before now)", () => {
-    expect(staleJobValues(INSTALLERS_PROFILE, new Date("2027-11-12"))).toHaveLength(6);
+    // Plumbing was read four days later, so on 2027-11-12 it is not yet stale. Named, not counted.
+    expect(asSortedLine(staleJobValues(INSTALLERS_PROFILE, new Date("2027-11-12")))).toBe(
+      asSortedLine(ORIGINAL_SIX)
+    );
+    expect(staleJobValues(INSTALLERS_PROFILE, new Date("2027-11-12"))).not.toContain("plumbing");
   });
 });

@@ -332,6 +332,55 @@ export const OWN_SITE_ZONE_CORPUS: readonly OwnSiteZoneFixture[] = [
     ],
     expected: { tradeId: "central_heating", confidence: "clear" },
   },
+  {
+    id: "general-builder-trade-word-in-footer",
+    note: "A 4-page general builder whose footer, repeated on every page, names a trade (roofing) in passing. A person reads a general builder, not a roofer. The footer counts once, the way the nav does (see roofer-seven-pages-solar-in-nav), so it cannot outweigh the per-page content that names no trade.",
+    pages: [
+      "Verbouwingen en uitbouwen",
+      "Onderhoud aan woningen",
+      "Nieuwbouw en renovatie",
+      "Contact en werkwijze",
+    ].map((heading, index) =>
+      makeZones({
+        title: `Aannemersbedrijf Jansen | ${heading}`,
+        h1: [heading],
+        navTexts: ["Home", "Diensten", "Projecten", "Over ons", "Contact"],
+        internalPaths: ["/diensten", "/projecten", "/over-ons", "/contact"],
+        bodyText: `Wij verzorgen werk in heel de regio, pagina ${index + 1}.\nAannemersbedrijf Jansen, ook dakwerken, dakreparatie en daklekkage`,
+      })
+    ),
+    expected: { tradeId: null, confidence: "unreadable" },
+  },
+  {
+    id: "plumber-gutters-and-leaks",
+    note: "A Dutch plumber whose work is gutters, leaks and water mains, the class measured at dak x11, lood x21 and lekkage x10 on a real scan that resolved to roofing. A person reads a plumber. Roof words are present and must not win. One page.",
+    pages: [
+      makeZones({
+        title: "Willemsen Loodgieters | Lekkage, dakgoot en waterleiding in Alkmaar",
+        h1: ["Loodgieter voor lekkage en dakgoten"],
+        h2h3: ["Daklekkage snel verholpen", "Dakgoot vervangen of repareren", "Lekkage opsporen", "Waterleiding vervangen"],
+        navTexts: ["Loodgieter", "Lekkage", "Dakgoten", "Waterleiding", "Contact"],
+        internalPaths: ["/loodgieter", "/lekkage", "/dakgoten", "/waterleiding"],
+        bodyText: "Loodgietersbedrijf Willemsen verhelpt lekkage, vervangt dakgoten en zinkwerk en repareert uw waterleiding. Bij daklekkage komen wij dezelfde dag.",
+      }),
+    ],
+    expected: { tradeId: "plumbing", confidence: "clear" },
+  },
+  {
+    id: "zinc-roofer-lead-work",
+    note: "A genuine zinc and lead roofer, the class measured at dak x6 and lood x6 that resolves to roofing with a wide margin today. It writes the metal, never the word for a plumber, which is exactly why the plumbing term is the full word and not the four-letter stem. One page.",
+    pages: [
+      makeZones({
+        title: "Uithof Dakwerken | Zinkwerk en loodwerk voor pannendaken",
+        h1: ["Dakwerken, zinkwerk en loodwerk"],
+        h2h3: ["Loodslabben vervangen", "Zinken dakgoot", "Pannendak reparatie"],
+        navTexts: ["Dakwerken", "Zinkwerk", "Loodwerk", "Contact"],
+        internalPaths: ["/dakwerken", "/zinkwerk", "/loodwerk"],
+        bodyText: "Wij werken met lood en zink op het dak. Loodwerk rond schoorstenen, nieuwe zinken dakgoot en reparatie van uw pannendak.",
+      }),
+    ],
+    expected: { tradeId: "roofing", confidence: "clear" },
+  },
 ];
 
 /**

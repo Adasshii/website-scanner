@@ -1,14 +1,16 @@
 # Phase 9: Job Values per Trade
 
 **Researched:** 2026-11-12
-**Status:** all six approved by Joshua, 2026-11-12
+**Status:** the original six approved by Joshua, 2026-11-12; plumbing approved by Joshua, 2026-11-16
 **Requirement:** NIC-02, every default job value carries a citation to the source it came from
 **Decisions that bind this file:** 09-CONTEXT.md D-9-01 (Claude researches, Joshua approves each),
 D-9-02 (the value is the customer invoice total, not the installer's margin), D-9-03 (all six
-trades), D-9-04 (no approved value means no money line)
+trades), D-9-04 (no approved value means no money line). D-9-03 scoped Phase 9 to six trades.
+Plumbing was added afterwards by quick task 261116-rjk, driven by 49 production scans in which
+Dutch plumber sites resolved to roofing.
 
-This file is the source the profile's job values are copied from. Every number here was read on
-2026-11-12 from the URL beside it. When a number changes, this file changes first and the profile
+This file is the source the profile's job values are copied from. Every number here was read from
+the URL beside it, on 2026-11-12 for the first six and on 2026-11-16 for plumbing. When a number changes, this file changes first and the profile
 follows it.
 
 ## What counts as a good source here
@@ -26,7 +28,7 @@ living:
 3. **A single installer's own price page.** Not used. One company's price list is not a market
    figure.
 
-## The six values
+## The seven values
 
 | Trade | Approved value | Source class | Approved |
 |---|---|---|---|
@@ -36,6 +38,7 @@ living:
 | Kitchen | € 11.000, midpoint of the source range | Marketplace average | [x] 2026-11-12 |
 | Roofing | € 5.700 | Marketplace average | [x] 2026-11-12 |
 | Central heating | € 2.100, **no money line** | Milieu Centraal | [x] 2026-11-12 |
+| Plumbing | € 300, **no money line** | Marketplace average | [x] 2026-11-16 |
 
 ---
 
@@ -169,9 +172,44 @@ was an honest "two extra boiler jobs" line; Joshua chose to print nothing. The e
 therefore carry a per-trade switch that is separate from "has a value", because central heating has
 a value and still shows no money line.
 
+## 7. Plumbing (loodgieter): € 300
+
+**Source:** Homedeal, "Lekkage opsporen kosten"
+`https://www.homedeal.nl/prijsgidsen/lekkage-opsporen-kosten/`
+**Read:** 2026-11-16
+**Basis:** leak detection, the page's stated average.
+
+**One thing to weigh.** The page disagrees with itself in three places, and that is recorded here
+rather than smoothed over:
+
+- Its header block says: minimum € 150, **average € 300**, maximum € 500.
+- Its body text gives a project range of € 200 to € 400.
+- Its FAQ gives € 300 to € 500.
+
+The three statements do not agree. The approved number is € 300 because that is the figure the
+page itself labels as the average, not because the other two were discounted. The page also happens
+to put € 300 inside all three ranges.
+
+**Money line.** An Adashi project is € 2.500 or more. At € 300 the sentence "one extra job pays
+for the website" is false by a wider margin than it is for central heating. Plumbing therefore
+carries a value AND prints no money line (D-9-21), approved by Joshua on 2026-11-16. This is the
+second trade in that state, after central heating, and the two fields stay independent: having a
+value never implies printing a money line.
+
+**Page date.** The page shows a publication date of 30/12/2025, not a last-updated label. The
+profile citation therefore omits the `pageUpdated` field, which sections 3, 4 and 5 use for a
+genuine last-updated date, and carries the publication date inside the citation note instead.
+Using a last-updated field to hold a publication date would make `pageUpdated` mean two different
+things across the Homedeal-sourced trades.
+
 ## What is still owed
 
-- **Nothing on the numbers.** All six were approved by Joshua on 2026-11-12.
+- **Nothing on the numbers.** The original six were approved by Joshua on 2026-11-12 and plumbing
+  on 2026-11-16.
+- **Plumbing is the weakest of the seven.** It is a leak-detection figure standing in for the whole
+  trade. A plumber whose work is mostly bathroom or kitchen connection is worth more than € 300,
+  so this is the first candidate for a re-read. The source's own header, body and FAQ also
+  disagree (see section 7).
 - **Phase 12 obligations carried from here:** the solar copy names the 8-panel basis; the kitchen
   citation states that € 11.000 is a midpoint; central heating prints no money line.
 - **Re-check date.** These are 2026 figures with their own last-updated dates. Set a re-check when

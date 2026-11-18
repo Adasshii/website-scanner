@@ -34,6 +34,11 @@ const ENERGY_BASE_TERMS = ["installq", "techniek nederland"] as const;
 // Roofing, bathroom and kitchen: two searches found no authoritative scheme,
 // only directory listings, so they carry the generic terms alone. [ASSUMED]
 // until sampled on the real list.
+// Plumbing carries the generic terms alone too. [ASSUMED] No search for a Dutch
+// plumber certification scheme was run when this trade was added (quick task
+// 261116-rjk), so none is claimed. The energy trades' InstallQ and Techniek
+// Nederland terms were NOT copied across, because nothing here measures that
+// plumbers carry them.
 export const INSTALLERS_SITE_CHECKS: Readonly<Record<TradeId, TradeSiteChecks>> = {
   heat_pump: {
     quoteTerms: QUOTE_TERMS,
@@ -61,6 +66,11 @@ export const INSTALLERS_SITE_CHECKS: Readonly<Record<TradeId, TradeSiteChecks>> 
     certificationTerms: GENERIC_CERTIFICATION_TERMS,
   },
   kitchen: {
+    quoteTerms: QUOTE_TERMS,
+    projectTerms: PROJECT_TERMS,
+    certificationTerms: GENERIC_CERTIFICATION_TERMS,
+  },
+  plumbing: {
     quoteTerms: QUOTE_TERMS,
     projectTerms: PROJECT_TERMS,
     certificationTerms: GENERIC_CERTIFICATION_TERMS,

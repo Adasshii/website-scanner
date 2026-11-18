@@ -202,6 +202,11 @@ function pagesOf(count: number, over: Partial<TradeZones>): TradeZones[] {
   return Array.from({ length: count }, () => zones(over));
 }
 
+/** The same shape of page `count` times, each one made DISTINCT by its number (1 to count). */
+function distinctPages(count: number, make: (n: number) => Partial<TradeZones>): TradeZones[] {
+  return Array.from({ length: count }, (_, index) => zones(make(index + 1)));
+}
+
 /** Score of a one-trade slice for one term, so a case reads as zone text in, score out. */
 function scoreOf(over: Partial<TradeZones> | TradeZones[], term: string, match: Term["match"] = "prefix"): number {
   const input = Array.isArray(over) ? over : zones(over);
@@ -257,18 +262,20 @@ describe("detectTrade: zone weights and caps", () => {
 
 describe("detectTrade: aggregation across a 7-page scan", () => {
   it("sums body text across pages, because it differs per page", () => {
-    expect(scoreOf(pagesOf(7, { bodyText: "dakwerk" }), "dak")).toBe(7);
+    // A DISTINCT line per page: an identical line on every page is boilerplate and counts once.
+    expect(scoreOf(distinctPages(7, (n) => ({ bodyText: `dakwerk ${n}` })), "dak")).toBe(7);
   });
 
   it("sums title, h1 and h2/h3 across pages too", () => {
     expect(scoreOf(pagesOf(7, { title: "dakwerk" }), "dak")).toBe(35);
     expect(scoreOf(pagesOf(7, { h1: ["dakwerk"] }), "dak")).toBe(35);
-    expect(scoreOf(pagesOf(7, { h2h3: ["dakwerk"] }), "dak")).toBe(14);
+    expect(scoreOf(distinctPages(7, (n) => ({ h2h3: [`dakwerk ${n}`] })), "dak")).toBe(14);
   });
 
   it("applies the heading and body caps per page, then sums", () => {
-    expect(scoreOf(pagesOf(7, { h2h3: ["dak ".repeat(12)] }), "dak")).toBe(70);
-    expect(scoreOf(pagesOf(7, { bodyText: "dak ".repeat(50) }), "dak")).toBe(70);
+    // Stuffed per page with a DISTINCT tail, so nothing is repeated on every page.
+    expect(scoreOf(distinctPages(7, (n) => ({ h2h3: ["dak ".repeat(12) + n] })), "dak")).toBe(70);
+    expect(scoreOf(distinctPages(7, (n) => ({ bodyText: "dak ".repeat(50) + n })), "dak")).toBe(70);
   });
 
   it("counts a nav that repeats on every page once, not seven times", () => {
@@ -293,8 +300,13 @@ describe("detectTrade: aggregation across a 7-page scan", () => {
   });
 
   it("proves the two rules differ on one scan: the same word counts once in nav and seven times in body", () => {
-    const pages = pagesOf(7, { navTexts: ["Dakwerk"], bodyText: "dakwerk" });
+    const pages = distinctPages(7, (n) => ({ navTexts: ["Dakwerk"], bodyText: `dakwerk ${n}` }));
     expect(scoreOf(pages, "dak")).toBe(3 + 7);
+  });
+
+  it("and now a repeated body line unions too: the same word counts once in nav and once in a body line shared by all seven pages", () => {
+    const pages = pagesOf(7, { navTexts: ["Dakwerk"], bodyText: "dakwerk" });
+    expect(scoreOf(pages, "dak")).toBe(3 + 1);
   });
 
   it("accepts one page or a list of one page and answers the same", () => {
@@ -308,6 +320,72 @@ describe("detectTrade: aggregation across a 7-page scan", () => {
     const result = detectTrade([], sliceOf([ROOFING_PREFIX]));
     expect(result.tradeId).toBeNull();
     expect(result.confidence).toBe("unreadable");
+  });
+});
+
+describe("detectTrade: boilerplate repeated on every page counts once", () => {
+  // The nav rule above has a twin: a footer line that sits on EVERY page is site-wide
+  // boilerplate, and counting it once per page would let a general builder whose footer
+  // names a trade win that trade. Cases marked RED fail before the fix and carry the
+  // value the old code reported; cases marked ROT-PIN pass before AND after, and a red
+  // one is a real regression, not a bug-proof to "fix".
+
+  it("counts a body line present on every page once, not once per page (RED: reported 9 before the fix)", () => {
+    const footer = "Dakwerken Mulder, dakreparatie en daklekkage";
+    const pages = ["een", "twee", "drie"].map((n) => zones({ bodyText: n + "\n" + footer }));
+    expect(scoreOf(pages, "dak")).toBe(3);
+  });
+
+  it("counts an h2/h3 item present on every page once, at the heading weight (RED: reported 12 before the fix)", () => {
+    const pages = ["een", "twee", "drie"].map((n) => zones({ h2h3: ["dakwerk " + n, "Dakreparatie"] }));
+    // Three distinct headings (3 x 2) plus the repeated one counted once (2).
+    expect(scoreOf(pages, "dak")).toBe(8);
+  });
+
+  it("caps the body union on its own, so one hostile repeated line cannot blow it up (RED: reported 20 before the fix)", () => {
+    const pages = pagesOf(2, { bodyText: "dak ".repeat(50) });
+    expect(scoreOf(pages, "dak")).toBe(10);
+  });
+
+  it("caps the h2/h3 union on its own (RED: reported 20 before the fix)", () => {
+    const pages = pagesOf(2, { h2h3: ["dak ".repeat(12)] });
+    expect(scoreOf(pages, "dak")).toBe(10);
+  });
+
+  it("ROT-PIN: a one-page scan sums its own repeated lines exactly as before", () => {
+    // One page has nothing to repeat against. This stops the two-pages-or-more guard
+    // rotting into a within-page dedupe, which would score every one-pager lower.
+    expect(scoreOf({ bodyText: "dakwerk\ndakwerk\ndakwerk" }, "dak")).toBe(3);
+    expect(scoreOf([zones({ bodyText: "dakwerk\ndakwerk\ndakwerk" })], "dak")).toBe(3);
+  });
+
+  it("ROT-PIN: a line on 2 of 3 pages is NOT boilerplate and still sums, because the rule is every page and never a ratio", () => {
+    const pages = [
+      zones({ bodyText: "dakwerk een\ndakwerk gedeeld" }),
+      zones({ bodyText: "dakwerk twee\ndakwerk gedeeld" }),
+      zones({ bodyText: "dakwerk drie" }),
+    ];
+    expect(scoreOf(pages, "dak")).toBe(5);
+  });
+
+  it("ROT-PIN: a trade word past the candidate cap is never boilerplate and still sums per page", () => {
+    // The cap bounds the boilerplate CANDIDATE set, not the text read. Clipping therefore
+    // degrades to today's summing instead of dropping body content from a long page.
+    const filler = Array.from({ length: 250 }, (_, index) => `regel ${index}`);
+    const body = [...filler.slice(0, 249), "dakwerk"].join("\n");
+    expect(scoreOf(pagesOf(2, { bodyText: body }), "dak")).toBe(2);
+  });
+
+  it("ROT-PIN: removing a boilerplate line from the middle does not glue its neighbours into a phrase", () => {
+    // The footer is the same on both pages, so it is lifted out. The lines around it differ
+    // per page and stay. Without a placeholder where the footer was, "cv" and "ketel" would
+    // sit side by side and a "cv ketel" term would invent a match.
+    const footer = "Openingstijden maandag tot vrijdag";
+    const pages = [
+      zones({ bodyText: "nieuwe cv\n" + footer + "\nketel vervangen" }),
+      zones({ bodyText: "tweede cv\n" + footer + "\nketel plaatsen" }),
+    ];
+    expect(scoreOf(pages, "cv ketel", "word")).toBe(0);
   });
 });
 
@@ -553,7 +631,7 @@ describe("detectTrade: unreadable survives the full scorer", () => {
     const result = detectTrade(generic, toScannerSlice(INSTALLERS_PROFILE));
     expect(result.tradeId).toBeNull();
     expect(result.confidence).toBe("unreadable");
-    expect(flat(Object.values(result.scores))).toBe(flat([0, 0, 0, 0, 0, 0]));
+    expect(flat(Object.values(result.scores))).toBe(flat([0, 0, 0, 0, 0, 0, 0]));
   });
 
   it("a lone passing mention is unreadable and keeps its score for the record", () => {
