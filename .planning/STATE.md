@@ -305,6 +305,7 @@ Items acknowledged and carried forward from previous milestone close:
 | 261116-rjk | plumbing added as a seventh installer trade so Dutch loodgieter sites stop reading as roofing; job value 300 EUR, no money line | 2026-11-16 | caaa74b | complete | [261116-rjk-add-a-seventh-installer-trade-plumbing-t](./quick/261116-rjk-add-a-seventh-installer-trade-plumbing-t/) |
 | 261116-tog | the report H1 and site header tagline now carry the direction-A promise (moment before contact, not the craft); NL approved, EN is a translation awaiting Joshua | 2026-11-16 | d2b04df | complete | [261116-tog-put-the-approved-direction-a-positioning](./quick/261116-tog-put-the-approved-direction-a-positioning/) |
 | 261118-lhg | the cold email now leads with the moment before a customer makes contact, and the subject is one fixed approved line keyed on the business name; approved copy in docs/outreach-copy.md | 2026-11-18 | 4a672f1 | complete | [261118-lhg-land-the-approved-direction-a-outreach-c](./quick/261118-lhg-land-the-approved-direction-a-outreach-c/) |
+| 261118-luy | the homepage headline, subtitle, features heading, bottom call to action and the SEO title now carry the direction-A moment; also fixed the stray space in the Dutch headline | 2026-11-18 | e86f326 | complete | [261118-luy-bring-the-public-scanner-homepage-and-se](./quick/261118-luy-bring-the-public-scanner-homepage-and-se/) |
 
 ## Session Continuity
 
