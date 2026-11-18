@@ -1,6 +1,6 @@
 {
   "metadata": {
-    "title": "Gratis Website Audit, Performance & Conversie | Adashi",
+    "title": "Gratis website-audit: wat een klant van je ziet | Adashi",
     "description": "Een gratis audit van de prestaties, toegankelijkheid, SEO en conversie van je website. Gedetailleerd rapport met concrete fixes die je deze week kunt doorvoeren.",
     "ogDescription": "Een gratis audit van de prestaties, toegankelijkheid, SEO en conversie van je website.",
     "siteName": "Adashi Website Audit",
@@ -77,15 +77,15 @@
   "home": {
     "badge": "100% gratis, geen account nodig",
     "hero": {
-      "title": "Hoe presteert je website",
-      "titleHighlight": "echt",
-      "titleSuffix": "?",
-      "subtitle": "Een directe scan van de toegankelijkheid, SEO, contentkwaliteit en prestaties van je website. Zie wat je tegenhoudt, in duidelijke taal.",
+      "title": "Wat ziet een klant",
+      "titleHighlight": "voordat",
+      "titleSuffix": "hij contact opneemt?",
+      "subtitle": "We bekijken je site zoals een bezoeker dat doet: hoe snel hij laadt, of je boodschap duidelijk is, of Google je vindt en of iedereen hem kan gebruiken. In gewone taal.",
       "subnote": "Duurt ongeveer 15 seconden. We scannen je homepage en laten meteen de resultaten zien."
     },
     "features": {
-      "heading": "Wat je ontdekt",
-      "subheading": "We controleren de zaken die er voor jouw online aanwezigheid het meest toe doen.",
+      "heading": "Wat een bezoeker tegenkomt",
+      "subheading": "We controleren de vier dingen die een bezoeker als eerste raken.",
       "weightLabel": "{weight} van de score",
       "accessibility": {
         "title": "Toegankelijkheid",
@@ -124,8 +124,8 @@
       }
     },
     "bottomCta": {
-      "heading": "Klaar om te zien hoe jouw site scoort?",
-      "subheading": "Gratis, duurt 15 seconden, en brengt vaak problemen aan het licht die je nooit had opgemerkt."
+      "heading": "Kijk mee door de ogen van je klant",
+      "subheading": "Gratis, duurt 15 seconden, en je ziet wat hij ziet voordat hij kiest."
     }
   },
   "start": {
