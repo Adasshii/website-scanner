@@ -93,14 +93,176 @@ export interface TradeSiteChecks {
   certificationTerms: readonly string[];
 }
 
-/** Report copy the profile owns (D-9-10). The public scanner's own UI copy stays in messages/*.json. */
+/**
+ * The social-proof section of the report (D-9-10, docs/report-copy.md section 4).
+ * Every field is required and there is no index signature: a free-form record
+ * would let a state go missing at runtime instead of at build time.
+ */
+export interface SocialProofCopy {
+  heading: string;
+  /** The sentence under the heading. */
+  frame: string;
+  /** No reviews on the prospect's site, and nearby installers show theirs. `{count}` is how many. */
+  noneHereOthersDo: string;
+  /**
+   * No reviews on the prospect's site, and none of the nearby installers show
+   * theirs either. This state exists because without it the report prints a
+   * zero-count sentence claiming nearby businesses show reviews when none do
+   * (settled decision 4). `{count}` is how many businesses were looked at.
+   */
+  noneHereNoneThere: string;
+  /** Reviews are visible on the site but not in a form search engines can read. */
+  visibleNotReadable: string;
+  /** Reviews are visible and machine readable. `{n}` is how many. */
+  visibleAndReadable: string;
+}
+
+/** The report header: eyebrow above the heading, the score line and the intro under it. */
+export interface HeaderCopy {
+  /** `{bedrijf}` and `{plaats}` in Dutch, `{business}` and `{city}` in English. */
+  eyebrow: string;
+  heading: string;
+  /** `{score}` and `{gap}`. */
+  scoreLine: string;
+  intro: string;
+}
+
+/** Why a cold-email recipient is reading a page about their own company. */
+export interface WhyYouGotThisCopy {
+  heading: string;
+  /** Two paragraphs in print order. A tuple, so the second cannot go missing. */
+  body: readonly [string, string];
+}
+
+export interface BusinessFactsCopy {
+  heading: string;
+  frame: string;
+  foundLabel: string;
+  notFoundLabel: string;
+}
+
+/**
+ * Competitors are described and never named (REP-05, settled decision 2).
+ * No field here holds a name; `{count}` and the others are numbers filled by code.
+ */
+export interface CompetitorsCopy {
+  heading: string;
+  /** States the no-names rule in the copy itself. `{count}`. */
+  frame: string;
+  /** `{count}`, `{withProof}`, `{withData}` and `{rank}`. */
+  standing: string;
+}
+
+export interface WebsiteOnPhoneCopy {
+  heading: string;
+  frame: string;
+  /** Label and value joined, `{seconds}`. */
+  loadTimeLine: string;
+  /** Label and value joined, `{citation}`. A citation is required, never our own assertion. */
+  citationLine: string;
+}
+
+export interface QuoteRequestCopy {
+  heading: string;
+  frame: string;
+  checklist: {
+    quoteForm: string;
+    clickToCall: string;
+    projectPhotos: string;
+    certifications: string;
+  };
+}
+
+/**
+ * AI visibility reads as a frequency band, never as a score (AIV-04).
+ * Other installers are counted and never named (REP-05).
+ */
+export interface AiVisibilityCopy {
+  heading: string;
+  /** `{date}`. */
+  frame: string;
+  /** `{question}` and `{hits}`. */
+  perQuestionLine: string;
+  /** `{others}`. A count, never a name (REP-05, settled decision 2). */
+  othersNamedLine: string;
+}
+
+/**
+ * The money-line template (D-9-21). It prints only for a trade whose
+ * `showMoneyLine` is true, so central heating prints nothing. The copy carries
+ * no price: no starting figure is anchored before the call (settled decision 3).
+ */
+export interface MoneyLineCopy {
+  /** `{amount}`. */
+  line: string;
+  /** `{source}` and `{date}`. */
+  provenance: string;
+  followUp: string;
+}
+
+export interface TodoCopy {
+  heading: string;
+  ordering: string;
+}
+
+export interface AskCopy {
+  heading: string;
+  body: string;
+  buttonLabel: string;
+}
+
+/** The footer: provenance, the one-step opt-out, and the Article 14 slot. */
+export interface FooterCopy {
+  /** `{bedrijf}` in Dutch, `{business}` in English, and `{date}`. */
+  provenance: string;
+  /** The opt-out has to be fast, free and one step (project legal constraint). */
+  optOut: string;
+  optOutLinkLabel: string;
+  /** Label plus `{counsel_wording}`. No legal sentence exists yet, so the placeholder stays. */
+  article14: string;
+}
+
+/** The report sections that carry an "Adashi fixes this" line. */
+export type AdashiFixSection =
+  | "businessFacts"
+  | "socialProof"
+  | "websiteOnPhone"
+  | "quoteRequest"
+  | "aiVisibility";
+
+/**
+ * Report copy the profile owns (D-9-10). The public scanner's own UI copy stays in messages/*.json.
+ *
+ * One field per report section, in the order of docs/report-copy.md, which is
+ * the approved source. Phase 12 owns the report and may reshape these fields;
+ * the names follow the document's sections so the mapping stays readable.
+ */
 export interface ProfileCopy {
-  /** Money-line template with a `{amount}` placeholder. */
-  moneyLine: string;
-  /** "Adashi fixes this" line, keyed by report section id. */
-  adashiFixes: Readonly<Record<string, string>>;
-  /** The social-proof line about installers near the prospect. */
-  socialProof: string;
+  header: HeaderCopy;
+  whyYouGotThis: WhyYouGotThisCopy;
+  businessFacts: BusinessFactsCopy;
+  /** The social-proof section, one required string per state. */
+  socialProof: SocialProofCopy;
+  competitors: CompetitorsCopy;
+  websiteOnPhone: WebsiteOnPhoneCopy;
+  quoteRequest: QuoteRequestCopy;
+  aiVisibility: AiVisibilityCopy;
+  moneyLine: MoneyLineCopy;
+  todo: TodoCopy;
+  ask: AskCopy;
+  footer: FooterCopy;
+  /** "Adashi fixes this" line, one required key per section that carries one. */
+  adashiFixes: Readonly<Record<AdashiFixSection, string>>;
+  /**
+   * One tip per report section (D-9-10): a useful fact that points at the fix,
+   * shown under that section. Filled in both locales on 2026-11-16.
+   *
+   * These are NOT the report's to-do list. That list is five actions written
+   * per business by the model from that business's own findings, with every
+   * number in it chosen by code and never by the model, so it is not fixed
+   * copy and does not live in the profile.
+   */
+  tips: Readonly<Partial<Record<AdashiFixSection, string>>>;
 }
 
 export interface TradeProfile {

@@ -14,7 +14,7 @@ import { describe, expect, it } from "vitest";
 import { resolveBbox } from "@/lib/overture-bboxes";
 import { EXCLUDED_CATEGORIES } from "@/lib/triage-constants";
 import { INSTALLERS_PROFILE, getTrade, staleJobValues, toScannerSlice } from "./index";
-import type { JobValue, TradeId, TradeProfile } from "./types";
+import type { JobValue, ProfileCopy, TradeId, TradeProfile } from "./types";
 
 /**
  * The seven approved amounts and the two read dates (09-JOB-VALUES.md: the
@@ -98,6 +98,28 @@ describe("toScannerSlice (D-9-12, T-9-03)", () => {
     expect(Array.isArray(slice.reviewWidgetHosts)).toBe(true);
     expect(typeof slice.minTradeScore).toBe("number");
     expect(typeof slice.dominanceRatio).toBe("number");
+  });
+
+  it("shares no object key with ProfileCopy (T-9-03)", () => {
+    // Keys, not substrings: short copy keys would collide with unrelated text.
+    const collectKeys = (value: unknown, into: Set<string>): Set<string> => {
+      if (Array.isArray(value)) {
+        for (const item of value) collectKeys(item, into);
+      } else if (value !== null && typeof value === "object") {
+        for (const [key, child] of Object.entries(value)) {
+          into.add(key);
+          collectKeys(child, into);
+        }
+      }
+      return into;
+    };
+    const sliceKeys = collectKeys(slice, new Set());
+    expect(sliceKeys.size).toBeGreaterThan(0);
+    for (const locale of INSTALLERS_PROFILE.locales) {
+      const copyKeys = collectKeys(INSTALLERS_PROFILE.copy[locale], new Set());
+      expect(copyKeys.size, locale).toBeGreaterThan(0);
+      expect(Array.from(sliceKeys).filter((key) => copyKeys.has(key)), locale).toEqual([]);
+    }
   });
 
   it("carries no job value, no citation and no copy", () => {
@@ -391,9 +413,34 @@ describe("categories, regions and competitor rules (D-9-11, D-9-23)", () => {
 describe("copy (D-9-10)", () => {
   it("both locales carry a money line template with an amount placeholder", () => {
     for (const locale of INSTALLERS_PROFILE.locales) {
-      expect(INSTALLERS_PROFILE.copy[locale].moneyLine, locale).toContain("{amount}");
-      expect(INSTALLERS_PROFILE.copy[locale].socialProof.length, locale).toBeGreaterThan(0);
+      expect(INSTALLERS_PROFILE.copy[locale].moneyLine.line, locale).toContain("{amount}");
     }
+  });
+
+  it("both locales carry all four social-proof states, each non-empty (settled decision 4)", () => {
+    const states = ["noneHereOthersDo", "noneHereNoneThere", "visibleNotReadable", "visibleAndReadable"] as const;
+    for (const locale of INSTALLERS_PROFILE.locales) {
+      const proof = INSTALLERS_PROFILE.copy[locale].socialProof;
+      for (const state of states) {
+        expect(typeof proof[state], `${locale}.${state}`).toBe("string");
+        expect(proof[state].length, `${locale}.${state}`).toBeGreaterThan(0);
+      }
+      expect(proof.noneHereOthersDo, locale).toContain("{count}");
+      expect(proof.noneHereNoneThere, locale).toContain("{count}");
+      expect(proof.visibleAndReadable, locale).toContain("{n}");
+    }
+  });
+
+  it("rejects a social-proof literal that omits a state", () => {
+    // @ts-expect-error a missing social-proof state is a build error (settled decision 4)
+    const missingState: ProfileCopy["socialProof"] = {
+      heading: "h",
+      frame: "f",
+      noneHereOthersDo: "a",
+      noneHereNoneThere: "b",
+      visibleNotReadable: "c",
+    };
+    expect(missingState.heading).toBe("h");
   });
 
   it("both locales carry the same set of Adashi-fixes keys", () => {
@@ -401,6 +448,141 @@ describe("copy (D-9-10)", () => {
       asSortedLine(Object.keys(INSTALLERS_PROFILE.copy.en.adashiFixes))
     );
     expect(Object.keys(INSTALLERS_PROFILE.copy.nl.adashiFixes).length).toBeGreaterThan(0);
+  });
+});
+
+describe("copy: the approved report document carried whole (D-9-10)", () => {
+  const nl = INSTALLERS_PROFILE.copy.nl;
+  const en = INSTALLERS_PROFILE.copy.en;
+
+  /** Every key path in a value, array indices written as `[]`. */
+  const keyPaths = (value: unknown, prefix = ""): string[] => {
+    if (Array.isArray(value)) return value.flatMap((item) => keyPaths(item, `${prefix}[]`));
+    if (value !== null && typeof value === "object") {
+      return Object.entries(value).flatMap(([key, child]) => {
+        const path = prefix === "" ? key : `${prefix}.${key}`;
+        const below = keyPaths(child, path);
+        return below.length === 0 ? [path] : below;
+      });
+    }
+    return [prefix];
+  };
+
+  /** Every brace token in every string of a value. */
+  const placeholders = (value: unknown, into: Set<string>): Set<string> => {
+    if (typeof value === "string") {
+      for (const match of Array.from(value.matchAll(/\{([A-Za-z_]+)\}/g))) into.add(match[1]);
+    } else if (Array.isArray(value)) {
+      for (const item of value) placeholders(item, into);
+    } else if (value !== null && typeof value === "object") {
+      for (const child of Object.values(value)) placeholders(child, into);
+    }
+    return into;
+  };
+
+  it("both locales carry the same deep key set", () => {
+    expect(keyPaths(nl).sort()).toEqual(keyPaths(en).sort());
+    expect(keyPaths(nl).length).toBeGreaterThan(40);
+  });
+
+  it("each locale's placeholder set equals the approved set, nothing invented and nothing dropped", () => {
+    const shared = [
+      "score",
+      "gap",
+      "count",
+      "withProof",
+      "withData",
+      "rank",
+      "seconds",
+      "citation",
+      "date",
+      "question",
+      "hits",
+      "others",
+      "amount",
+      "source",
+      "n",
+      "counsel_wording",
+    ];
+    expect(Array.from(placeholders(nl, new Set())).sort()).toEqual([...shared, "bedrijf", "plaats"].sort());
+    expect(Array.from(placeholders(en, new Set())).sort()).toEqual([...shared, "business", "city"].sort());
+  });
+
+  it("each section carries its own placeholders", () => {
+    for (const [locale, copy] of [["nl", nl], ["en", en]] as const) {
+      const name = locale === "nl" ? "{bedrijf}" : "{business}";
+      expect(copy.header.eyebrow, locale).toContain(locale === "nl" ? "{plaats}" : "{city}");
+      expect(copy.header.eyebrow, locale).toContain(name);
+      expect(copy.header.scoreLine, locale).toContain("{score}");
+      expect(copy.header.scoreLine, locale).toContain("{gap}");
+      expect(copy.competitors.frame, locale).toContain("{count}");
+      for (const token of ["{count}", "{withProof}", "{withData}", "{rank}"]) {
+        expect(copy.competitors.standing, locale).toContain(token);
+      }
+      expect(copy.websiteOnPhone.loadTimeLine, locale).toContain("{seconds}");
+      expect(copy.websiteOnPhone.citationLine, locale).toContain("{citation}");
+      expect(copy.aiVisibility.frame, locale).toContain("{date}");
+      expect(copy.aiVisibility.perQuestionLine, locale).toContain("{question}");
+      expect(copy.aiVisibility.perQuestionLine, locale).toContain("{hits}");
+      expect(copy.aiVisibility.othersNamedLine, locale).toContain("{others}");
+      expect(copy.moneyLine.provenance, locale).toContain("{source}");
+      expect(copy.moneyLine.provenance, locale).toContain("{date}");
+      expect(copy.footer.provenance, locale).toContain(name);
+      expect(copy.footer.provenance, locale).toContain("{date}");
+      expect(copy.footer.article14, locale).toContain("{counsel_wording}");
+    }
+  });
+
+  it("Article 14 keeps the placeholder and no legal sentence of its own (counsel's wording is a named gap)", () => {
+    expect(nl.footer.article14).toBe("Juridische tekst volgens artikel 14 AVG: {counsel_wording}");
+    expect(en.footer.article14).toBe("Article 14 GDPR wording: {counsel_wording}");
+  });
+
+  it("adashiFixes has exactly the five keys in both locales, each non-empty", () => {
+    const keys = ["aiVisibility", "businessFacts", "quoteRequest", "socialProof", "websiteOnPhone"];
+    for (const [locale, copy] of [["nl", nl], ["en", en]] as const) {
+      expect(Object.keys(copy.adashiFixes).sort(), locale).toEqual(keys);
+      for (const key of keys) {
+        expect(copy.adashiFixes[key as keyof typeof copy.adashiFixes].length, `${locale}.${key}`).toBeGreaterThan(0);
+      }
+    }
+  });
+
+  it("tips carries one line per section in both locales, and the two locales agree (D-9-10)", () => {
+    const keys = ["aiVisibility", "businessFacts", "quoteRequest", "socialProof", "websiteOnPhone"];
+    for (const [locale, copy] of [["nl", nl], ["en", en]] as const) {
+      expect(Object.keys(copy.tips).sort(), locale).toEqual(keys);
+      for (const key of keys) {
+        expect(copy.tips[key as keyof typeof copy.tips]?.length, `${locale}.${key}`).toBeGreaterThan(0);
+      }
+    }
+  });
+
+  it("a tip is its own sentence, never a copy of that section's Adashi fix line", () => {
+    for (const [locale, copy] of [["nl", nl], ["en", en]] as const) {
+      for (const key of Object.keys(copy.tips) as (keyof typeof copy.tips)[]) {
+        expect(copy.tips[key], `${locale}.${key}`).not.toBe(copy.adashiFixes[key]);
+      }
+    }
+  });
+
+  it("the five values that predate the document keep their bytes", () => {
+    expect(nl.moneyLine.line).toBe("Eén extra klus is ongeveer {amount} euro waard.");
+    expect(en.moneyLine.line).toBe("One extra job is worth about {amount} euros.");
+    expect(nl.socialProof.noneHereOthersDo).toBe(
+      "{count} installateurs bij jou in de buurt tonen hun reviews op hun eigen site. Jij niet."
+    );
+    expect(en.adashiFixes.quoteRequest).toBe(
+      "Adashi puts a quote form and a tap-to-call number where a customer looks for them."
+    );
+  });
+
+  it("the money line never promises a payback and no copy string carries an em-dash", () => {
+    for (const copy of [nl, en]) {
+      expect(JSON.stringify(copy)).not.toContain("\u2014");
+    }
+    expect(JSON.stringify(nl.moneyLine)).not.toContain("betaalt zich terug");
+    expect(JSON.stringify(en.moneyLine)).not.toContain("pays for itself");
   });
 });
 
