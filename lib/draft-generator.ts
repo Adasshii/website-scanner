@@ -30,6 +30,7 @@ import type { ScanScores, ScanSummary, PageResult, IssuesAlt } from "@/types/sca
 import { selectCitableMetric } from "@/lib/draft-metric-selector";
 import {
   buildDraftPrompt,
+  buildDraftSubject,
   parseDraftResponse,
   resolveReportLink,
   appendArticle14Notice,
@@ -244,11 +245,13 @@ export async function generateDraft(
     return null;
   }
 
-  // 2026-07-28 (Change B): the model authors its own subject line per the
-  // prompt's OUTPUT CONTRACT; parseDraftResponse() extracts it, falling
-  // back to the code-templated buildDraftSubject() when the model ignores
-  // the contract or produces something implausible.
-  const parsed = parseDraftResponse(raw, prospect.domain, locale);
+  // 2026-11-18: the subject is code-owned. buildDraftSubject() returns the
+  // one approved line (positioning decision, 2026-11-16) and the model is
+  // told not to write a subject at all. parseDraftResponse() is kept for
+  // the body, and still strips a SUBJECT: line if a model writes one anyway
+  // so it cannot leak into the body; its own `subject` is discarded here.
+  // This replaces the 2026-07-28 Change B model-authored subject.
+  const parsed = parseDraftResponse(raw, businessName, locale);
 
   // Report link (2026-07-28, code-owned link): the model never handles the
   // URL, only the [RAPPORT] token. resolveReportLink() substitutes the real
@@ -259,7 +262,7 @@ export async function generateDraft(
   const body = resolveReportLink(parsed.body, reportUrl);
 
   return {
-    subject: parsed.subject,
+    subject: buildDraftSubject(businessName, locale),
     body: appendArticle14Notice(body, locale),
   };
 }

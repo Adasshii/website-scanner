@@ -147,12 +147,29 @@ describe("buildDraftPrompt", () => {
 });
 
 describe("buildDraftSubject", () => {
-  it("contains the domain and differs between en and nl", () => {
-    const en = buildDraftSubject("praktijkjansen.nl", "en");
-    const nl = buildDraftSubject("praktijkjansen.nl", "nl");
-    expect(en).toContain("praktijkjansen.nl");
-    expect(nl).toContain("praktijkjansen.nl");
+  it("contains the business name and differs between en and nl", () => {
+    const en = buildDraftSubject("Praktijk Jansen", "en");
+    const nl = buildDraftSubject("Praktijk Jansen", "nl");
+    expect(en).toContain("Praktijk Jansen");
+    expect(nl).toContain("Praktijk Jansen");
     expect(en).not.toBe(nl);
+  });
+
+  // The approved line, 2026-11-16: the subject names the moment before a
+  // customer makes contact, not the finding. Pinned verbatim because it is
+  // approved copy, not a phrasing choice left to a future editor.
+  it("is the approved line in both locales", () => {
+    expect(buildDraftSubject("Praktijk Jansen", "nl")).toBe(
+      "Wat Praktijk Jansen laat zien voordat iemand contact opneemt"
+    );
+    expect(buildDraftSubject("Praktijk Jansen", "en")).toBe(
+      "What Praktijk Jansen shows before anyone gets in touch"
+    );
+  });
+
+  it("no longer uses the retired observation wording", () => {
+    expect(buildDraftSubject("Praktijk Jansen", "nl")).not.toContain("Snelle observatie");
+    expect(buildDraftSubject("Praktijk Jansen", "en")).not.toContain("quick observation");
   });
 });
 
@@ -185,9 +202,10 @@ describe("buildDraftPrompt — rewritten pitch (Change A)", () => {
     expect(enPrompt).not.toMatch(/\{[a-zA-Z]/);
   });
 
-  it("ends the output contract with the SUBJECT/BODY response shape instruction", () => {
+  it("ends the output contract with a body-only response shape and no subject line", () => {
     const prompt = buildDraftPrompt(baseInput());
-    expect(prompt).toMatch(/SUBJECT:[\s\S]*BODY:/);
+    expect(prompt).toMatch(/OUTPUT CONTRACT[\s\S]*BODY:\nthe body text/);
+    expect(prompt).not.toMatch(/SUBJECT: one line/);
   });
 });
 
@@ -241,27 +259,53 @@ describe("buildDraftPrompt — single finding (Change C)", () => {
   });
 });
 
-// 06-03 (2026-07-29): all ten live subjects were byte-identical to the
-// worked example's subject — the model was copying the example rather than
-// writing one for the business in front of it. Fixed in the prompt, not in
-// parsing: the model must be told, explicitly, not to reuse that wording.
+// 2026-11-18: 06-03's three tests pinned the model-authored subject rule
+// (write your own, at most six words, never copy the example's). The
+// positioning decision replaced that whole mechanism with one approved
+// line in buildDraftSubject(), so the prompt must now tell the model the
+// opposite: write no subject at all. The example-copying fault 06-03 fixed
+// cannot recur, because no example carries a subject any more.
 
-describe("buildDraftPrompt — subject must not copy the example (06-03)", () => {
-  it("tells the model not to reuse the example's subject wording", () => {
+describe("buildDraftPrompt — the subject is code-owned (2026-11-18)", () => {
+  it("tells the model not to write a subject line", () => {
     const prompt = buildDraftPrompt(baseInput());
-    expect(prompt.toLowerCase()).toMatch(/never reuse|not copied from the example|do not reuse this one/);
+    expect(prompt.toLowerCase()).toMatch(/do not write a subject line/);
   });
 
-  it("requires the subject to be written for this business and this finding", () => {
-    const prompt = buildDraftPrompt(baseInput());
-    expect(prompt.toLowerCase()).toMatch(/this business and this finding/);
-  });
-
-  it("still contains both example subjects verbatim as illustrations (guidance, not deletion)", () => {
+  it("carries no subject line in either worked example", () => {
     const nlPrompt = buildDraftPrompt(baseInput({ locale: "nl" }));
     const enPrompt = buildDraftPrompt(baseInput({ locale: "en" }));
-    expect(enPrompt).toContain("SUBJECT: Your site is slow on mobile");
-    expect(nlPrompt).toContain("SUBJECT: Je site laadt traag op mobiel");
+    expect(enPrompt).not.toContain("SUBJECT: Your site is slow on mobile");
+    expect(nlPrompt).not.toContain("SUBJECT: Je site laadt traag op mobiel");
+    expect(nlPrompt).not.toMatch(/^SUBJECT:/m);
+    expect(enPrompt).not.toMatch(/^SUBJECT:/m);
+  });
+});
+
+// Direction A, 2026-11-16: the body leads with the moment before a customer
+// makes contact. The finding is the evidence for it, not the opening line.
+
+describe("buildDraftPrompt — leads with the moment (2026-11-18)", () => {
+  it("makes the moment step 2 of STRUCTURE, ahead of the finding", () => {
+    const prompt = buildDraftPrompt(baseInput());
+    const moment = prompt.indexOf("2. The moment");
+    const finding = prompt.indexOf("3. One specific, true observation");
+    expect(moment).toBeGreaterThan(-1);
+    expect(finding).toBeGreaterThan(moment);
+  });
+
+  it("states the frame in the TONE section", () => {
+    const prompt = buildDraftPrompt(baseInput());
+    expect(prompt).toContain("The frame is the moment before a customer makes contact");
+  });
+
+  it("opens both worked example bodies with the moment, not the finding", () => {
+    const nlPrompt = buildDraftPrompt(baseInput({ locale: "nl" }));
+    const enPrompt = buildDraftPrompt(baseInput({ locale: "en" }));
+    expect(nlPrompt).toContain("Voordat iemand contact met je opneemt");
+    expect(enPrompt).toContain("Before anyone contacts you, they check you online first.");
+    expect(nlPrompt).not.toContain("Ik keek even naar Fysio Van Dijk");
+    expect(enPrompt).not.toContain("I took a look at Van Dijk Physio");
   });
 });
 

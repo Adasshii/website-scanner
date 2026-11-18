@@ -24,6 +24,15 @@
  * one. See 06-03-SUMMARY.md and 06-04-SUMMARY.md Deviations for the full
  * record.
  *
+ * Positioning revision (2026-11-18): the pitch now leads with the moment
+ * before a customer makes contact, and the finding is the evidence for it
+ * rather than the opening line (direction A, logged 2026-11-16 in
+ * decisions/log.md). Three things changed with it: STRUCTURE gained the
+ * moment sentence as step 2, both worked examples were rewritten, and the
+ * model-authored subject was replaced by the one approved line in
+ * buildDraftSubject(). The approved copy and the reasoning are in
+ * docs/outreach-copy.md.
+ *
  * Pure module: no Supabase client, no fetch, no environment reads. The
  * builder here composes text only — it never calls Claude itself
  * (that is lib/draft-generator.ts, 06-04).
@@ -62,13 +71,14 @@ You are Joshua, founder of Adashi, a web design and automation studio. You are w
 
 STRUCTURE — plain sentences in this order, no headings, no lists
 1. Open with "Hi," alone on its own line, then a blank line, then the body starts.
-2. One specific, true observation about their site. One finding, never several.
-3. What it costs them, in plain terms: visitors leaving, enquiries not arriving, being hard to find.
-4. Write the token [RAPPORT] once, at the point in the sentence where the report link belongs, as evidence they can check for themselves.
-5. One low-friction ask: a short reply, or fifteen minutes. Offer, do not push.
+2. The moment, in one sentence: before anyone makes contact with them, they look the business up first.
+3. One specific, true observation about their site. One finding, never several.
+4. What it costs them, in plain terms: visitors leaving, enquiries not arriving, being hard to find.
+5. Write the token [RAPPORT] once, at the point in the sentence where the report link belongs, framed as what that visitor runs into.
+6. One low-friction ask: a short reply, or fifteen minutes. Offer, do not push.
 
 TONE
-Warm, direct, human. A helpful peer, not a salesperson. Confident and honest: say what the scan measured, never exaggerate. Never judge the business or its owner, never imply the reader is incompetent or should feel bad. Short sentences, one idea each. No em dashes: use commas, colons or periods. No exclamation marks, no bullet lists, no marketing filler, no artificial urgency, no closing hard sell. You are selling a website that brings them customers, not one that looks nice.
+Warm, direct, human. A helpful peer, not a salesperson. Confident and honest: say what the scan measured, never exaggerate. Never judge the business or its owner, never imply the reader is incompetent or should feel bad. Short sentences, one idea each. No em dashes: use commas, colons or periods. No exclamation marks, no bullet lists, no marketing filler, no artificial urgency, no closing hard sell. You are selling a website that brings them customers, not one that looks nice. The frame is the moment before a customer makes contact: they look the business up, and what they find decides whether they get in touch. The finding is the evidence for that moment, never the opening line.
 
 Never use: game-changing, cutting-edge, transform, unlock, boost, leverage, seamless, robust, comprehensive, delve, journey, landscape, showcase, crucial, truly, absolutely, "it is worth noting", "in today's digital world".
 
@@ -80,7 +90,7 @@ HARD LIMITS
 - No greeting placeholders like [Name]. The one permitted placeholder token is [RAPPORT], written exactly once, where the report link belongs — never write a URL of your own, anywhere.
 - No sign-off or signature: the system adds it.
 - Do not write any privacy notice, legal disclosure, data-source explanation or unsubscribe text. The system appends that afterwards; yours would duplicate or contradict it.
-- SUBJECT: write it for THIS business and THIS finding. At most six words, specific, no hype, no clickbait, naming the concrete thing found rather than a generic phrase. The EXAMPLE below shows length and register only — never reuse its subject wording; ten live generations copied it verbatim and that is the exact mistake this line exists to stop.`;
+- Do not write a subject line. The system sets it from the approved line, so one of yours is discarded.`;
 
 /**
  * Rendered with real literal values (2026-07-28 rewrite's worked example),
@@ -89,23 +99,20 @@ HARD LIMITS
  * only. Deliberately unrounded ("6.4" / "6,4") to model the verbatim-figure
  * rule rather than contradict it. No sign-off line: the system appends one.
  */
-const EXAMPLE_EN = `EXAMPLE (illustrates length and register only — write your own subject, do not reuse this one)
-SUBJECT: Your site is slow on mobile
+const EXAMPLE_EN = `EXAMPLE (illustrates length and register only)
 BODY:
 Hi,
 
-I took a look at Van Dijk Physio. The largest image on your homepage takes 6.4 seconds to appear. Most mobile visitors leave after three seconds, so you are probably losing enquiries before anyone sees what you offer. I put the full findings together for you here: [RAPPORT]. If it looks useful, let me know and I will walk you through it in fifteen minutes. No obligation.`;
+Before anyone contacts you, they check you online first. On Van Dijk Physio the largest image on your homepage takes 6.4 seconds to appear. Most mobile visitors leave after three seconds, so you are probably losing enquiries before anyone sees what you offer. I put together what a visitor like that runs into on your site: [RAPPORT]. If it looks useful, let me know and I will walk you through it in fifteen minutes. No obligation.`;
 
-const EXAMPLE_NL = `EXAMPLE (illustreert lengte en register alleen — schrijf je eigen subject, hergebruik deze niet)
-SUBJECT: Je site laadt traag op mobiel
+const EXAMPLE_NL = `EXAMPLE (illustreert lengte en register alleen)
 BODY:
 Hi,
 
-Ik keek even naar Fysio Van Dijk. De grootste afbeelding op je homepage is pas na 6,4 seconden zichtbaar. De meeste bezoekers op mobiel haken na drie seconden af, dus je verliest waarschijnlijk aanvragen voordat iemand je aanbod ziet. Ik heb de volledige bevindingen voor je op een rij gezet: [RAPPORT]. Als het nuttig lijkt, laat het weten, dan loop ik er in een kwartier met je doorheen. Geen verplichting.`;
+Voordat iemand contact met je opneemt, kijkt hij eerst even op je site. Bij Fysio Van Dijk duurt het 6,4 seconden voordat de grootste afbeelding op je homepage zichtbaar is. Op mobiel haken de meeste mensen na drie seconden af, dus je verliest waarschijnlijk aanvragen voordat iemand je aanbod ziet. Ik heb op een rij gezet wat zo'n bezoeker bij je tegenkomt: [RAPPORT]. Als het nuttig lijkt, laat het weten, dan loop ik er in een kwartier met je doorheen. Geen verplichting.`;
 
 const OUTPUT_CONTRACT = `OUTPUT CONTRACT
 Return exactly this shape and nothing else:
-SUBJECT: one line, at most six words, specific, no hype, no clickbait, written for this business and this finding, not copied from the example
 BODY:
 the body text`;
 
@@ -204,13 +211,25 @@ ${OUTPUT_CONTRACT}`;
 }
 
 /**
- * Code template fallback, no model call. Used directly by
- * parseDraftResponse() below whenever the model's own subject is missing or
- * implausible, and by callers that need a subject with no raw model output
- * at all.
+ * The approved subject line (2026-11-16 positioning decision, logged in
+ * decisions/log.md), keyed on the business name rather than the domain.
+ *
+ * This is now the ONLY subject a draft ever carries. Until 2026-11-18 the
+ * model authored its own subject per the OUTPUT CONTRACT and this function
+ * was only the fallback; the decision replaced that with one fixed line, so
+ * generateDraft() calls this directly and discards anything the model
+ * writes. parseDraftResponse() still falls back to it, which now yields the
+ * same string the generator uses.
+ *
+ * Trade-off on record: one fixed line goes to every prospect. At 10 to 50
+ * sends a week that reads as one person writing. Restoring the
+ * model-authored subject is one line in generateDraft() plus the SUBJECT
+ * rule in TONE_BRIEF.
  */
-export function buildDraftSubject(domain: string, locale: Locale): string {
-  return locale === "nl" ? `Snelle observatie over ${domain}` : `A quick observation about ${domain}`;
+export function buildDraftSubject(businessName: string, locale: Locale): string {
+  return locale === "nl"
+    ? `Wat ${businessName} laat zien voordat iemand contact opneemt`
+    : `What ${businessName} shows before anyone gets in touch`;
 }
 
 // ── D-6-04 (Change B, 2026-07-28): model-authored subject, code fallback ─
@@ -237,13 +256,18 @@ const BODY_LABEL_RE = /^[ \t]*body:[ \t]*\n?([\s\S]*)$/im;
  * subject line: when no BODY: label is found, the body is the raw response
  * minus the matched SUBJECT: line; when neither label is found, the entire
  * raw response is the body. Pure: no I/O, never throws.
+ *
+ * 2026-11-18: the prompt no longer asks for a subject and generateDraft()
+ * no longer reads the one returned here, so the SUBJECT: handling survives
+ * for one reason only: a model that writes a subject anyway must not have it
+ * leak into the body. The returned `subject` is advisory.
  */
 export function parseDraftResponse(
   raw: string,
-  domain: string,
+  businessName: string,
   locale: Locale
 ): { subject: string; body: string } {
-  const fallbackSubject = buildDraftSubject(domain, locale);
+  const fallbackSubject = buildDraftSubject(businessName, locale);
   const subjectMatch = raw.match(SUBJECT_LINE_RE);
   const bodyMatch = raw.match(BODY_LABEL_RE);
 

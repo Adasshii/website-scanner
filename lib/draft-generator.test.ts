@@ -229,7 +229,10 @@ describe("generateDraft", () => {
     expect(usResult!.body.endsWith(ARTICLE_14_NOTICE_EN)).toBe(true);
   });
 
-  it("uses the model-authored subject when the response follows the SUBJECT/BODY contract", async () => {
+  // 2026-11-18: the subject is code-owned. These two cases replace the
+  // 2026-07-28 Change B pair, which asserted the opposite (the model's own
+  // subject wins, with buildDraftSubject only as the fallback).
+  it("discards a subject the model writes anyway and uses the approved line", async () => {
     const scan = baseScan();
     const generate = async () =>
       "SUBJECT: Your site loads slowly\nBODY:\n2 critical issues found on the site.";
@@ -237,14 +240,29 @@ describe("generateDraft", () => {
       { prospect: baseProspect({ country: "NL", domain: "praktijkjansen.nl" }), scan },
       { generate }
     );
-    expect(result!.subject).toBe("Your site loads slowly");
+    expect(result!.subject).toBe(buildDraftSubject("Praktijk Jansen", "nl"));
+    expect(result!.subject).not.toContain("loads slowly");
+    expect(result!.body).not.toContain("Your site loads slowly");
   });
 
-  it("falls back to buildDraftSubject when the model ignores the SUBJECT/BODY contract", async () => {
+  it("uses the approved line when the model writes no subject at all", async () => {
     const scan = baseScan();
-    const generate = async () => "2 critical issues found. Subject: Ignore This Fake Subject";
+    const generate = async () => "2 critical issues found on the site.";
     const result = await generateDraft(
       { prospect: baseProspect({ country: "NL", domain: "praktijkjansen.nl" }), scan },
+      { generate }
+    );
+    expect(result!.subject).toBe(buildDraftSubject("Praktijk Jansen", "nl"));
+  });
+
+  it("keys the subject on the business name, falling back to the domain when there is no name", async () => {
+    const scan = baseScan();
+    const generate = async () => "2 critical issues found on the site.";
+    const result = await generateDraft(
+      {
+        prospect: baseProspect({ country: "NL", domain: "praktijkjansen.nl", name: null }),
+        scan,
+      },
       { generate }
     );
     expect(result!.subject).toBe(buildDraftSubject("praktijkjansen.nl", "nl"));
